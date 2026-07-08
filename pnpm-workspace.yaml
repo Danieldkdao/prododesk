@@ -5,3 +5,7 @@ allowBuilds:
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+packages:
+  - "."
+overrides:
+  zod: "^4.4.3"

@@ -15,11 +15,11 @@ export const auth = betterAuth({
     sendOnSignUp: true,
   },
   socialProviders: {
-    github: {
+    google: {
       clientId: envServer.GOOGLE_CLIENT_ID,
       clientSecret: envServer.GOOGLE_CLIENT_SECRET,
     },
-    google: {
+    github: {
       clientId: envServer.GITHUB_CLIENT_ID,
       clientSecret: envServer.GITHUB_CLIENT_SECRET,
     },
