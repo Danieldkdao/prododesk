@@ -1,3 +1,4 @@
+import { DashboardHeader } from "@/components/dashboard/header";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ReactNode } from "react";
@@ -8,7 +9,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
       <div className="h-dvh w-full flex">
         <DashboardSidebar />
         <div className="h-full flex-1 w-full flex flex-col">
-          <div className="p-4 border-b">Header goes here</div>
+          <DashboardHeader />
           {children}
         </div>
       </div>

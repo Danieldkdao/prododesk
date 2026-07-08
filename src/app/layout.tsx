@@ -1,8 +1,8 @@
+import { Providers } from "@/components/providers";
+import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
 import { Outfit, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import { cn } from "@/lib/utils";
-import { Toaster } from "@/components/ui/sonner";
 
 const playfairDisplayHeading = Playfair_Display({
   subsets: ["latin"],
@@ -35,10 +35,10 @@ export default function RootLayout({
         "font-sans",
         playfairDisplayHeading.variable,
       )}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <Toaster />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
