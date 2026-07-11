@@ -18,7 +18,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { authClient } from "@/lib/auth/auth-client";
 import { GENERAL_ERROR_MESSAGE } from "@/lib/constants";
-import { getInputErrorStyle } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useState } from "react";
@@ -130,13 +129,16 @@ const SignUpPage = () => {
             name="name"
             control={form.control}
             render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel>Name</FieldLabel>
+              <Field data-invalid={!!fieldState.error}>
+                <FieldLabel htmlFor={fieldState.error && "name-input-invalid"}>
+                  Name
+                </FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}
                     placeholder="Enter your name here..."
-                    className={getInputErrorStyle(fieldState.error)}
+                    id={fieldState.error && "name-input-invalid"}
+                    aria-invalid={!!fieldState.error}
                   />
                 </FieldContent>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
@@ -147,13 +149,16 @@ const SignUpPage = () => {
             name="email"
             control={form.control}
             render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel>Email</FieldLabel>
+              <Field data-invalid={!!fieldState.error}>
+                <FieldLabel htmlFor={fieldState.error && "email-input-invalid"}>
+                  Email
+                </FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}
                     placeholder="Enter your email here..."
-                    className={getInputErrorStyle(fieldState.error)}
+                    id={fieldState.error && "email-input-invalid"}
+                    aria-invalid={!!fieldState.error}
                   />
                 </FieldContent>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
@@ -164,13 +169,18 @@ const SignUpPage = () => {
             name="password"
             control={form.control}
             render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel>Password</FieldLabel>
+              <Field data-invalid={!!fieldState.error}>
+                <FieldLabel
+                  htmlFor={fieldState.error && "password-input-invalid"}
+                >
+                  Password
+                </FieldLabel>
                 <FieldContent>
                   <PasswordInput
                     {...field}
                     placeholder="••••••••••••"
-                    className={getInputErrorStyle(fieldState.error)}
+                    id={fieldState.error && "password-input-invalid"}
+                    aria-invalid={!!fieldState.error}
                   >
                     <PasswordInputStrengthChecker />
                   </PasswordInput>

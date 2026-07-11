@@ -2,19 +2,24 @@
 
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "./ui/sonner";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { TooltipProvider } from "./ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 export const Providers = ({ children }: { children: ReactNode }) => {
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableColorScheme
-      disableTransitionOnChange
-    >
-      <Toaster />
-      <TooltipProvider>{children}</TooltipProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableColorScheme
+        disableTransitionOnChange
+      >
+        <Toaster />
+        <TooltipProvider>{children}</TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 };

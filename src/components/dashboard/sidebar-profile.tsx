@@ -22,7 +22,7 @@ export const SidebarProfile = () => {
   return session ? (
     <SidebarFooter className="w-full min-w-0">
       <DropdownMenu>
-        <DropdownMenuTrigger className="border shadow-sm p-2 hover:bg-muted transition-all duration-200">
+        <DropdownMenuTrigger className="border shadow-sm p-2 hover:bg-muted dark:hover:bg-muted/20 transition-all duration-200">
           <div className="flex items-center gap-2 w-full min-w-0">
             <UserAvatar
               name={session.user.name}

@@ -14,7 +14,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { getInputErrorStyle } from "@/lib/utils";
 import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import { useEffect, useState } from "react";
@@ -147,13 +146,16 @@ const SignInPage = () => {
             name="email"
             control={form.control}
             render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel>Email</FieldLabel>
+              <Field data-invalid={!!fieldState.error}>
+                <FieldLabel htmlFor={fieldState.error && "email-input-invalid"}>
+                  Email
+                </FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}
                     placeholder="Enter your email here..."
-                    className={getInputErrorStyle(fieldState.error)}
+                    id={fieldState.error && "email-input-invalid"}
+                    aria-invalid={!!fieldState.error}
                   />
                 </FieldContent>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
@@ -164,13 +166,18 @@ const SignInPage = () => {
             name="password"
             control={form.control}
             render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel>Password</FieldLabel>
+              <Field data-invalid={!!fieldState.error}>
+                <FieldLabel
+                  htmlFor={fieldState.error && "password-input-invalid"}
+                >
+                  Password
+                </FieldLabel>
                 <FieldContent>
                   <PasswordInput
                     {...field}
                     placeholder="••••••••••••"
-                    className={getInputErrorStyle(fieldState.error)}
+                    id={fieldState.error && "password-input-invalid"}
+                    aria-invalid={!!fieldState.error}
                   />
                 </FieldContent>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}

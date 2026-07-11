@@ -1,4 +1,4 @@
-import { MainCalendar } from "@/components/main-calendar";
+import { MainCalendar } from "@/components/calendar/main-calendar";
 
 const DashboardCalendarPage = () => {
   return (
