@@ -1,11 +1,11 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
-import { format } from "date-fns";
+import { endOfDay, format, startOfDay } from "date-fns";
+import { XIcon } from "lucide-react";
 import { GetCalendarTasksActionReturnType } from "../actions/actions";
 import { Task } from "./task";
-import { Button } from "@/components/ui/button";
-import { XIcon } from "lucide-react";
 
 export const DayTasksPanelContent = ({
   dayTasks,
@@ -15,6 +15,8 @@ export const DayTasksPanelContent = ({
   const [filters, setFilters] = useCalendarParams();
 
   if (!filters.day || !dayTasks) return null;
+
+  const isPastDay = startOfDay(new Date()) > filters.day;
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
@@ -28,9 +30,9 @@ export const DayTasksPanelContent = ({
           <XIcon />
         </Button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 flex flex-col gap-2">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 flex flex-col gap-2 ">
         {dayTasks.map((task) => (
-          <Task key={task.id} task={task} />
+          <Task key={task.id} task={task} disabled={isPastDay} />
         ))}
       </div>
     </div>

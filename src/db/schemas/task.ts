@@ -21,7 +21,7 @@ export const TaskTable = pgTable("tasks", {
   day: date("day", { mode: "string" }).notNull(),
   startAt: timestamp("started_at", { withTimezone: true }),
   endAt: timestamp("end_at", { withTimezone: true }),
-  isCompleted: boolean("is_completed").default(false),
+  isCompleted: boolean("is_completed").notNull().default(false),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt,
   updatedAt,

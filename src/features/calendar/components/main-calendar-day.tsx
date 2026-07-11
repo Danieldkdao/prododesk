@@ -41,7 +41,7 @@ export const MainCalendarDay = ({
       )}
       onClick={() => {
         setFilters({
-          day: date,
+          day: new Date(date.toUTCString()),
         });
       }}
     >

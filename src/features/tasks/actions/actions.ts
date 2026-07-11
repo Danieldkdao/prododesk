@@ -1,13 +1,20 @@
 "use server";
 
+import { db } from "@/db/db";
+import { TaskTable, TaskTableSelectType } from "@/db/schema";
+import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
+  NO_PERMISSION_DATA_MESSAGE,
   NOT_FOUND_ERROR_MESSAGE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
+import { UnwrapAsync } from "@/lib/types";
 import { mergeDateTime } from "@/lib/utils";
+import { format, isSameDay, parse } from "date-fns";
+import { and, asc, eq, gte, lte } from "drizzle-orm";
 import {
   confirmUserTaskOwnership,
   deleteTaskDb,
@@ -15,12 +22,6 @@ import {
   updateTaskDb,
 } from "../server/tasks";
 import { taskSchema, TaskSchemaType } from "./schemas";
-import { db } from "@/db/db";
-import { TaskTable, TaskTableSelectType } from "@/db/schema";
-import { and, eq, gte, lte, or } from "drizzle-orm";
-import { format, isSameDay, parse } from "date-fns";
-import { UnwrapAsync } from "@/lib/types";
-import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 
 export const createTaskAction = async (unsafeData: TaskSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -157,19 +158,18 @@ export const getCalendarTasksAction = async (
     .where(
       and(
         eq(TaskTable.userId, userId),
-        or(
-          gte(TaskTable.day, format(startOfMonth, "yyyy-MM-dd")),
-          lte(TaskTable.day, format(endOfMonth, "yyyy-MM-dd")),
-        ),
+        gte(TaskTable.day, format(startOfMonth, "yyyy-MM-dd")),
+        lte(TaskTable.day, format(endOfMonth, "yyyy-MM-dd")),
       ),
-    );
+    )
+    .orderBy(asc(TaskTable.id));
 
   let selectedDayTasks: TaskTableSelectType[] | null = null;
 
   const monthDaysWithTasks = monthDays.map((day) => {
     const dayTasks = tasks.filter((task) => {
-      const parsedDay = parse(task.day, "yyyy-MM-dd", new Date());
-      return isSameDay(parsedDay, day);
+      const dayString = format(day, "yyyy-MM-dd");
+      return task.day === dayString;
     });
 
     if (selectedDay && isSameDay(day, selectedDay)) {
@@ -191,3 +191,41 @@ export type GetCalendarTasksActionReturnType = Omit<
   UnwrapAsync<typeof getCalendarTasksAction>,
   "selectedDayTasks"
 > & { selectedDayTasks: TaskTableSelectType[] | null };
+
+export const toggleTaskCompletionAction = async (taskId: string) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const existingTask = await confirmUserTaskOwnership(userId, taskId);
+  if (!existingTask) {
+    return {
+      error: true,
+      message: NO_PERMISSION_DATA_MESSAGE,
+    };
+  }
+
+  try {
+    const updatedTask = await updateTaskDb(taskId, {
+      isCompleted: !existingTask.isCompleted,
+      completedAt: !existingTask.isCompleted ? new Date() : null,
+    });
+    if (!updatedTask)
+      throw new Error("Failed to update task completion status.");
+
+    return {
+      error: false,
+      message: "Task updated successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: "Failed to update task completion status.",
+    };
+  }
+};
