@@ -5,12 +5,14 @@ import { ReactNode } from "react";
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
   return (
-    <SidebarProvider>
-      <div className="h-dvh w-full flex">
+    <SidebarProvider forceMobile>
+      <div className="h-dvh w-full flex min-h-0 overflow-hidden">
         <DashboardSidebar />
-        <div className="h-full flex-1 w-full flex flex-col">
+        <div className="h-full flex-1 w-full flex flex-col min-h-0 overflow-hidden">
           <DashboardHeader />
-          <div className="flex-1 h-full">{children}</div>
+          <div className="flex-1 h-full min-h-0 overflow-hidden">
+            {children}
+          </div>
         </div>
       </div>
     </SidebarProvider>

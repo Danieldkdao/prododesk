@@ -9,7 +9,7 @@ import { SidebarProfile } from "./sidebar-profile";
 
 export const DashboardSidebar = () => {
   return (
-    <Sidebar>
+    <Sidebar collapsible="offcanvas">
       <SidebarHeader className="w-full min-w-0">
         <div className="w-full p-2">
           <h1 className="font-semibold text-3xl flex-1 min-w-0 truncate">

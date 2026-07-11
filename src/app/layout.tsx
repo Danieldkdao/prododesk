@@ -1,10 +1,10 @@
 import { Providers } from "@/components/providers";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
-import { Outfit, Playfair_Display } from "next/font/google";
+import { Fraunces, Outfit } from "next/font/google";
 import "./globals.css";
 
-const playfairDisplayHeading = Playfair_Display({
+const frauncesHeading = Fraunces({
   subsets: ["latin"],
   variable: "--font-heading",
 });
@@ -33,7 +33,7 @@ export default function RootLayout({
         outfitSans.variable,
         outfitSans.className,
         "font-sans",
-        playfairDisplayHeading.variable,
+        frauncesHeading.variable,
       )}
       suppressHydrationWarning
     >

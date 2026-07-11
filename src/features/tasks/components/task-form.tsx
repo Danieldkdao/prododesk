@@ -1,9 +1,8 @@
 "use client";
 
-import { Controller, useForm } from "react-hook-form";
-import { taskSchema, TaskSchemaType } from "../actions/schemas";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { TaskTableSelectType } from "@/db/schema";
+import { TooltipWrapper } from "@/components/tooltip-wrapper";
+import { Button } from "@/components/ui/button";
+import { EmojiPickerPopover } from "@/components/ui/emoji-picker-popover";
 import {
   Field,
   FieldContent,
@@ -12,18 +11,18 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { EmojiPickerPopover } from "@/components/ui/emoji-picker-popover";
-import { SmilePlusIcon } from "lucide-react";
-import { format } from "date-fns";
-import { Button } from "@/components/ui/button";
-import { TooltipWrapper } from "@/components/tooltip-wrapper";
-import { mergeDateTime } from "@/lib/utils";
-import { createTaskAction, updateTaskAction } from "../actions/actions";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { LoadingSwap } from "@/components/ui/loading-swap";
-import { useQueryClient } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
+import { TaskTableSelectType } from "@/db/schema";
+import { mergeDateTime } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
+import { SmilePlusIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { createTaskAction, updateTaskAction } from "../actions/actions";
+import { taskSchema, TaskSchemaType } from "../actions/schemas";
 
 export const TaskForm = ({
   day,
@@ -34,7 +33,6 @@ export const TaskForm = ({
   existingTask?: TaskTableSelectType;
   afterAction?: () => void;
 }) => {
-  const queryClient = useQueryClient();
   const router = useRouter();
   const form = useForm<TaskSchemaType>({
     resolver: zodResolver(taskSchema),
@@ -70,9 +68,6 @@ export const TaskForm = ({
       toast.success(response.message);
       form.reset();
       router.refresh();
-      queryClient.invalidateQueries({
-        queryKey: ["tasks", "calendar"],
-      });
       afterAction?.();
     }
   };

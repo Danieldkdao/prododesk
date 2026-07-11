@@ -16,10 +16,11 @@ import {
 } from "../server/tasks";
 import { taskSchema, TaskSchemaType } from "./schemas";
 import { db } from "@/db/db";
-import { TaskTable } from "@/db/schema";
+import { TaskTable, TaskTableSelectType } from "@/db/schema";
 import { and, eq, gte, lte, or } from "drizzle-orm";
 import { format, isSameDay, parse } from "date-fns";
 import { UnwrapAsync } from "@/lib/types";
+import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 
 export const createTaskAction = async (unsafeData: TaskSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -141,12 +142,14 @@ export const deleteTaskAction = async (taskId: string) => {
 };
 
 export const getCalendarTasksAction = async (
-  startRange: Date,
-  endRange: Date,
-  monthDays: Date[],
+  dateToUse: Date,
+  selectedDay: Date | null,
 ) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
+
+  const { startOfMonth, endOfMonth, monthDays } =
+    calculateCalendarValues(dateToUse);
 
   const tasks = await db
     .select()
@@ -155,25 +158,36 @@ export const getCalendarTasksAction = async (
       and(
         eq(TaskTable.userId, userId),
         or(
-          gte(TaskTable.day, format(startRange, "yyyy-MM-dd")),
-          lte(TaskTable.day, format(endRange, "yyyy-MM-dd")),
+          gte(TaskTable.day, format(startOfMonth, "yyyy-MM-dd")),
+          lte(TaskTable.day, format(endOfMonth, "yyyy-MM-dd")),
         ),
       ),
     );
+
+  let selectedDayTasks: TaskTableSelectType[] | null = null;
 
   const monthDaysWithTasks = monthDays.map((day) => {
     const dayTasks = tasks.filter((task) => {
       const parsedDay = parse(task.day, "yyyy-MM-dd", new Date());
       return isSameDay(parsedDay, day);
     });
+
+    if (selectedDay && isSameDay(day, selectedDay)) {
+      selectedDayTasks = dayTasks;
+    }
+
     return {
       day,
       tasks: dayTasks,
     };
   });
 
-  return monthDaysWithTasks;
+  return {
+    monthDaysTasks: monthDaysWithTasks,
+    selectedDayTasks,
+  };
 };
-export type GetCalendarTasksActionReturnType = UnwrapAsync<
-  typeof getCalendarTasksAction
->;
+export type GetCalendarTasksActionReturnType = Omit<
+  UnwrapAsync<typeof getCalendarTasksAction>,
+  "selectedDayTasks"
+> & { selectedDayTasks: TaskTableSelectType[] | null };
