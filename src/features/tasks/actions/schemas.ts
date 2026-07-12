@@ -1,5 +1,5 @@
+import { taskPriorities } from "@/db/shared";
 import { timeSchema } from "@/lib/schemas";
-import { mergeDateTime } from "@/lib/utils";
 import z from "zod";
 
 export const taskSchema = z
@@ -8,6 +8,7 @@ export const taskSchema = z
       error:
         "Please enter a task name that is at least one character in length.",
     }),
+    priority: z.enum(taskPriorities),
     description: z.string().nullish(),
     emoji: z.string().nullish(),
     day: z.date(),

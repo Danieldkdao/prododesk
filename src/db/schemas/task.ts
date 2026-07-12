@@ -9,6 +9,7 @@ import {
 import { createdAt, id, updatedAt } from "../helpers";
 import { user } from "./user";
 import { relations } from "drizzle-orm";
+import { taskPriorityEnum } from "../shared";
 
 export const TaskTable = pgTable("tasks", {
   id,
@@ -18,6 +19,7 @@ export const TaskTable = pgTable("tasks", {
   name: varchar("name").notNull(),
   description: text("description"),
   emoji: varchar("emoji"),
+  priority: taskPriorityEnum("priority").notNull(),
   day: date("day", { mode: "string" }).notNull(),
   startAt: timestamp("started_at", { withTimezone: true }),
   endAt: timestamp("end_at", { withTimezone: true }),

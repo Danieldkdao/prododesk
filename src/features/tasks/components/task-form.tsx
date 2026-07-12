@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import { Textarea } from "@/components/ui/textarea";
-import { TaskTableSelectType } from "@/db/schema";
+import { taskPriorities, TaskTableSelectType } from "@/db/schema";
 import { mergeDateTime } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -23,6 +23,14 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { createTaskAction, updateTaskAction } from "../actions/actions";
 import { taskSchema, TaskSchemaType } from "../actions/schemas";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { formatTaskPriority } from "../lib/formatters";
 
 export const TaskForm = ({
   day,
@@ -119,6 +127,38 @@ export const TaskForm = ({
                   {...field}
                 />
               </div>
+            </FieldContent>
+            {fieldState.error && <FieldError errors={[fieldState.error]} />}
+          </Field>
+        )}
+      />
+      <Controller
+        control={form.control}
+        name="priority"
+        render={({ field, fieldState }) => (
+          <Field data-invalid={!!fieldState.error}>
+            <FieldLabel
+              htmlFor={fieldState.error && "task-priority-input-invalid"}
+            >
+              Priority
+            </FieldLabel>
+            <FieldContent>
+              <Select {...field}>
+                <SelectTrigger
+                  id={fieldState.error && "task-priority-input-invalid"}
+                  aria-invalid={!!fieldState.error}
+                  className="w-full"
+                >
+                  <SelectValue placeholder="Select task priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  {taskPriorities.map((priority) => (
+                    <SelectItem key={priority} value={priority}>
+                      {formatTaskPriority(priority)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </FieldContent>
             {fieldState.error && <FieldError errors={[fieldState.error]} />}
           </Field>
