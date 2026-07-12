@@ -133,7 +133,7 @@ export const getCalendarDayTasksData = (
             </span>
           </TooltipWrapper>
         ),
-        bgColor: "bg-emerald-600/20",
+        bgColor: "bg-emerald-600/7.5",
       };
     case "day_not_in_month":
       return {
@@ -149,7 +149,7 @@ export const getCalendarDayTasksData = (
             </span>
           </TooltipWrapper>
         ),
-        bgColor: "bg-destructive/20",
+        bgColor: "bg-destructive/7.5",
       };
     case "incomplete_tasks_today":
       return {
@@ -161,7 +161,7 @@ export const getCalendarDayTasksData = (
             <p className="text-muted-foreground text-center">tasks left</p>
           </>
         ),
-        bgColor: "bg-destructive/20",
+        bgColor: "bg-destructive/7.5",
       };
     case "no_tasks_other_day":
       return {
@@ -172,7 +172,7 @@ export const getCalendarDayTasksData = (
             </span>
           </TooltipWrapper>
         ),
-        bgColor: "bg-muted-foreground/20",
+        bgColor: "bg-muted-foreground/7.5",
       };
     case "no_tasks_today":
       return {
@@ -184,7 +184,7 @@ export const getCalendarDayTasksData = (
             </p>
           </>
         ),
-        bgColor: "bg-muted-foreground/20",
+        bgColor: "bg-muted-foreground/7.5",
       };
     case "upcoming_day":
       return {

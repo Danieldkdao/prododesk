@@ -57,6 +57,7 @@ export const TaskForm = ({
         }
       : {
           name: "",
+          priority: "low",
           description: "",
           emoji: "",
           startAt: null,
@@ -135,7 +136,7 @@ export const TaskForm = ({
       <Controller
         control={form.control}
         name="priority"
-        render={({ field, fieldState }) => (
+        render={({ field: { value, onChange, ...props }, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
             <FieldLabel
               htmlFor={fieldState.error && "task-priority-input-invalid"}
@@ -143,13 +144,15 @@ export const TaskForm = ({
               Priority
             </FieldLabel>
             <FieldContent>
-              <Select {...field}>
+              <Select value={value} onValueChange={onChange} {...props}>
                 <SelectTrigger
                   id={fieldState.error && "task-priority-input-invalid"}
                   aria-invalid={!!fieldState.error}
                   className="w-full"
                 >
-                  <SelectValue placeholder="Select task priority" />
+                  <SelectValue placeholder="Select task priority">
+                    <span>{formatTaskPriority(value)}</span>
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {taskPriorities.map((priority) => (

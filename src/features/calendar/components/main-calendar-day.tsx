@@ -37,7 +37,6 @@ export const MainCalendarDay = ({
         "min-h-0 min-w-0 border p-2 cursor-pointer flex flex-col",
         bgColor,
         !isSameMonth && "bg-muted/30 dark:bg-card/50 text-muted-foreground",
-        // isToday && "bg-primary/20 dark:bg-primary/20",
       )}
       onClick={() => {
         setFilters({
@@ -46,7 +45,15 @@ export const MainCalendarDay = ({
       }}
     >
       <div className="flex items-center gap-2 flex-wrap w-full justify-between">
-        <span>{format(date, "d")}</span>
+        {isToday ? (
+          <TooltipWrapper content="Today">
+            <div className="size-6 bg-primary rounded-full shrink-0 flex items-center justify-center">
+              <span className="text-white">{format(date, "d")}</span>
+            </div>
+          </TooltipWrapper>
+        ) : (
+          <span>{format(date, "d")}</span>
+        )}
         <div onClick={(e) => e.stopPropagation()}>
           {isSameMonth && !isPastDay && (
             <TaskDialog day={date}>

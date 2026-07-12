@@ -9,12 +9,16 @@ import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
 import { toggleTaskCompletionAction } from "../actions/actions";
 import { Badge } from "@/components/ui/badge";
-import { CheckIcon, ClockIcon } from "lucide-react";
-import { format, isSameDay } from "date-fns";
+import { CheckIcon, ClockIcon, EditIcon, Trash2Icon } from "lucide-react";
+import { format, isSameDay, parse } from "date-fns";
 import {
   formatTaskPriority,
   getTaskPriorityBadgeClasses,
 } from "../lib/formatters";
+import { TaskDialog } from "./task-dialog";
+import { TooltipWrapper } from "@/components/tooltip-wrapper";
+import { Button } from "@/components/ui/button";
+import { DeleteTaskButton } from "./delete-task-button";
 
 export const Task = ({
   task,
@@ -29,6 +33,8 @@ export const Task = ({
   const [isPending, startTransition] = useTransition();
 
   const toggleTaskCompletion = () => {
+    if (disabled) return;
+
     startTransition(async () => {
       setIsComplete((prev) => !prev);
       setCompletedAt(new Date());
@@ -42,8 +48,8 @@ export const Task = ({
     });
   };
 
-  const cursorClassName = disabled ? "cursor-not-allowed" : "cursor-pointer";
   const priorityBadgeClasses = getTaskPriorityBadgeClasses(task.priority);
+  const taskDay = parse(task.day, "yyyy-MM-dd", new Date());
 
   return (
     <div
@@ -60,7 +66,7 @@ export const Task = ({
         className="mt-0.5"
       />
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 flex flex-col gap-1">
         <div className="flex items-start justify-between gap-3">
           <Label
             htmlFor={`task-${task.id}`}
@@ -85,18 +91,18 @@ export const Task = ({
         </div>
 
         {isComplete && completedAt ? (
-          <div className="mt-1 flex items-center gap-1 text-xs text-emerald-600">
+          <div className="flex items-center gap-1 text-xs text-emerald-600">
             <CheckIcon className="size-3.5" />
             <span>
               Completed{" "}
-              {isSameDay(task.day, completedAt)
+              {isSameDay(taskDay, completedAt)
                 ? `at ${format(completedAt, "h:mm a")}`
                 : `${format(completedAt, "LLL d")} at ${format(completedAt, "h:mm a")}`}
             </span>
           </div>
         ) : (
           task.startAt && (
-            <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <ClockIcon className="size-3.5" />
 
               <span>
@@ -108,10 +114,28 @@ export const Task = ({
         )}
 
         {task.description && (
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+          <p className=" text-sm leading-5 text-muted-foreground">
             {task.description}
           </p>
         )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <TaskDialog day={new Date(task.day)} existingTask={task}>
+            <TooltipWrapper content="Update task">
+              <Button variant="secondary" size="icon-xs">
+                <EditIcon />
+              </Button>
+            </TooltipWrapper>
+          </TaskDialog>
+          <TooltipWrapper content="Delete task">
+            <DeleteTaskButton
+              taskId={task.id}
+              variant="destructive"
+              size="icon-xs"
+            >
+              <Trash2Icon />
+            </DeleteTaskButton>
+          </TooltipWrapper>
+        </div>
       </div>
     </div>
   );
