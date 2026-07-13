@@ -197,7 +197,10 @@ export const getCalendarTasksAction = async (dateToUse: Date) => {
     };
   });
 
-  return monthDaysWithTasks;
+  return {
+    month: dateToUse,
+    monthDaysTasks: monthDaysWithTasks,
+  };
 };
 export type GetCalendarTasksActionReturnType = UnwrapAsync<
   typeof getCalendarTasksAction
@@ -337,6 +340,7 @@ export const getDayTasksAction = async (
   const hasNextPage = page * PAGE_SIZE < totalSelectedTasks.count;
 
   return {
+    day: formattedDay,
     selectedDayTasks,
     metadata: {
       hasPrevPage,

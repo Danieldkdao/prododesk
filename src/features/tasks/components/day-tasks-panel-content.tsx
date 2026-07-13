@@ -5,6 +5,7 @@ import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params
 import { format } from "date-fns";
 import { XIcon } from "lucide-react";
 import { GetDayTasksActionReturnType } from "../actions/actions";
+import { DayTasksPanelContentSkeleton } from "./day-tasks-panel-content-skeleton";
 import { DayTasksPanelInfiniteCardList } from "./day-tasks-panel-infinite-list";
 
 export const DayTasksPanelContent = ({
@@ -14,9 +15,16 @@ export const DayTasksPanelContent = ({
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
 
-  if (!calendarFilters.day || !dayTasks) return null;
+  if (!dayTasks) return <DayTasksPanelContentSkeleton />;
 
-  const { selectedDayTasks, metadata } = dayTasks;
+  const { selectedDayTasks, metadata, day } = dayTasks;
+
+  if (
+    !calendarFilters.day ||
+    format(calendarFilters.day, "yyyy-MM-dd") !== day
+  ) {
+    return <DayTasksPanelContentSkeleton />;
+  }
 
   const listKey = `${[...selectedDayTasks]
     .sort()

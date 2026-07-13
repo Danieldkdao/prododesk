@@ -1,6 +1,7 @@
 import { ErrorState } from "@/components/error-state";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { MainCalendar } from "@/features/calendar/components/main-calendar";
+import { MainCalendarSkeleton } from "@/features/calendar/components/main-calendar-skeleton";
 import { loadCalendarSearchParams } from "@/features/calendar/lib/calendar-params";
 import {
   getCalendarTasksAction,
@@ -21,7 +22,11 @@ const DashboardCalendarPage = (props: SearchParamsType) => {
 };
 
 const DashboardCalendarLoading = () => {
-  return <div>loading</div>;
+  return (
+    <div className="h-full min-h-0 overflow-hidden">
+      <MainCalendarSkeleton />
+    </div>
+  );
 };
 
 const DashboardCalendarSuspense = async ({

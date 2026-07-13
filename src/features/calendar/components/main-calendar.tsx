@@ -7,13 +7,23 @@ import { Button } from "../../../components/ui/button";
 import { useCalendarParams } from "../hooks/use-calendar-params";
 import { calculateCalendarValues } from "../lib/utils";
 import { MainCalendarArea } from "./main-calendar-area";
+import { MainCalendarSkeleton } from "./main-calendar-skeleton";
 
-export const MainCalendar = (props: {
+export const MainCalendar = ({
+  monthDaysTasks,
+}: {
   monthDaysTasks: GetCalendarTasksActionReturnType;
 }) => {
   const [filters, setFilters] = useCalendarParams();
 
   const { weekDays } = calculateCalendarValues(filters.month);
+
+  if (
+    format(monthDaysTasks.month, "yyyy-MM-dd") !==
+    format(filters.month, "yyyy-MM-dd")
+  ) {
+    return <MainCalendarSkeleton />;
+  }
 
   const changeDateToUse = (amount: 1 | -1) =>
     setFilters({ month: addMonths(filters.month, amount) });
@@ -57,7 +67,7 @@ export const MainCalendar = (props: {
           ))}
         </div>
       </div>
-      <MainCalendarArea {...props} />
+      <MainCalendarArea monthDaysTasksRes={monthDaysTasks} />
     </div>
   );
 };
