@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db/db";
-import { TaskTable, TaskTableSelectType } from "@/db/schema";
+import { TaskPriority, TaskTable } from "@/db/schema";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -9,12 +9,33 @@ import {
   INVALID_DATA_ERROR_MESSAGE,
   NO_PERMISSION_DATA_MESSAGE,
   NOT_FOUND_ERROR_MESSAGE,
+  PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
 import { mergeDateTime } from "@/lib/utils";
-import { format, isSameDay, parse } from "date-fns";
-import { and, asc, eq, gte, lte } from "drizzle-orm";
+import { format } from "date-fns";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+  SQL,
+} from "drizzle-orm";
+import {
+  DayTasksSchedule,
+  DayTasksSortByOption,
+  DayTasksStatus,
+} from "../lib/day-tasks-params";
 import {
   confirmUserTaskOwnership,
   deleteTaskDb,
@@ -55,6 +76,7 @@ export const createTaskAction = async (unsafeData: TaskSchemaType) => {
     return {
       error: false,
       message: "Task created successfully!",
+      task: createdTask,
     };
   } catch (error) {
     console.error(error);
@@ -98,6 +120,7 @@ export const updateTaskAction = async (
     return {
       error: false,
       message: "Task updated successfully!",
+      task: updatedTask,
     };
   } catch (error) {
     console.error(error);
@@ -132,6 +155,7 @@ export const deleteTaskAction = async (taskId: string) => {
     return {
       error: false,
       message: "Task deleted successfully!",
+      deletedTask,
     };
   } catch (error) {
     console.error(error);
@@ -142,10 +166,7 @@ export const deleteTaskAction = async (taskId: string) => {
   }
 };
 
-export const getCalendarTasksAction = async (
-  dateToUse: Date,
-  selectedDay: Date | null,
-) => {
+export const getCalendarTasksAction = async (dateToUse: Date) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
@@ -164,17 +185,11 @@ export const getCalendarTasksAction = async (
     )
     .orderBy(asc(TaskTable.id));
 
-  let selectedDayTasks: TaskTableSelectType[] | null = null;
-
   const monthDaysWithTasks = monthDays.map((day) => {
     const dayTasks = tasks.filter((task) => {
       const dayString = format(day, "yyyy-MM-dd");
       return task.day === dayString;
     });
-
-    if (selectedDay && isSameDay(day, selectedDay)) {
-      selectedDayTasks = dayTasks;
-    }
 
     return {
       day,
@@ -182,15 +197,155 @@ export const getCalendarTasksAction = async (
     };
   });
 
+  return monthDaysWithTasks;
+};
+export type GetCalendarTasksActionReturnType = UnwrapAsync<
+  typeof getCalendarTasksAction
+>;
+
+export const getDayTasksAction = async (
+  selectedDay: Date | null,
+  filterOptions: {
+    search: string;
+    sortBy: DayTasksSortByOption;
+    priorities: TaskPriority[];
+    status: DayTasksStatus;
+    schedule: DayTasksSchedule;
+    timeStartRange: Date | null;
+    timeEndRange: Date | null;
+    page: number;
+  },
+) => {
+  const { userId } = await getCurrentUser();
+  if (!userId || !selectedDay) return null;
+
+  const formattedDay = format(selectedDay, "yyyy-MM-dd");
+
+  const {
+    search,
+    sortBy,
+    priorities,
+    status,
+    schedule,
+    timeStartRange,
+    timeEndRange,
+    page,
+  } = filterOptions;
+
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const searchTerm = `%${search.trim()}%`;
+
+  const priorityRank = sql`
+    CASE ${TaskTable.priority}
+      WHEN 'urgent' THEN 4
+      WHEN 'high' THEN 3
+      WHEN 'medium' THEN 2
+      WHEN 'low' THEN 1
+      ELSE 0
+    END
+  `;
+
+  const completedAtRank = sql`
+    CASE
+      WHEN ${TaskTable.completedAt} IS NULL THEN 0
+      ELSE 1
+    END
+  `;
+
+  const searchFilter = search.trim()
+    ? or(
+        ilike(TaskTable.name, searchTerm),
+        ilike(TaskTable.description, searchTerm),
+      )
+    : undefined;
+
+  const priorityFilter = priorities.length
+    ? inArray(TaskTable.priority, priorities)
+    : undefined;
+
+  const sortByMap: Record<DayTasksSortByOption, SQL<unknown>> = {
+    name_a_z: asc(sql`lower(${TaskTable.name})`),
+    name_z_a: desc(sql`lower(${TaskTable.name})`),
+    oldest: asc(TaskTable.createdAt),
+    priority: desc(priorityRank),
+    recently_completed: desc(completedAtRank),
+    recently_created: desc(TaskTable.createdAt),
+  };
+
+  const statusMap: Record<DayTasksStatus, SQL<unknown> | undefined> = {
+    all: undefined,
+    active: and(
+      eq(TaskTable.isCompleted, false),
+      isNull(TaskTable.completedAt),
+    ),
+    complete: and(
+      eq(TaskTable.isCompleted, true),
+      isNotNull(TaskTable.completedAt),
+    ),
+  };
+
+  const scheduleMap: Record<DayTasksSchedule, SQL<unknown> | undefined> = {
+    any: undefined,
+    scheduled: isNotNull(TaskTable.startAt),
+    unscheduled: and(isNull(TaskTable.startAt), isNull(TaskTable.endAt)),
+  };
+
+  const timeRangeFilter = and(
+    timeStartRange ? gte(TaskTable.startAt, timeStartRange) : undefined,
+    timeEndRange ? lte(TaskTable.endAt, timeEndRange) : undefined,
+  );
+
+  const whereQuery = and(
+    eq(TaskTable.userId, userId),
+    eq(TaskTable.day, formattedDay),
+    searchFilter,
+    priorityFilter,
+    statusMap[status],
+    scheduleMap[schedule],
+    timeRangeFilter,
+  );
+
+  const selectedDayTasks = await db
+    .select()
+    .from(TaskTable)
+    .where(whereQuery)
+    .orderBy(sortByMap[sortBy])
+    .offset(offset)
+    .limit(PAGE_SIZE);
+
+  const [totalSelectedTasks] = await db
+    .select({
+      count: count(),
+    })
+    .from(TaskTable)
+    .where(whereQuery);
+
+  const [totalCompletedTasks] = await db
+    .select({ count: count() })
+    .from(TaskTable)
+    .where(
+      and(
+        eq(TaskTable.userId, userId),
+        eq(TaskTable.day, formattedDay),
+        eq(TaskTable.isCompleted, true),
+        isNotNull(TaskTable.completedAt),
+      ),
+    );
+
+  const hasPrevPage = page > 1;
+  const hasNextPage = page * PAGE_SIZE < totalSelectedTasks.count;
+
   return {
-    monthDaysTasks: monthDaysWithTasks,
     selectedDayTasks,
+    metadata: {
+      hasPrevPage,
+      hasNextPage,
+      allTasksCompleted: totalCompletedTasks.count === totalSelectedTasks.count,
+    },
   };
 };
-export type GetCalendarTasksActionReturnType = Omit<
-  UnwrapAsync<typeof getCalendarTasksAction>,
-  "selectedDayTasks"
-> & { selectedDayTasks: TaskTableSelectType[] | null };
+export type GetDayTasksActionReturnType = UnwrapAsync<typeof getDayTasksAction>;
 
 export const toggleTaskCompletionAction = async (taskId: string) => {
   const { userId } = await getCurrentUser();
@@ -217,9 +372,24 @@ export const toggleTaskCompletionAction = async (taskId: string) => {
     if (!updatedTask)
       throw new Error("Failed to update task completion status.");
 
+    const [incompleteTasks] = await db
+      .select({
+        count: count(),
+      })
+      .from(TaskTable)
+      .where(
+        and(
+          eq(TaskTable.userId, userId),
+          isNull(TaskTable.completedAt),
+          eq(TaskTable.isCompleted, false),
+          eq(TaskTable.day, updatedTask.day),
+        ),
+      );
+
     return {
       error: false,
       message: "Task updated successfully!",
+      allComplete: incompleteTasks.count === 0,
     };
   } catch (error) {
     console.error(error);

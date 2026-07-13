@@ -11,21 +11,29 @@ import {
 import { TaskTableSelectType } from "@/db/schema";
 import { ReactElement, useState } from "react";
 import { TaskForm } from "./task-form";
+import { SetterType } from "@/lib/types";
 
 export const TaskDialog = ({
   children,
   day,
   existingTask,
+  open,
+  onOpenChange,
 }: {
-  children: ReactElement;
+  children?: ReactElement;
   day: Date;
   existingTask?: TaskTableSelectType;
+  open?: boolean;
+  onOpenChange?: SetterType<boolean>;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
+  const openToUse = open ?? isOpen;
+  const handleOpenChange = onOpenChange ?? setIsOpen;
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger render={children} />
+    <Dialog open={openToUse} onOpenChange={handleOpenChange}>
+      {children && <DialogTrigger render={children} />}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>

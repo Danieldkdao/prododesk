@@ -5,14 +5,20 @@ import { useRouter } from "next/navigation";
 import { ComponentProps, ReactNode, useTransition } from "react";
 import { toast } from "sonner";
 import { deleteTaskAction } from "../actions/actions";
+import { cn } from "@/lib/utils";
 
 export const DeleteTaskButton = ({
   children,
   taskId,
   onClick,
   disabled,
+  innerClassName,
   ...props
-}: { children: ReactNode; taskId: string } & ComponentProps<typeof Button>) => {
+}: {
+  children?: ReactNode;
+  taskId: string;
+  innerClassName?: string;
+} & ComponentProps<typeof Button>) => {
   const router = useRouter();
   const [ConfirmationDialog, confirm] = useConfirm(
     "Confirm Deletion",
@@ -26,9 +32,10 @@ export const DeleteTaskButton = ({
 
     startTransition(async () => {
       const response = await deleteTaskAction(taskId);
-      if (response.error) {
+      if (response.error || !response.deletedTask) {
         toast.error(response.message);
       } else {
+        toast.success(response.message);
         router.refresh();
       }
     });
@@ -42,7 +49,12 @@ export const DeleteTaskButton = ({
         onClick={handleDeletion ?? onClick}
         {...props}
       >
-        <LoadingSwap isLoading={isPending}>{children}</LoadingSwap>
+        <LoadingSwap
+          isLoading={isPending}
+          className={cn("flex items-center gap-2", innerClassName)}
+        >
+          {children}
+        </LoadingSwap>
       </Button>
     </>
   );

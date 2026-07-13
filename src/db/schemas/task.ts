@@ -1,3 +1,4 @@
+import { relations } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -7,9 +8,8 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
-import { user } from "./user";
-import { relations } from "drizzle-orm";
 import { taskPriorityEnum } from "../shared";
+import { user } from "./user";
 
 export const TaskTable = pgTable("tasks", {
   id,

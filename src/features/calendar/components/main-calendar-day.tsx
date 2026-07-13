@@ -1,5 +1,7 @@
 import { TaskTableSelectType } from "@/db/schema";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
+import { useDayTasksParams } from "@/features/tasks/hooks/use-day-tasks-params";
+import { defaultDayTasksParamsOptions } from "@/features/tasks/lib/day-tasks-params";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
@@ -18,15 +20,16 @@ export const MainCalendarDay = ({
   date: Date;
   tasks: TaskTableSelectType[];
 }) => {
-  const [filters, setFilters] = useCalendarParams();
+  const [calendarFilters, setCalendarFilters] = useCalendarParams();
+  const [, setDayTasksFilters] = useDayTasksParams();
 
   const { isToday, isPastDay, isSameMonth } = calculateCalendarDayTasksValues(
-    filters.month,
+    calendarFilters.month,
     date,
     tasks,
   );
   const { dayContent, bgColor } = getCalendarDayTasksData(
-    filters.month,
+    calendarFilters.month,
     date,
     tasks,
   );
@@ -39,9 +42,10 @@ export const MainCalendarDay = ({
         !isSameMonth && "bg-muted/30 dark:bg-card/50 text-muted-foreground",
       )}
       onClick={() => {
-        setFilters({
+        setCalendarFilters({
           day: new Date(date.toUTCString()),
         });
+        setDayTasksFilters(defaultDayTasksParamsOptions);
       }}
     >
       <div className="flex items-center gap-2 flex-wrap w-full justify-between">

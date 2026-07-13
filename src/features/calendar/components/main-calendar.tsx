@@ -9,7 +9,7 @@ import { calculateCalendarValues } from "../lib/utils";
 import { MainCalendarArea } from "./main-calendar-area";
 
 export const MainCalendar = (props: {
-  monthDaysTasks: GetCalendarTasksActionReturnType["monthDaysTasks"];
+  monthDaysTasks: GetCalendarTasksActionReturnType;
 }) => {
   const [filters, setFilters] = useCalendarParams();
 

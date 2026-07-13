@@ -12,6 +12,13 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { LoadingSwap } from "@/components/ui/loading-swap";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { taskPriorities, TaskTableSelectType } from "@/db/schema";
 import { mergeDateTime } from "@/lib/utils";
@@ -23,13 +30,6 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { createTaskAction, updateTaskAction } from "../actions/actions";
 import { taskSchema, TaskSchemaType } from "../actions/schemas";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { formatTaskPriority } from "../lib/formatters";
 
 export const TaskForm = ({
@@ -39,7 +39,7 @@ export const TaskForm = ({
 }: {
   day: Date;
   existingTask?: TaskTableSelectType;
-  afterAction?: () => void;
+  afterAction?: (task: TaskTableSelectType) => void;
 }) => {
   const router = useRouter();
   const form = useForm<TaskSchemaType>({
@@ -71,13 +71,13 @@ export const TaskForm = ({
       ? updateTaskAction(existingTask.id, data)
       : createTaskAction(data);
     const response = await action;
-    if (response.error) {
+    if (response.error || !response.task) {
       toast.error(response.message);
     } else {
       toast.success(response.message);
       form.reset();
       router.refresh();
-      afterAction?.();
+      afterAction?.(response.task);
     }
   };
 

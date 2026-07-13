@@ -86,7 +86,7 @@ export const calculateCalendarDayTasksValues = (
   };
 };
 
-export const getCalendarDayTasksStatus = (
+const getCalendarDayTasksStatus = (
   dateToUse: Date,
   date: Date,
   tasks: TaskTableSelectType[],
@@ -133,7 +133,7 @@ export const getCalendarDayTasksData = (
             </span>
           </TooltipWrapper>
         ),
-        bgColor: "bg-emerald-600/7.5",
+        bgColor: "bg-emerald-600/10",
       };
     case "day_not_in_month":
       return {
@@ -149,7 +149,7 @@ export const getCalendarDayTasksData = (
             </span>
           </TooltipWrapper>
         ),
-        bgColor: "bg-destructive/7.5",
+        bgColor: "bg-destructive/10",
       };
     case "incomplete_tasks_today":
       return {
@@ -161,7 +161,7 @@ export const getCalendarDayTasksData = (
             <p className="text-muted-foreground text-center">tasks left</p>
           </>
         ),
-        bgColor: "bg-destructive/7.5",
+        bgColor: "bg-destructive/10",
       };
     case "no_tasks_other_day":
       return {

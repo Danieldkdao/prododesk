@@ -2,11 +2,11 @@
 
 import { ResizableHandle, ResizablePanel } from "@/components/ui/resizable";
 import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
+import { GetDayTasksActionReturnType } from "../actions/actions";
 import { DayTasksPanelContent } from "./day-tasks-panel-content";
-import { GetCalendarTasksActionReturnType } from "../actions/actions";
 
 export const DayTasksPanel = (props: {
-  dayTasks: GetCalendarTasksActionReturnType["selectedDayTasks"];
+  dayTasks: GetDayTasksActionReturnType | null;
 }) => {
   const [filters] = useCalendarParams();
 

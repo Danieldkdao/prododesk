@@ -6,7 +6,7 @@ import { MainCalendarDay } from "./main-calendar-day";
 export const MainCalendarArea = ({
   monthDaysTasks,
 }: {
-  monthDaysTasks: GetCalendarTasksActionReturnType["monthDaysTasks"];
+  monthDaysTasks: GetCalendarTasksActionReturnType;
 }) => {
   return (
     <div className="grid grid-cols-7 auto-rows-fr flex-1 min-h-0">

@@ -1,10 +1,10 @@
 "use client";
 
-import { ComponentProps, ReactNode } from "react";
-import { Button } from "./ui/button";
 import { authClient } from "@/lib/auth/auth-client";
-import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { ComponentProps, ReactNode } from "react";
+import { toast } from "sonner";
+import { Button } from "./ui/button";
 
 export const SignOutButton = ({
   children,

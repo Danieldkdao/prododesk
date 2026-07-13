@@ -2,8 +2,13 @@ import { ErrorState } from "@/components/error-state";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { MainCalendar } from "@/features/calendar/components/main-calendar";
 import { loadCalendarSearchParams } from "@/features/calendar/lib/calendar-params";
-import { getCalendarTasksAction } from "@/features/tasks/actions/actions";
+import {
+  getCalendarTasksAction,
+  getDayTasksAction,
+} from "@/features/tasks/actions/actions";
 import { DayTasksPanel } from "@/features/tasks/components/day-tasks-panel";
+import { loadDayTasksSearchParams } from "@/features/tasks/lib/day-tasks-params";
+import { DEFAULT_PAGE } from "@/lib/constants";
 import { SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
 
@@ -22,10 +27,20 @@ const DashboardCalendarLoading = () => {
 const DashboardCalendarSuspense = async ({
   searchParams,
 }: SearchParamsType) => {
-  const filters = await loadCalendarSearchParams(searchParams);
+  const [calendarFilters, dayTasksFilters] = await Promise.all([
+    loadCalendarSearchParams(searchParams),
+    loadDayTasksSearchParams(searchParams),
+  ]);
 
-  const response = await getCalendarTasksAction(filters.month, filters.day);
-  if (!response) {
+  const [monthDaysTasks, selectedDayTasks] = await Promise.all([
+    getCalendarTasksAction(calendarFilters.month),
+    getDayTasksAction(calendarFilters.day, {
+      ...dayTasksFilters,
+      page: DEFAULT_PAGE,
+    }),
+  ]);
+
+  if (!monthDaysTasks) {
     return (
       <ErrorState
         title="An error occurred"
@@ -33,8 +48,6 @@ const DashboardCalendarSuspense = async ({
       />
     );
   }
-
-  const { monthDaysTasks, selectedDayTasks } = response;
 
   return (
     <div className="h-full min-h-0 overflow-hidden">
