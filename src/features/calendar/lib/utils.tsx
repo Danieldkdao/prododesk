@@ -1,34 +1,29 @@
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
+import { CircularProgressIndicator } from "@/components/ui/circular-progress-indicator";
 import { TaskTableSelectType } from "@/db/schema";
+import { cn } from "@/lib/utils";
 import {
+  addDays,
   isSameDay as checkIsSameDay,
   isSameMonth as checkIsSameMonth,
-  startOfMonth as getStartOfMonth,
-  endOfMonth as getEndOfMonth,
-  eachDayOfInterval as getEachDayOfInterval,
-  startOfWeek as getStartOfWeek,
-  endOfWeek as getEndOfWeek,
-  differenceInCalendarDays as getDifferenceInCalendarDays,
-  subDays,
-  addDays,
   endOfDay,
+  differenceInCalendarDays as getDifferenceInCalendarDays,
+  eachDayOfInterval as getEachDayOfInterval,
+  endOfMonth as getEndOfMonth,
+  endOfWeek as getEndOfWeek,
+  startOfMonth as getStartOfMonth,
+  startOfWeek as getStartOfWeek,
   startOfDay,
+  subDays,
 } from "date-fns";
-import {
-  CheckCircle2Icon,
-  CircleQuestionMark,
-  CircleXIcon,
-  ListXIcon,
-} from "lucide-react";
+import { CheckCircle2Icon, ListXIcon } from "lucide-react";
 import { ReactElement } from "react";
 
 type CalendarDayTasksStatus =
   | "no_tasks_today"
   | "no_tasks_other_day"
   | "all_tasks_complete"
-  | "incomplete_tasks_today"
-  | "incomplete_tasks_other_day"
-  | "upcoming_day"
+  | "incomplete_tasks"
   | "day_not_in_month";
 type CalendarDayTasksStatusData = {
   dayContent: ReactElement | null;
@@ -74,6 +69,7 @@ export const calculateCalendarDayTasksValues = (
     (task) => task.isCompleted && task.completedAt,
   );
   const incompleteTaskCount = tasks.filter((task) => !task.isCompleted).length;
+  const taskCount = tasks.length;
 
   return {
     isToday,
@@ -83,6 +79,7 @@ export const calculateCalendarDayTasksValues = (
     hasNoTasks,
     allTasksCompleted,
     incompleteTaskCount,
+    taskCount,
   };
 };
 
@@ -91,21 +88,17 @@ const getCalendarDayTasksStatus = (
   date: Date,
   tasks: TaskTableSelectType[],
 ) => {
-  const { isToday, isFutureDay, isSameMonth, hasNoTasks, allTasksCompleted } =
+  const { isToday, isSameMonth, hasNoTasks, allTasksCompleted } =
     calculateCalendarDayTasksValues(dateToUse, date, tasks);
 
   const status: CalendarDayTasksStatus = isSameMonth
-    ? !isFutureDay
-      ? hasNoTasks
-        ? isToday
-          ? "no_tasks_today"
-          : "no_tasks_other_day"
-        : allTasksCompleted
-          ? "all_tasks_complete"
-          : isToday
-            ? "incomplete_tasks_today"
-            : "incomplete_tasks_other_day"
-      : "upcoming_day"
+    ? hasNoTasks
+      ? isToday
+        ? "no_tasks_today"
+        : "no_tasks_other_day"
+      : allTasksCompleted
+        ? "all_tasks_complete"
+        : "incomplete_tasks"
     : "day_not_in_month";
 
   return status;
@@ -116,11 +109,8 @@ export const getCalendarDayTasksData = (
   date: Date,
   tasks: TaskTableSelectType[],
 ): CalendarDayTasksStatusData => {
-  const { incompleteTaskCount } = calculateCalendarDayTasksValues(
-    dateToUse,
-    date,
-    tasks,
-  );
+  const { incompleteTaskCount, taskCount, isPastDay } =
+    calculateCalendarDayTasksValues(dateToUse, date, tasks);
   const status = getCalendarDayTasksStatus(dateToUse, date, tasks);
 
   switch (status) {
@@ -140,26 +130,28 @@ export const getCalendarDayTasksData = (
         dayContent: null,
         bgColor: "bg-muted/30 dark:bg-card/50",
       };
-    case "incomplete_tasks_other_day":
+    case "incomplete_tasks":
       return {
         dayContent: (
-          <TooltipWrapper content="Unable to complete all tasks">
-            <span>
-              <CircleXIcon className="size-14 text-destructive" />
-            </span>
-          </TooltipWrapper>
-        ),
-        bgColor: "bg-destructive/10",
-      };
-    case "incomplete_tasks_today":
-      return {
-        dayContent: (
-          <>
-            <h4 className="text-2xl font-semibold text-center text-destructive">
-              {incompleteTaskCount}
-            </h4>
-            <p className="text-muted-foreground text-center">tasks left</p>
-          </>
+          <div className="relative mb-4 flex items-center justify-center w-full h-full">
+            <CircularProgressIndicator
+              value={((taskCount - incompleteTaskCount) / taskCount) * 100}
+              initialSize={100}
+              color="text-destructive"
+            />
+            <div className="absolute flex flex-col items-center justify-center">
+              <span
+                className={cn(
+                  "text-2xl font-bold md:text-3xl text-destructive",
+                )}
+              >
+                {Math.round(
+                  ((taskCount - incompleteTaskCount) / taskCount) * 100,
+                )}
+                %
+              </span>
+            </div>
+          </div>
         ),
         bgColor: "bg-destructive/10",
       };
@@ -167,35 +159,31 @@ export const getCalendarDayTasksData = (
       return {
         dayContent: (
           <TooltipWrapper content="No tasks">
-            <span>
-              <ListXIcon className="size-14 text-muted-foreground" />
-            </span>
+            <div className="flex w-full flex-col gap-2">
+              {["6 AM", "9 AM", "12 PM", "3 PM"].map((time) => (
+                <div key={time} className="flex items-center gap-2">
+                  <span className="shrink-0 text-right text-[9px] opacity-60">
+                    {time}
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+              ))}
+            </div>
           </TooltipWrapper>
         ),
-        bgColor: "bg-muted-foreground/7.5",
+        bgColor: isPastDay ? "bg-muted-foreground/7.5" : "bg-card",
       };
     case "no_tasks_today":
       return {
         dayContent: (
           <>
-            <h4 className="text-lg font-medium text-center">No tasks</h4>
-            <p className="text-muted-foreground text-center">
-              Add your first task to get started!
+            <h4 className="text-lg font-medium text-center">No tasks yet</h4>
+            <p className="text-muted-foreground text-center text-base">
+              Add your first one to get started!
             </p>
           </>
         ),
-        bgColor: "bg-card{",
-      };
-    case "upcoming_day":
-      return {
-        dayContent: (
-          <TooltipWrapper content="This day is coming up...">
-            <span>
-              <CircleQuestionMark className="size-14 text-muted-foreground" />
-            </span>
-          </TooltipWrapper>
-        ),
-        bgColor: null,
+        bgColor: "bg-card",
       };
     default:
       throw new Error(

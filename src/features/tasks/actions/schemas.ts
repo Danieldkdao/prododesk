@@ -1,5 +1,6 @@
 import { taskPriorities } from "@/db/shared";
 import { timeSchema } from "@/lib/schemas";
+import { startOfDay } from "date-fns";
 import z from "zod";
 
 const dateRangeSchema = z.object({
@@ -42,6 +43,14 @@ export const taskSchema = z
         code: "custom",
         path: ["range"],
         message: "Please select a valid range.",
+      });
+    }
+
+    if (data.range.from < startOfDay(new Date())) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["range"],
+        message: "Invalid from date.",
       });
     }
   });
