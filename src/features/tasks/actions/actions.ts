@@ -14,7 +14,7 @@ import {
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
 import { mergeDateTime } from "@/lib/utils";
-import { format } from "date-fns";
+import { eachDayOfInterval, format } from "date-fns";
 import {
   and,
   asc,
@@ -61,22 +61,34 @@ export const createTaskAction = async (unsafeData: TaskSchemaType) => {
     };
   }
 
-  const { startAt, endAt, day, ...rest } = data;
+  const { startAt, endAt, range, ...rest } = data;
+
+  let recurringDates: Date[] = [range.from];
+  if (range.from && range.to) {
+    recurringDates = eachDayOfInterval({
+      start: range.from,
+      end: range.to,
+    });
+  }
 
   try {
-    const createdTask = await insertTaskDb({
-      userId,
-      startAt: startAt ? mergeDateTime(data.day, startAt) : null,
-      endAt: endAt ? mergeDateTime(data.day, endAt) : null,
-      day: format(day, "yyyy-MM-dd"),
-      ...rest,
-    });
-    if (!createdTask) throw new Error("Failed to create task.");
+    const createdTasks = await Promise.all(
+      recurringDates.map((date) =>
+        insertTaskDb({
+          userId,
+          startAt: startAt ? mergeDateTime(date, startAt) : null,
+          endAt: endAt ? mergeDateTime(date, endAt) : null,
+          day: format(date, "yyyy-MM-dd"),
+          ...rest,
+        }),
+      ),
+    );
+    if (createdTasks.length !== recurringDates.length)
+      throw new Error("Failed to create task.");
 
     return {
       error: false,
       message: "Task created successfully!",
-      task: createdTask,
     };
   } catch (error) {
     console.error(error);
@@ -107,12 +119,13 @@ export const updateTaskAction = async (
     };
   }
 
-  const { day, startAt, endAt, ...rest } = data;
+  const { range, startAt, endAt, ...rest } = data;
 
   try {
     const updatedTask = await updateTaskDb(taskId, {
-      startAt: startAt ? mergeDateTime(day, startAt) : null,
-      endAt: endAt ? mergeDateTime(day, endAt) : null,
+      startAt: startAt ? mergeDateTime(range.from, startAt) : null,
+      endAt: endAt ? mergeDateTime(range.from, endAt) : null,
+      day: format(range.from, "yyyy-MM-dd"),
       ...rest,
     });
     if (!updatedTask) throw new Error("Failed to update task.");
@@ -120,7 +133,6 @@ export const updateTaskAction = async (
     return {
       error: false,
       message: "Task updated successfully!",
-      task: updatedTask,
     };
   } catch (error) {
     console.error(error);

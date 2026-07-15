@@ -75,7 +75,6 @@ export const Task = ({
   return (
     <>
       <TaskDialog
-        day={parse(task.day, "yyyy-MM-dd", new Date())}
         existingTask={task}
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}

@@ -184,7 +184,7 @@ export const getCalendarDayTasksData = (
             </p>
           </>
         ),
-        bgColor: "bg-muted-foreground/7.5",
+        bgColor: "bg-card{",
       };
     case "upcoming_day":
       return {

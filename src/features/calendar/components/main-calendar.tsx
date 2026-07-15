@@ -2,12 +2,14 @@
 
 import { GetCalendarTasksActionReturnType } from "@/features/tasks/actions/actions";
 import { addMonths, format } from "date-fns";
-import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, PlusIcon } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { useCalendarParams } from "../hooks/use-calendar-params";
 import { calculateCalendarValues } from "../lib/utils";
 import { MainCalendarArea } from "./main-calendar-area";
 import { MainCalendarSkeleton } from "./main-calendar-skeleton";
+import { TaskDialog } from "@/features/tasks/components/task-dialog";
+import { TooltipWrapper } from "@/components/tooltip-wrapper";
 
 export const MainCalendar = ({
   monthDaysTasks,
@@ -52,6 +54,13 @@ export const MainCalendar = ({
             >
               <ArrowRightIcon />
             </Button>
+            <TaskDialog>
+              <TooltipWrapper content="Add new task">
+                <Button variant="ghost" size="icon" className="border-none">
+                  <PlusIcon />
+                </Button>
+              </TooltipWrapper>
+            </TaskDialog>
           </div>
         </div>
         <div className="grid grid-cols-7">

@@ -48,11 +48,11 @@ export const MainCalendarDay = ({
         setDayTasksFilters(defaultDayTasksParamsOptions);
       }}
     >
-      <div className="flex items-center gap-2 flex-wrap w-full justify-between">
+      <div className="flex items-start gap-2 flex-wrap w-full justify-between">
         {isToday ? (
           <TooltipWrapper content="Today">
-            <div className="size-6 bg-primary rounded-full shrink-0 flex items-center justify-center">
-              <span className="text-white">{format(date, "d")}</span>
+            <div className="size-8 bg-primary rounded-full shrink-0 flex items-center justify-center">
+              <span className="text-white text-lg">{format(date, "d")}</span>
             </div>
           </TooltipWrapper>
         ) : (
@@ -60,7 +60,7 @@ export const MainCalendarDay = ({
         )}
         <div onClick={(e) => e.stopPropagation()}>
           {isSameMonth && !isPastDay && (
-            <TaskDialog day={date}>
+            <TaskDialog defaultDay={date}>
               <TooltipWrapper content="Add task">
                 <Button variant="ghost" size="icon-xs">
                   <PlusIcon />

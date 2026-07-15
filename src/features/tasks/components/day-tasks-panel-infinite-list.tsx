@@ -86,7 +86,7 @@ export const DayTasksPanelInfiniteCardList = ({
 
   if (!calendarFilters.day) return null;
 
-  const { isPastDay } = calculateCalendarDayTasksValues(
+  const { isPastDay, isToday } = calculateCalendarDayTasksValues(
     calendarFilters.month,
     calendarFilters.day,
     dayTasks,
@@ -111,7 +111,7 @@ export const DayTasksPanelInfiniteCardList = ({
       icon={<ListXIcon className="size-10" />}
     >
       {!isPastDay && (
-        <TaskDialog day={calendarFilters.day}>
+        <TaskDialog defaultDay={calendarFilters.day}>
           <Button>
             <PlusIcon />
             Create new task
@@ -135,7 +135,9 @@ export const DayTasksPanelInfiniteCardList = ({
               <CheckCircle2Icon className="size-6" />
               <AlertTitle>All tasks complete!</AlertTitle>
               <AlertDescription>
-                You have completed all your tasks for today! Amazing!
+                {isToday
+                  ? "You completed all of your tasks for today! Amazing!"
+                  : "You completed all of your tasks this day! Amazing!"}
               </AlertDescription>
             </Alert>
           )}

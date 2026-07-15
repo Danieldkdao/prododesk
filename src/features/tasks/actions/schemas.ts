@@ -2,6 +2,11 @@ import { taskPriorities } from "@/db/shared";
 import { timeSchema } from "@/lib/schemas";
 import z from "zod";
 
+const dateRangeSchema = z.object({
+  from: z.date(),
+  to: z.date().optional(),
+});
+
 export const taskSchema = z
   .object({
     name: z.string().min(1, {
@@ -11,9 +16,9 @@ export const taskSchema = z
     priority: z.enum(taskPriorities),
     description: z.string().nullish(),
     emoji: z.string().nullish(),
-    day: z.date(),
-    startAt: timeSchema.nullish(),
-    endAt: timeSchema.nullish(),
+    startAt: timeSchema.transform((val) => (val === "" ? null : val)).nullish(),
+    endAt: timeSchema.transform((val) => (val === "" ? null : val)).nullish(),
+    range: dateRangeSchema,
   })
   .superRefine((data, ctx) => {
     if (data.endAt && !data.startAt) {
@@ -29,6 +34,14 @@ export const taskSchema = z
         code: "custom",
         path: ["endAt"],
         message: "End time cannot be before start time.",
+      });
+    }
+
+    if (data.range && data.range.to && data.range.from > data.range.to) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["range"],
+        message: "Please select a valid range.",
       });
     }
   });

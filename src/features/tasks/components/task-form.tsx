@@ -2,6 +2,7 @@
 
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { EmojiPickerPopover } from "@/components/ui/emoji-picker-popover";
 import {
   Field,
@@ -13,6 +14,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -23,37 +29,51 @@ import { Textarea } from "@/components/ui/textarea";
 import { taskPriorities, TaskTableSelectType } from "@/db/schema";
 import { mergeDateTime } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
-import { SmilePlusIcon } from "lucide-react";
+import { format, parse, startOfDay } from "date-fns";
+import { CalendarIcon, ClockIcon, SmilePlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { DateRange } from "react-day-picker";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { createTaskAction, updateTaskAction } from "../actions/actions";
 import { taskSchema, TaskSchemaType } from "../actions/schemas";
 import { formatTaskPriority } from "../lib/formatters";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 
 export const TaskForm = ({
-  day,
+  defaultDay,
   existingTask,
   afterAction,
 }: {
-  day: Date;
+  defaultDay?: Date;
   existingTask?: TaskTableSelectType;
-  afterAction?: (task: TaskTableSelectType) => void;
+  afterAction?: () => void;
 }) => {
+  const today = startOfDay(new Date());
+  const dayToUse = defaultDay ?? today;
   const router = useRouter();
   const form = useForm<TaskSchemaType>({
     resolver: zodResolver(taskSchema),
     defaultValues: existingTask
       ? {
-          ...existingTask,
+          name: existingTask.name,
+          description: existingTask.description,
+          emoji: existingTask.emoji,
+          priority: existingTask.priority,
           startAt: existingTask.startAt
             ? format(existingTask.startAt, "HH:mm:ss")
             : null,
           endAt: existingTask.endAt
             ? format(existingTask.endAt, "HH:mm:ss")
             : null,
-          day,
+          range: {
+            from: parse(existingTask.day, "yyyy-MM-dd", new Date()),
+            to: undefined,
+          },
         }
       : {
           name: "",
@@ -62,7 +82,10 @@ export const TaskForm = ({
           emoji: "",
           startAt: null,
           endAt: null,
-          day,
+          range: {
+            from: dayToUse,
+            to: undefined,
+          },
         },
   });
 
@@ -71,21 +94,93 @@ export const TaskForm = ({
       ? updateTaskAction(existingTask.id, data)
       : createTaskAction(data);
     const response = await action;
-    if (response.error || !response.task) {
+    if (response.error) {
       toast.error(response.message);
     } else {
       toast.success(response.message);
       form.reset();
       router.refresh();
-      afterAction?.(response.task);
+      afterAction?.();
     }
   };
+
+  const dayValue = form.watch("range.from");
 
   return (
     <form
       onSubmit={form.handleSubmit(handleSubmission)}
       className="w-full flex flex-col gap-4"
     >
+      <Controller
+        control={form.control}
+        name="range"
+        render={({ field, fieldState }) => (
+          <Field data-invalid={!!fieldState.error}>
+            <FieldLabel
+              htmlFor={fieldState.error && "invalid-recurring-range-input"}
+            >
+              Date
+            </FieldLabel>
+            <FieldContent>
+              <Popover>
+                <PopoverTrigger
+                  id={fieldState.error && "invalid-recurring-range-input"}
+                  aria-invalid={!!fieldState.error}
+                  className="flex items-start gap-2 cursor-pointer border-b py-2"
+                >
+                  <CalendarIcon className="size-4 mt-0.4" />
+                  {format(field.value.from, "PP")}
+                  {field.value.to && `  -  ${format(field.value.to, "PP")}`}
+                </PopoverTrigger>
+                <PopoverContent>
+                  {existingTask ? (
+                    <Calendar
+                      mode="single"
+                      selected={field.value.from}
+                      onSelect={(date) =>
+                        field.onChange({ from: date, to: undefined })
+                      }
+                      disabled={{
+                        before: today,
+                      }}
+                      className="bg-card! border shadow-sm"
+                    />
+                  ) : (
+                    <Calendar
+                      mode="range"
+                      defaultMonth={dayToUse}
+                      selected={field.value ?? undefined}
+                      onSelect={(range) => {
+                        const newValue: DateRange | undefined = !range
+                          ? undefined
+                          : !range.to || !range.from
+                            ? range
+                            : format(range.from, "yyyy-MM-dd") ===
+                                format(range.to, "yyyy-MM-dd")
+                              ? { from: range.from, to: undefined }
+                              : range;
+                        field.onChange(newValue);
+                      }}
+                      numberOfMonths={existingTask ? 1 : 2}
+                      disabled={{
+                        before: dayToUse,
+                      }}
+                      className="bg-card! border shadow-sm"
+                    />
+                  )}
+                </PopoverContent>
+              </Popover>
+            </FieldContent>
+            {!existingTask && (
+              <FieldDescription>
+                You can select either one day or multiple days to make the task
+                recurring.
+              </FieldDescription>
+            )}
+            {fieldState.error && <FieldError errors={[fieldState.error]} />}
+          </Field>
+        )}
+      />
       <Controller
         control={form.control}
         name="name"
@@ -195,7 +290,9 @@ export const TaskForm = ({
           control={form.control}
           name="startAt"
           render={({ field: { value, onChange, ...props }, fieldState }) => {
-            const mergedDateTime = value ? mergeDateTime(day, value) : null;
+            const mergedDateTime = value
+              ? mergeDateTime(dayValue, value)
+              : null;
 
             return (
               <Field data-invalid={!!fieldState.error}>
@@ -205,17 +302,24 @@ export const TaskForm = ({
                   Start at
                 </FieldLabel>
                 <FieldContent>
-                  <Input
-                    type="time"
-                    placeholder="Select a time"
-                    id={fieldState.error && "start-at-input-invalid"}
-                    aria-invalid={!!fieldState.error}
-                    value={value ?? ""}
-                    onChange={onChange}
-                    step="1"
-                    className="w-full appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                    {...props}
-                  />
+                  <InputGroup>
+                    <InputGroupInput
+                      type="time"
+                      placeholder="Select a time"
+                      id={fieldState.error && "start-at-input-invalid"}
+                      aria-invalid={!!fieldState.error}
+                      value={value ?? ""}
+                      onChange={(e) => {
+                        onChange(e.target.value || null);
+                      }}
+                      step="1"
+                      className="w-full appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                      {...props}
+                    />
+                    <InputGroupAddon>
+                      <ClockIcon />
+                    </InputGroupAddon>
+                  </InputGroup>
                 </FieldContent>
                 <FieldDescription>
                   {mergedDateTime
@@ -231,7 +335,9 @@ export const TaskForm = ({
           control={form.control}
           name="endAt"
           render={({ field: { value, onChange, ...props }, fieldState }) => {
-            const mergedDateTime = value ? mergeDateTime(day, value) : null;
+            const mergedDateTime = value
+              ? mergeDateTime(dayValue, value)
+              : null;
 
             return (
               <Field data-invalid={!!fieldState.error}>
@@ -241,20 +347,24 @@ export const TaskForm = ({
                   End at
                 </FieldLabel>
                 <FieldContent>
-                  <Input
-                    type="time"
-                    placeholder="Select a time"
-                    id={fieldState.error && "end-at-input-invalid"}
-                    aria-invalid={!!fieldState.error}
-                    value={value ?? ""}
-                    onChange={(e) => {
-                      onChange(e.target.value);
-                      console.log(e.target.value);
-                    }}
-                    step="1"
-                    className="w-full appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                    {...props}
-                  />
+                  <InputGroup>
+                    <InputGroupInput
+                      type="time"
+                      placeholder="Select a time"
+                      id={fieldState.error && "end-at-input-invalid"}
+                      aria-invalid={!!fieldState.error}
+                      value={value ?? ""}
+                      onChange={(e) => {
+                        onChange(e.target.value || null);
+                      }}
+                      step="1"
+                      className="w-full appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                      {...props}
+                    />
+                    <InputGroupAddon>
+                      <ClockIcon />
+                    </InputGroupAddon>
+                  </InputGroup>
                 </FieldContent>
                 <FieldDescription>
                   {mergedDateTime

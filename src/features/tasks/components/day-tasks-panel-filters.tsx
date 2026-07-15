@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { taskPriorities, TaskPriority } from "@/db/shared";
-import { FilterIcon } from "lucide-react";
+import { FilterIcon, PlusIcon } from "lucide-react";
 import { useDayTasksParams } from "../hooks/use-day-tasks-params";
 import {
   DayTasksSchedule,
@@ -40,14 +40,19 @@ import {
 } from "../lib/formatters";
 import { SearchInput } from "./search-input";
 import { Input } from "@/components/ui/input";
-import { format } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
 import { mergeDateTime } from "@/lib/utils";
+import { TaskDialog } from "./task-dialog";
 
 export const DayTasksPanelFilters = () => {
   const [calendarFilters] = useCalendarParams();
   const [filters, setFilters] = useDayTasksParams();
+
+  if (!calendarFilters.day) return null;
+
+  const isPastDay = startOfDay(new Date()) > calendarFilters.day;
 
   return (
     <div className="flex items-center gap-2 w-full">
@@ -56,6 +61,13 @@ export const DayTasksPanelFilters = () => {
         onValueChange={(search) => setFilters({ search })}
         placeholder="Search tasks by name or description"
       />
+      {!isPastDay && (
+        <TaskDialog defaultDay={calendarFilters.day}>
+          <Button variant="outline" size="icon">
+            <PlusIcon />
+          </Button>
+        </TaskDialog>
+      )}
       <Popover>
         <PopoverTrigger
           render={

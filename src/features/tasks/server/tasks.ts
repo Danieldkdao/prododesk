@@ -40,7 +40,7 @@ export const updateTaskDb = async (
   taskId: string,
   taskData: Omit<
     Partial<TaskTableSelectType>,
-    "id" | "name" | "createdAt" | "updatedAt" | "userId" | "day"
+    "id" | "name" | "createdAt" | "updatedAt" | "userId"
   >,
 ) => {
   const [updatedTask] = await db
