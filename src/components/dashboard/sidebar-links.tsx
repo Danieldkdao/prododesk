@@ -22,7 +22,7 @@ export const SidebarLinks = () => {
     {
       label: "Prododesk AI",
       icon: SparklesIcon,
-      href: "/dashboard/prododesk-ai",
+      href: "/dashboard/ai/new",
     },
   ];
 
