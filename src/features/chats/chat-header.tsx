@@ -4,15 +4,16 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { TextEffect } from "@/components/ui/text-effect";
 import { TextShimmer } from "@/components/ui/text-shimmer";
-import { ChatTableInsertType } from "@/db/schema";
+import { ChatTableSelectType } from "@/db/schema";
 import { EllipsisVerticalIcon, PanelLeftIcon } from "lucide-react";
 import { motion } from "motion/react";
+import { ChatOptions } from "./components/chat-options";
 
 export const ChatHeader = ({
   chat,
   shimmerText = false,
 }: {
-  chat?: ChatTableInsertType;
+  chat?: ChatTableSelectType;
   shimmerText?: boolean;
 }) => {
   const headingClasses = "text-2xl font-semibold flex-1 min-w-0 truncate";
@@ -42,9 +43,13 @@ export const ChatHeader = ({
             </Button>
           }
         />
-        <Button disabled={!chat} variant="ghost" size="icon-sm">
-          <EllipsisVerticalIcon />
-        </Button>
+        {chat && (
+          <ChatOptions chat={chat} className="border">
+            <Button disabled={!chat} variant="ghost" size="icon-sm">
+              <EllipsisVerticalIcon />
+            </Button>
+          </ChatOptions>
+        )}
       </div>
     </motion.div>
   );

@@ -6,3 +6,8 @@ export const chatMessageSchema = z.object({
   selectedModel: z.enum(modelIds),
 });
 export type ChatMessageSchemaType = z.infer<typeof chatMessageSchema>;
+
+export const chatSchema = z.object({
+  name: z.string().trim().min(1, { error: "Please enter a name." }),
+});
+export type ChatSchemaType = z.infer<typeof chatSchema>;

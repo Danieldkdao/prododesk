@@ -44,8 +44,6 @@ const ChatListSuspense = async ({
     page: DEFAULT_PAGE,
   });
 
-  // todo: add chat actions (update, delete etc.)
-
   return (
     <InfiniteChatListAdapter
       key={chats.map((chat) => `${chat.id}-${chat.name}`).join("")}

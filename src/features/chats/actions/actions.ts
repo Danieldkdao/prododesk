@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
+  NOT_FOUND_ERROR_MESSAGE,
   PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
@@ -17,8 +18,18 @@ import { generateText } from "ai";
 import { and, asc, count, desc, eq, ilike, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { getChatIdTag, getUserChatTag } from "../server/cache/chats";
-import { insertChatDb } from "../server/chats";
-import { chatMessageSchema, ChatMessageSchemaType } from "./schemas";
+import {
+  confirmChatOwnership,
+  deleteChatDb,
+  insertChatDb,
+  updateChatDb,
+} from "../server/chats";
+import {
+  chatMessageSchema,
+  ChatMessageSchemaType,
+  chatSchema,
+  ChatSchemaType,
+} from "./schemas";
 
 export const createChatAction = async (unsafeData: ChatMessageSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -131,3 +142,96 @@ export const getChatsAction = async (
   };
 };
 export type GetChatsActionReturnType = UnwrapAsync<typeof getChatsAction>;
+
+export const updateChatAction = async (
+  chatId: string,
+  unsafeData: ChatSchemaType,
+) => {
+  if (!areValidIds(chatId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const existingChat = await confirmChatOwnership(userId, chatId);
+  if (!existingChat) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  const { data, success } = chatSchema.safeParse(unsafeData);
+  if (!success) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
+  try {
+    const updatedChat = await updateChatDb(existingChat.id, data);
+    if (!updatedChat) throw new Error("Failed to update chat.");
+
+    return {
+      error: true,
+      message: "Chat updated successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
+
+export const deleteChatAction = async (chatId: string) => {
+  if (!areValidIds(chatId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const existingChat = await confirmChatOwnership(userId, chatId);
+  if (!existingChat) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  try {
+    const deletedChat = await deleteChatDb(existingChat.id);
+    if (!deletedChat) throw new Error("Failed to create existing chat.");
+
+    return {
+      error: false,
+      message: "Chat deleted successfully.",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
