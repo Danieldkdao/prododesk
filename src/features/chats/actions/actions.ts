@@ -1,24 +1,24 @@
 "use server";
 
+import { db } from "@/db/db";
+import { ChatMessageTable, ChatTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
-import { chatMessageSchema, ChatMessageSchemaType } from "./schemas";
 import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
+  PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
-import { db } from "@/db/db";
-import { insertChatDb } from "../server/chats";
-import { generateText } from "ai";
-import { openrouter } from "@/services/ai/models/openrouter";
-import { GENERATE_CHAT_NAME_INSTRUCTIONS } from "@/services/ai/prompts";
-import { insertChatMessageDb } from "../server/chat-messages";
-import { and, asc, desc, eq } from "drizzle-orm";
-import { ChatMessageTable, ChatTable } from "@/db/schema";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
-import { getChatIdTag, getUserChatTag } from "../server/cache/chats";
+import { openrouter } from "@/services/ai/models/openrouter";
+import { GENERATE_CHAT_NAME_INSTRUCTIONS } from "@/services/ai/prompts";
+import { generateText } from "ai";
+import { and, asc, count, desc, eq, ilike, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
+import { getChatIdTag, getUserChatTag } from "../server/cache/chats";
+import { insertChatDb } from "../server/chats";
+import { chatMessageSchema, ChatMessageSchemaType } from "./schemas";
 
 export const createChatAction = async (unsafeData: ChatMessageSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -87,16 +87,47 @@ export const getChatAction = async (userId: string, chatId: string) => {
 };
 export type GetChatActionReturnType = UnwrapAsync<typeof getChatAction>;
 
-export const getChatsAction = async (userId: string) => {
+export const getChatsAction = async (
+  userId: string,
+  filterOptions: { search?: string | null; page: number },
+) => {
   "use cache";
   cacheTag(getUserChatTag(userId));
+
+  const { search, page } = filterOptions;
+
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const searchQuery = search?.trim()
+    ? ilike(ChatTable.name, `%${search.trim()}%`)
+    : undefined;
+
+  const whereQuery = and(eq(ChatTable.userId, userId), searchQuery);
 
   const chats = await db
     .select()
     .from(ChatTable)
-    .where(eq(ChatTable.userId, userId))
-    .orderBy(desc(ChatTable.createdAt));
+    .where(whereQuery)
+    .orderBy(desc(ChatTable.createdAt))
+    .offset(offset)
+    .limit(PAGE_SIZE);
 
-  return chats;
+  const [totalChats] = await db
+    .select({
+      count: count(),
+    })
+    .from(ChatTable)
+    .where(whereQuery);
+
+  const hasPrevPage = page > 1;
+  const hasNextPage = page * PAGE_SIZE < totalChats.count;
+
+  return {
+    chats,
+    metadata: {
+      hasPrevPage,
+      hasNextPage,
+    },
+  };
 };
 export type GetChatsActionReturnType = UnwrapAsync<typeof getChatsAction>;

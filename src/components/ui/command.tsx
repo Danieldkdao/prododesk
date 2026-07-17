@@ -1,21 +1,22 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Command as CommandPrimitive } from "cmdk"
+import { Command as CommandPrimitive } from "cmdk";
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  InputGroup,
-  InputGroupAddon,
-} from "@/components/ui/input-group"
-import { SearchIcon, CheckIcon } from "lucide-react"
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
+import { cn } from "@/lib/utils";
+import { useDialogStateStore } from "@/store/use-dialog-state-store";
+import { useDebouncedCallback } from "@tanstack/react-pacer";
+import { CheckIcon, SearchIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 function Command({
   className,
@@ -26,11 +27,11 @@ function Command({
       data-slot="command"
       className={cn(
         "flex size-full flex-col overflow-hidden bg-popover text-popover-foreground",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CommandDialog({
@@ -39,16 +40,36 @@ function CommandDialog({
   children,
   className,
   showCloseButton = false,
+  trigger,
   ...props
-}: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
-  title?: string
-  description?: string
-  className?: string
-  showCloseButton?: boolean
-  children: React.ReactNode
+}: Omit<
+  React.ComponentProps<typeof Dialog>,
+  "children" | "open" | "onOpenChange"
+> & {
+  title?: string;
+  description?: string;
+  className?: string;
+  showCloseButton?: boolean;
+  trigger?: React.ReactElement;
+  children: React.ReactNode;
 }) {
+  const open = useDialogStateStore((state) => state.open);
+  const setOpen = useDialogStateStore((state) => state.setOpen);
+
+  React.useEffect(() => {
+    const handleKeyEvent = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+        setOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyEvent);
+
+    return () => window.removeEventListener("keydown", handleKeyEvent);
+  }, [setOpen]);
+
   return (
-    <Dialog {...props}>
+    <Dialog open={open} onOpenChange={setOpen} {...props}>
+      {trigger && <DialogTrigger render={trigger} />}
       <DialogHeader className="sr-only">
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
@@ -60,13 +81,33 @@ function CommandDialog({
         {children}
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 function CommandInput({
   className,
+  useDebouncedSearch = false,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: Omit<
+  React.ComponentProps<typeof CommandPrimitive.Input>,
+  "value" | "onValueChange"
+> & { useDebouncedSearch?: boolean }) {
+  const open = useDialogStateStore((state) => state.open);
+  const outsideSearch = useDialogStateStore((state) => state.search);
+  const setOutsideSearch = useDialogStateStore((state) => state.setSearch);
+
+  const setDebouncedOutsideSearch = useDebouncedCallback(setOutsideSearch, {
+    wait: 250,
+  });
+
+  const [search, setSearch] = React.useState("");
+
+  React.useEffect(() => {
+    if (search !== outsideSearch) {
+      setOutsideSearch(search);
+    }
+  }, [open, outsideSearch, search, setOutsideSearch]);
+
   return (
     <div data-slot="command-input-wrapper" className="p-1">
       <InputGroup className="border-transparent border-b-input bg-transparent px-3">
@@ -74,8 +115,15 @@ function CommandInput({
           data-slot="command-input"
           className={cn(
             "w-full px-2 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
-            className
+            className,
           )}
+          value={search}
+          onValueChange={(value) => {
+            setSearch(value);
+            if (useDebouncedSearch) {
+              setDebouncedOutsideSearch(value);
+            }
+          }}
           {...props}
         />
         <InputGroupAddon>
@@ -83,7 +131,7 @@ function CommandInput({
         </InputGroupAddon>
       </InputGroup>
     </div>
-  )
+  );
 }
 
 function CommandList({
@@ -95,11 +143,11 @@ function CommandList({
       data-slot="command-list"
       className={cn(
         "no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CommandEmpty({
@@ -112,7 +160,7 @@ function CommandEmpty({
       className={cn("py-6 text-center text-sm", className)}
       {...props}
     />
-  )
+  );
 }
 
 function CommandGroup({
@@ -124,11 +172,11 @@ function CommandGroup({
       data-slot="command-group"
       className={cn(
         "overflow-hidden p-1.5 text-foreground **:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-semibold **:[[cmdk-group-heading]]:tracking-wider **:[[cmdk-group-heading]]:text-muted-foreground **:[[cmdk-group-heading]]:uppercase",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CommandSeparator({
@@ -141,7 +189,7 @@ function CommandSeparator({
       className={cn("-mx-1.5 my-1.5 h-px bg-border/50", className)}
       {...props}
     />
-  )
+  );
 }
 
 function CommandItem({
@@ -153,16 +201,40 @@ function CommandItem({
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "group/command-item relative flex cursor-default items-center gap-2 rounded-none px-3 py-2 text-sm outline-hidden select-none in-data-[slot=dialog-content]:rounded-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-muted data-selected:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-selected:*:[svg]:text-foreground",
-        className
+        "group/command-item cursor-pointer relative flex items-center gap-2 rounded-none px-3 py-2 text-sm outline-hidden select-none in-data-[slot=dialog-content]:rounded-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-muted data-selected:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-selected:*:[svg]:text-foreground",
+        className,
       )}
       {...props}
     >
       {children}
       <CheckIcon className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
     </CommandPrimitive.Item>
-  )
+  );
 }
+
+const CommandItemLink = ({
+  href,
+  children,
+  ...props
+}: { href: string } & Omit<
+  React.ComponentProps<typeof CommandItem>,
+  "onSelect"
+>) => {
+  const setOpen = useDialogStateStore((state) => state.setOpen);
+  const router = useRouter();
+
+  return (
+    <CommandItem
+      onSelect={() => {
+        router.push(href);
+        setOpen(false);
+      }}
+      {...props}
+    >
+      {children}
+    </CommandItem>
+  );
+};
 
 function CommandShortcut({
   className,
@@ -173,21 +245,22 @@ function CommandShortcut({
       data-slot="command-shortcut"
       className={cn(
         "ml-auto text-xs tracking-widest text-muted-foreground group-data-selected/command-item:text-foreground",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 export {
   Command,
   CommandDialog,
-  CommandInput,
-  CommandList,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
-  CommandShortcut,
+  CommandItemLink,
+  CommandList,
   CommandSeparator,
-}
+  CommandShortcut,
+};

@@ -60,6 +60,7 @@ export const ChatViewList = ({
       selectedModel: selectedModel.id,
       chatId: chat.id,
     });
+    setPrompt("");
   };
 
   return (
@@ -74,6 +75,7 @@ export const ChatViewList = ({
                   .map((part) => part.text)
                   .join("");
                 const modelInfo = getModelInfo(msg.metadata?.modelId);
+                const isLatestMsg = messages.at(-1)?.id === msg.id;
 
                 return (
                   <MessageScrollerItem key={msg.id}>
@@ -106,7 +108,16 @@ export const ChatViewList = ({
                             {msg.role === "user" ? (
                               messageContent
                             ) : (
-                              <MarkdownRenderer>
+                              <MarkdownRenderer
+                                animated={{
+                                  animation: "blurIn",
+                                  duration: 250,
+                                  easing: "ease-out",
+                                }}
+                                isAnimating={
+                                  status === "streaming" && isLatestMsg
+                                }
+                              >
                                 {messageContent}
                               </MarkdownRenderer>
                             )}
@@ -117,7 +128,7 @@ export const ChatViewList = ({
                             Sent at {format(msg.metadata.createdAt, "p")}{" "}
                             {isSameDay(new Date(), msg.metadata.createdAt)
                               ? "earlier today"
-                              : format(msg.metadata.createdAt, " on PP")}
+                              : format(msg.metadata.createdAt, " 'on' PP")}
                           </MessageFooter>
                         )}
                       </MessageContent>

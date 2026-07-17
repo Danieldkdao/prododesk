@@ -1,8 +1,8 @@
 import { db, DbTransaction } from "@/db/db";
-import { ChatMessageTable } from "@/db/schema";
+import { ChatMessageInsertType, ChatMessageTable } from "@/db/schema";
 
 export const insertChatMessageDb = async (
-  chatMessage: typeof ChatMessageTable.$inferInsert,
+  chatMessage: ChatMessageInsertType,
   tx?: DbTransaction,
 ) => {
   const [insertedChatMessage] = await (tx ?? db)

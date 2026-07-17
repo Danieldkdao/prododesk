@@ -14,6 +14,9 @@ export const ChatTable = pgTable("chats", {
   updatedAt,
 });
 
+export type ChatTableInsertType = typeof ChatTable.$inferInsert;
+export type ChatTableSelectType = typeof ChatTable.$inferSelect;
+
 export const chatRelations = relations(ChatTable, ({ one, many }) => ({
   user: one(user, {
     fields: [ChatTable.userId],

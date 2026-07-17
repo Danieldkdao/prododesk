@@ -5,13 +5,14 @@ import { math } from "@streamdown/math";
 import { cjk } from "@streamdown/cjk";
 import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
+import { ComponentProps } from "react";
 export const MarkdownRenderer = ({
   children,
   className,
+  ...props
 }: {
   children: string;
-  className?: string;
-}) => {
+} & Omit<ComponentProps<typeof Streamdown>, "plugins">) => {
   return (
     <Streamdown
       className={cn(
@@ -32,6 +33,7 @@ export const MarkdownRenderer = ({
         math: math,
         cjk: cjk,
       }}
+      {...props}
     >
       {children}
     </Streamdown>

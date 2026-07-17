@@ -16,6 +16,9 @@ export const ChatMessageTable = pgTable("chat_messages", {
   updatedAt,
 });
 
+export type ChatMessageInsertType = typeof ChatMessageTable.$inferInsert;
+export type ChatMessageSelectType = typeof ChatMessageTable.$inferSelect;
+
 export const chatMessageRelations = relations(ChatMessageTable, ({ one }) => ({
   chat: one(ChatTable, {
     fields: [ChatMessageTable.chatId],
