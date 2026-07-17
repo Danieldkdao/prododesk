@@ -1,12 +1,18 @@
 import { Providers } from "@/components/providers";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
-import { Fraunces, Outfit } from "next/font/google";
+import { Fraunces, Outfit, Space_Mono } from "next/font/google";
 import "./globals.css";
+
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  variable: "--font-space-mono",
+  weight: ["400", "700"],
+});
 
 const frauncesHeading = Fraunces({
   subsets: ["latin"],
-  variable: "--font-heading",
+  variable: "--font-fraunces-heading",
 });
 
 const outfitSans = Outfit({
@@ -34,6 +40,7 @@ export default function RootLayout({
         outfitSans.className,
         "font-sans",
         frauncesHeading.variable,
+        spaceMono.variable,
       )}
       suppressHydrationWarning
     >

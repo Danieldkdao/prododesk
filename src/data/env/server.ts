@@ -13,6 +13,7 @@ export const envServer = createEnv({
     MAILJET_API_KEY: z.string().min(1),
     MAILJET_API_SECRET: z.string().min(1),
     SENDER_EMAIL: z.string().min(1),
+    HACK_CLUB_AI_API_KEY: z.string().min(1),
   },
   emptyStringAsUndefined: true,
   experimental__runtimeEnv: true,

@@ -16,6 +16,7 @@ import {
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { SimpleIcon } from "./simple-icon";
+import { LoadingSwap } from "./ui/loading-swap";
 
 const layoutTransition = {
   type: "spring",
@@ -24,14 +25,26 @@ const layoutTransition = {
   mass: 0.7,
 } as const;
 
-export const AIChatInput = () => {
+export const AIChatInput = ({
+  value,
+  onValueChange,
+  selectedModel,
+  onSelectedModelChange,
+  onSubmit,
+  isPending = false,
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  selectedModel: LLMModel | null;
+  onSelectedModelChange: (modelId: LLMModel | null) => void;
+  onSubmit: () => void;
+  isPending?: boolean;
+}) => {
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const [inputLinesChanged, setInputLinesChanged] = useState(false);
   const [initialInputHeight, setInitialInputHeight] = useState<number | null>(
     null,
   );
-  const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState<LLMModel | null>(null);
 
   useEffect(() => {
     const inputContainer = inputContainerRef.current;
@@ -75,31 +88,37 @@ export const AIChatInput = () => {
       >
         <Textarea
           className={cn(
-            "min-h-0 border-none focus-visible:ring-0 focus-visible:outline-none focus-visible:border-none text-lg md:text-lg p-0 transition-all duration-200",
+            "min-h-0 border-none focus-visible:ring-0 focus-visible:outline-none focus-visible:border-none text-lg md:text-lg p-0 transition-all duration-200 max-h-32",
             inputLinesChanged && "p-2",
           )}
           rows={1}
-          value={prompt}
+          value={value}
+          disabled={isPending}
           onChange={(e) => {
             const newValue = e.target.value;
 
             if (e.target.value === "") {
               setInputLinesChanged(false);
-              setPrompt("");
+              onValueChange("");
             }
 
             if (e.target.value.trim() === "") return;
 
-            setPrompt(newValue);
+            onValueChange(newValue);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && e.shiftKey && prompt === "") {
+            if (e.key === "Enter" && value === "") {
               e.preventDefault();
               return;
             }
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              value.trim() &&
+              selectedModel
+            ) {
               e.preventDefault();
-              console.log("form submitted");
+              onSubmit();
               return;
             }
           }}
@@ -113,7 +132,8 @@ export const AIChatInput = () => {
         className={cn("shrink-0", inputLinesChanged ? "order-2" : "order-1")}
       >
         <TooltipWrapper content="Add assets">
-          <Button variant="ghost" size="icon-sm">
+          {/*todo: add functionality to the assets button*/}
+          <Button variant="ghost" size="icon-sm" disabled={isPending}>
             <PlusIcon className="size-6!" />
           </Button>
         </TooltipWrapper>
@@ -125,9 +145,9 @@ export const AIChatInput = () => {
       >
         <Select
           value={selectedModel}
-          onValueChange={(value) => setSelectedModel(value as LLMModel)}
+          onValueChange={(value) => onSelectedModelChange(value as LLMModel)}
         >
-          <SelectTrigger className="border-none">
+          <SelectTrigger className="border-none" disabled={isPending}>
             <SelectValue>
               {selectedModel ? (
                 <div className="flex items-center gap-2">
@@ -142,7 +162,7 @@ export const AIChatInput = () => {
           <SelectContent dynamicWidth className="border">
             {models.map((model) => (
               <SelectItem
-                key={model.model}
+                key={model.id}
                 value={model}
                 className="max-w-84 w-full items-start whitespace-normal"
               >
@@ -160,8 +180,15 @@ export const AIChatInput = () => {
             ))}
           </SelectContent>
         </Select>
-        <Button size="icon-sm" disabled={!prompt.trim().length}>
-          <SendIcon />
+        <Button
+          type="button"
+          size="icon-sm"
+          disabled={!value.trim().length || isPending || !selectedModel}
+          onClick={onSubmit}
+        >
+          <LoadingSwap isLoading={isPending}>
+            <SendIcon />
+          </LoadingSwap>
         </Button>
       </motion.div>
     </motion.div>
