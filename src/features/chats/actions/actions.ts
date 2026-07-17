@@ -13,11 +13,11 @@ import { generateText } from "ai";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { GENERATE_CHAT_NAME_INSTRUCTIONS } from "@/services/ai/prompts";
 import { insertChatMessageDb } from "../server/chat-messages";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { ChatMessageTable, ChatTable } from "@/db/schema";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
-import { getChatIdTag } from "../server/cache/chats";
+import { getChatIdTag, getUserChatTag } from "../server/cache/chats";
 import { cacheTag } from "next/cache";
 
 export const createChatAction = async (unsafeData: ChatMessageSchemaType) => {
@@ -86,3 +86,17 @@ export const getChatAction = async (userId: string, chatId: string) => {
   return existingChat ?? null;
 };
 export type GetChatActionReturnType = UnwrapAsync<typeof getChatAction>;
+
+export const getChatsAction = async (userId: string) => {
+  "use cache";
+  cacheTag(getUserChatTag(userId));
+
+  const chats = await db
+    .select()
+    .from(ChatTable)
+    .where(eq(ChatTable.userId, userId))
+    .orderBy(desc(ChatTable.createdAt));
+
+  return chats;
+};
+export type GetChatsActionReturnType = UnwrapAsync<typeof getChatsAction>;

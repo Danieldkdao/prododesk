@@ -8,6 +8,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { SidebarChatList } from "@/features/chats/components/sidebar-chat-list";
 import { EditIcon, MessageCircleIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 
@@ -42,20 +43,7 @@ export const AISidebar = () => {
           </SidebarGroup>
           <SidebarGroup>
             <SidebarGroupLabel>Chats</SidebarGroupLabel>
-            <SidebarGroupContent>
-              {Array.from({ length: 5 }).map((_, index) => (
-                <SidebarMenuItem key={index}>
-                  <SidebarMenuButton
-                    render={
-                      <Link href={`/dashboard/ai/chat/${index}`}>
-                        <MessageCircleIcon />
-                        <span>Chat {index + 1}</span>
-                      </Link>
-                    }
-                  />
-                </SidebarMenuItem>
-              ))}
-            </SidebarGroupContent>
+            <SidebarChatList />
           </SidebarGroup>
         </SidebarContent>
       </SidebarHeader>
