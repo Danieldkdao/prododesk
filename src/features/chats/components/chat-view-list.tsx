@@ -28,6 +28,8 @@ import { toast } from "sonner";
 import { GetChatActionReturnType } from "../actions/actions";
 import { CustomUIMessage } from "@/services/ai/types";
 import { format, isSameDay } from "date-fns";
+import { ChatHeader } from "../chat-header";
+import { TextShimmer } from "@/components/ui/text-shimmer";
 
 export const ChatViewList = ({
   chat,
@@ -65,6 +67,13 @@ export const ChatViewList = ({
 
   return (
     <div className="w-full flex flex-col items-center justify-center gap-8 h-full min-h-0">
+      <ChatHeader
+        chat={chat}
+        shimmerText={
+          messages.length === 1 &&
+          (status === "submitted" || status === "streaming")
+        }
+      />
       <MessageScrollerProvider autoScroll>
         <MessageScroller className="flex-1 min-h-0 w-full">
           <MessageScrollerViewport>
@@ -153,9 +162,13 @@ export const ChatViewList = ({
                     </MessageAvatar>
 
                     <MessageContent className="flex flex-col gap-0.5 h-15">
-                      <span className="text-muted-foreground text-base italic font-medium">
+                      <TextShimmer
+                        as="span"
+                        duration={2}
+                        className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
+                      >
                         Prododesk AI is thinking...
-                      </span>
+                      </TextShimmer>
                       <AILoadingAnimation />
                     </MessageContent>
                   </Message>

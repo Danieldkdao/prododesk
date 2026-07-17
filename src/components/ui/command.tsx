@@ -58,13 +58,18 @@ function CommandDialog({
 
   React.useEffect(() => {
     const handleKeyEvent = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
-        setOpen(true);
-      }
-    };
-    window.addEventListener("keydown", handleKeyEvent);
+      const isShortcut =
+        e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey);
+      if (!isShortcut) return;
 
-    return () => window.removeEventListener("keydown", handleKeyEvent);
+      e.preventDefault();
+      e.stopPropagation();
+
+      setOpen(true);
+    };
+    window.addEventListener("keydown", handleKeyEvent, true);
+
+    return () => window.removeEventListener("keydown", handleKeyEvent, true);
   }, [setOpen]);
 
   return (

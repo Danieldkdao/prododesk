@@ -16,6 +16,7 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
+import { TextShimmer } from "@/components/ui/text-shimmer";
 import { UserAvatar } from "@/components/user-avatar";
 import { ModelId } from "@/db/shared";
 import { useAuthSession } from "@/hooks/use-auth-session";
@@ -68,9 +69,13 @@ export const PendingChatMessagesView = ({
                 </MessageAvatar>
 
                 <MessageContent className="flex flex-col gap-0.5 h-15">
-                  <span className="text-muted-foreground text-base italic font-medium">
+                  <TextShimmer
+                    duration={2}
+                    as="span"
+                    className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
+                  >
                     Prododesk AI is thinking...
-                  </span>
+                  </TextShimmer>
                   <AILoadingAnimation />
                 </MessageContent>
               </Message>

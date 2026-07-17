@@ -32,6 +32,7 @@ export const AIChatInput = ({
   onSelectedModelChange,
   onSubmit,
   isPending = false,
+  className,
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -39,6 +40,7 @@ export const AIChatInput = ({
   onSelectedModelChange: (modelId: LLMModel | null) => void;
   onSubmit: () => void;
   isPending?: boolean;
+  className?: string;
 }) => {
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const [inputLinesChanged, setInputLinesChanged] = useState(false);
@@ -77,7 +79,10 @@ export const AIChatInput = ({
   return (
     <motion.div
       layout="position"
-      className="flex items-center flex-wrap w-full border p-2 gap-1"
+      className={cn(
+        "flex items-center flex-wrap w-full border p-2 gap-1",
+        className,
+      )}
       ref={inputContainerRef}
       transition={{ layout: layoutTransition }}
     >

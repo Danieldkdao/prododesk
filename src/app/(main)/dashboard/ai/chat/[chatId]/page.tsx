@@ -12,7 +12,7 @@ type ChatIdParams = ParamsId<"chatId">;
 
 const ChatIdPage = (props: ChatIdParams) => {
   return (
-    <div className="w-full flex flex-col gap-8 h-full min-h-0 max-w-5xl mx-auto">
+    <div className="w-full flex flex-col gap-8 h-full min-h-0 max-w-400 mx-auto">
       <Suspense fallback={<ChatViewSkeleton />}>
         <ChatIdSuspense {...props} />
       </Suspense>

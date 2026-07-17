@@ -73,7 +73,7 @@ const DashboardAILayoutSkeleton = () => {
             </div>
           </aside>
           <main className="h-full min-h-0 min-w-0 flex-1">
-            <div className="mx-auto h-full min-h-0 w-full max-w-5xl">
+            <div className="mx-auto h-full min-h-0 w-full max-w-400">
               <ChatViewRealSkeleton />
             </div>
           </main>

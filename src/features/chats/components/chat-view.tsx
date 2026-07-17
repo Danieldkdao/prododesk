@@ -6,8 +6,10 @@ import { useEffect, useMemo } from "react";
 import { GetChatActionReturnType } from "../actions/actions";
 import { ChatViewList } from "./chat-view-list";
 import { PendingChatView } from "./pending-chat-view";
+import { useRouter } from "next/navigation";
 
 export const ChatView = ({ chat }: { chat: GetChatActionReturnType }) => {
+  const router = useRouter();
   const {
     id: activeChatId,
     messages,
@@ -56,6 +58,24 @@ export const ChatView = ({ chat }: { chat: GetChatActionReturnType }) => {
     activeChatId,
     chat.id,
   ]);
+
+  useEffect(() => {
+    const handleNewChat = (e: KeyboardEvent) => {
+      const isShortcut =
+        e.key.toLowerCase() === "o" && (e.ctrlKey || e.metaKey) && e.shiftKey;
+
+      if (!isShortcut) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      router.push("/dashboard/ai/new");
+    };
+
+    window.addEventListener("keydown", handleNewChat, true);
+
+    return () => window.removeEventListener("keydown", handleNewChat, true);
+  }, [router]);
 
   const latestPrompt = messages
     .filter((message) => message.role === "user")

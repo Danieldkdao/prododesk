@@ -8,6 +8,13 @@ export const ChatViewRealSkeleton = () => {
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-8">
       <span className="sr-only">Loading chat messages...</span>
+      <div className="min-w-0 flex-1">
+        <Skeleton className="h-8 w-64 max-w-[70%] rounded-none" />
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Skeleton className="size-9 rounded-none" />
+        <Skeleton className="size-9 rounded-none" />
+      </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         <div className="flex h-full min-h-0 flex-col gap-8 overflow-hidden">
           <div className="flex w-full min-w-0 flex-row-reverse gap-2">

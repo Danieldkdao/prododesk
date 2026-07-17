@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { createChatAction } from "../actions/actions";
 import { ChatMessageSchemaType } from "../actions/schemas";
 import { PendingChatMessagesView } from "./pending-chat-messages-view";
+import { ChatHeader } from "../chat-header";
 
 const recommendedPrompts = [
   "What are my tasks for today?",
@@ -85,20 +86,23 @@ export const InitialAIInputClient = () => {
   return (
     <div className="w-full flex flex-col items-center justify-center gap-8 h-full min-h-0">
       {isPending && selectedModel ? (
-        <PendingChatMessagesView
-          prompt={pendingPrompt ?? ""}
-          selectedModel={selectedModel.id}
-        />
+        <>
+          <ChatHeader />
+          <PendingChatMessagesView
+            prompt={pendingPrompt ?? ""}
+            selectedModel={selectedModel.id}
+          />
+        </>
       ) : (
         <div className="w-full flex flex-col items-center justify-center gap-8">
           <h1 className="text-center text-4xl font-semibold">
             What should we work on today?
           </h1>
-          <div className="max-w-5xl w-full">
-            <Marquee>
+          <div className="max-w-6xl w-full min-w-0 overflow-hidden">
+            <Marquee className="w-full min-w-0 overflow-hidden">
               <MarqueeContent>
                 {recommendedPrompts.map((prompt) => (
-                  <MarqueeItem key={prompt}>
+                  <MarqueeItem key={prompt} className="shrink-0">
                     <Button variant="outline" onClick={() => setPrompt(prompt)}>
                       {prompt}
                     </Button>
@@ -118,6 +122,7 @@ export const InitialAIInputClient = () => {
         isPending={isPending}
         selectedModel={selectedModel}
         onSelectedModelChange={setSelectedModel}
+        className={isPending && selectedModel ? "max-w-400" : "max-w-6xl"}
       />
     </div>
   );
