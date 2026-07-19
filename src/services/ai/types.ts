@@ -1,6 +1,7 @@
-import { modelIds } from "@/db/shared";
-import { UIMessage } from "ai";
+import { InferUITools, UIMessage } from "ai";
 import z from "zod";
+import { modelIds } from "./models";
+import { tools } from "./tools";
 
 const metadataSchema = z.object({
   createdAt: z.date(),
@@ -8,5 +9,10 @@ const metadataSchema = z.object({
 });
 
 type Metadata = z.infer<typeof metadataSchema>;
+type ChatTools = InferUITools<typeof tools>;
 
-export type CustomUIMessage = UIMessage<Metadata>;
+export type CustomUIMessage = UIMessage<
+  Metadata,
+  Record<string, never>,
+  ChatTools
+>;

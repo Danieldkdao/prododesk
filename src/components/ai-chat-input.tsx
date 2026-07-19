@@ -5,8 +5,10 @@ import { LLMModel, models } from "@/services/ai/models";
 import { PlusIcon, SendIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { SimpleIcon } from "./simple-icon";
 import { TooltipWrapper } from "./tooltip-wrapper";
 import { Button } from "./ui/button";
+import { LoadingSwap } from "./ui/loading-swap";
 import {
   Select,
   SelectContent,
@@ -15,8 +17,6 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
-import { SimpleIcon } from "./simple-icon";
-import { LoadingSwap } from "./ui/loading-swap";
 
 const layoutTransition = {
   type: "spring",

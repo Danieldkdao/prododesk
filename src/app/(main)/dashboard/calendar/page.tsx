@@ -9,6 +9,7 @@ import {
 } from "@/features/tasks/actions/actions";
 import { DayTasksPanel } from "@/features/tasks/components/day-tasks-panel";
 import { loadDayTasksSearchParams } from "@/features/tasks/lib/day-tasks-params";
+import { getCurrentUser } from "@/lib/auth/helpers";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
@@ -32,14 +33,22 @@ const DashboardCalendarLoading = () => {
 const DashboardCalendarSuspense = async ({
   searchParams,
 }: SearchParamsType) => {
+  const { userId } = await getCurrentUser();
+  if (!userId)
+    return (
+      <ErrorState
+        title="Unauthorized"
+        description="Please sign in or create a new account to continue."
+      />
+    );
   const [calendarFilters, dayTasksFilters] = await Promise.all([
     loadCalendarSearchParams(searchParams),
     loadDayTasksSearchParams(searchParams),
   ]);
 
   const [monthDaysTasks, selectedDayTasks] = await Promise.all([
-    getCalendarTasksAction(calendarFilters.month),
-    getDayTasksAction(calendarFilters.day, {
+    getCalendarTasksAction(userId, calendarFilters.month),
+    getDayTasksAction(userId, calendarFilters.day, {
       ...dayTasksFilters,
       page: DEFAULT_PAGE,
     }),

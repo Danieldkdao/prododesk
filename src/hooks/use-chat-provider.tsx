@@ -1,7 +1,6 @@
 "use client";
 
-import { ModelId } from "@/db/shared";
-import { SetterType } from "@/lib/types";
+import { ModelId } from "@/services/ai/models";
 import { CustomUIMessage } from "@/services/ai/types";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";

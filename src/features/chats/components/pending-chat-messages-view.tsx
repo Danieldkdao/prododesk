@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/message-scroller";
 import { TextShimmer } from "@/components/ui/text-shimmer";
 import { UserAvatar } from "@/components/user-avatar";
-import { ModelId } from "@/db/shared";
+import { ModelId } from "@/services/ai/models";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { getModelInfo } from "@/services/ai/models";
 

@@ -1,8 +1,8 @@
 import { AIChatInput } from "@/components/ai-chat-input";
-import { ModelId } from "@/db/shared";
+import { ModelId } from "@/services/ai/models";
 import { getModelInfo } from "@/services/ai/models";
-import { PendingChatMessagesView } from "./pending-chat-messages-view";
 import { ChatHeader } from "../chat-header";
+import { PendingChatMessagesView } from "./pending-chat-messages-view";
 
 export const PendingChatView = ({
   prompt,

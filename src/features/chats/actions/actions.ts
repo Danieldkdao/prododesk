@@ -2,6 +2,7 @@
 
 import { db } from "@/db/db";
 import { ChatMessageTable, ChatTable } from "@/db/schema";
+import { MessagePartTable } from "@/db/schemas/message-part";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -15,7 +16,7 @@ import { areValidIds } from "@/lib/utils";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { GENERATE_CHAT_NAME_INSTRUCTIONS } from "@/services/ai/prompts";
 import { generateText } from "ai";
-import { and, asc, count, desc, eq, ilike, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { getChatIdTag, getUserChatTag } from "../server/cache/chats";
 import {
@@ -90,6 +91,11 @@ export const getChatAction = async (userId: string, chatId: string) => {
     with: {
       messages: {
         orderBy: asc(ChatMessageTable.createdAt),
+        with: {
+          parts: {
+            orderBy: asc(MessagePartTable.order),
+          },
+        },
       },
     },
   });

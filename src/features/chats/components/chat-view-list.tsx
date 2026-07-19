@@ -6,6 +6,11 @@ import { MarkdownRenderer } from "@/components/markdown/markdown-renderer";
 import { SimpleIcon } from "@/components/simple-icon";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Message,
   MessageAvatar,
   MessageContent,
@@ -19,17 +24,21 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
+import { TextShimmer } from "@/components/ui/text-shimmer";
 import { UserAvatar } from "@/components/user-avatar";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { useChatProvider } from "@/hooks/use-chat-provider";
 import { getModelInfo, LLMModel } from "@/services/ai/models";
+import { ToolName } from "@/services/ai/tool-contracts";
+import { CustomUIMessage } from "@/services/ai/types";
+import { getToolName, isToolUIPart } from "ai";
+import { format, isSameDay } from "date-fns";
+import { BrainIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { GetChatActionReturnType } from "../actions/actions";
-import { CustomUIMessage } from "@/services/ai/types";
-import { format, isSameDay } from "date-fns";
 import { ChatHeader } from "../chat-header";
-import { TextShimmer } from "@/components/ui/text-shimmer";
+import { formatToolNameForChat } from "../lib/formatters";
 
 export const ChatViewList = ({
   chat,
@@ -43,6 +52,8 @@ export const ChatViewList = ({
     selectedModel: selectedModelId,
     status,
     sendChatMessage,
+    error,
+    clearError,
   } = useChatProvider();
   const previousResponseModelId = messages.at(-1)?.metadata?.modelId ?? null;
   const currentModelInfo = getModelInfo(
@@ -57,6 +68,7 @@ export const ChatViewList = ({
   const handleSendMessage = () => {
     if (!prompt.trim() || !selectedModel)
       return toast.error("Please enter a prompt and select a model.");
+    clearError();
     sendChatMessage({
       prompt,
       selectedModel: selectedModel.id,
@@ -82,7 +94,7 @@ export const ChatViewList = ({
                 const messageContent = msg.parts
                   .filter((part) => part.type === "text")
                   .map((part) => part.text)
-                  .join("");
+                  .join(" ");
                 const modelInfo = getModelInfo(msg.metadata?.modelId);
                 const isLatestMsg = messages.at(-1)?.id === msg.id;
 
@@ -111,41 +123,203 @@ export const ChatViewList = ({
                           </div>
                         )}
                       </MessageAvatar>
-                      <MessageContent>
-                        <Bubble variant="secondary" align="start">
-                          <BubbleContent className="text-lg">
-                            {msg.role === "user" ? (
-                              messageContent
-                            ) : (
-                              <MarkdownRenderer
-                                animated={{
-                                  animation: "blurIn",
-                                  duration: 250,
-                                  easing: "ease-out",
-                                }}
-                                isAnimating={
-                                  status === "streaming" && isLatestMsg
-                                }
-                              >
-                                {messageContent}
-                              </MarkdownRenderer>
-                            )}
+                      <MessageContent className="max-w-4/5">
+                        <Bubble
+                          variant={msg.role === "user" ? "secondary" : "ghost"}
+                        >
+                          <BubbleContent className="text-lg flex flex-col gap-4 self-end">
+                            {msg.role === "user"
+                              ? messageContent
+                              : msg.parts.map((part, index) => {
+                                  const isLatestPart =
+                                    index === msg.parts.length - 1;
+                                  if (part.type === "text") {
+                                    return (
+                                      <MarkdownRenderer
+                                        key={`${msg.id}-text-${index}`}
+                                        animated={{
+                                          animation: "blurIn",
+                                          duration: 250,
+                                          easing: "ease-out",
+                                        }}
+                                        isAnimating={
+                                          status === "streaming" &&
+                                          isLatestMsg &&
+                                          isLatestPart
+                                        }
+                                      >
+                                        {part.text}
+                                      </MarkdownRenderer>
+                                    );
+                                  }
+                                  if (part.type === "reasoning") {
+                                    return (
+                                      <Collapsible
+                                        key={`${msg.id}-text-${index}`}
+                                        className="flex flex-col gap-2"
+                                      >
+                                        <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
+                                          <BrainIcon className="text-muted-foreground size-5" />
+                                          {status === "streaming" &&
+                                          isLatestPart ? (
+                                            <TextShimmer
+                                              as="span"
+                                              duration={2}
+                                              className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
+                                            >
+                                              Thinking...
+                                            </TextShimmer>
+                                          ) : (
+                                            <span className="text-base text-muted-foreground font-medium">
+                                              Finished thinking
+                                            </span>
+                                          )}
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="pl-4 border-l border-border">
+                                          <MarkdownRenderer
+                                            animated={{
+                                              animation: "blurIn",
+                                              duration: 250,
+                                              easing: "ease-out",
+                                            }}
+                                            isAnimating={
+                                              status === "streaming" &&
+                                              isLatestMsg &&
+                                              isLatestPart
+                                            }
+                                            className="text-muted-foreground"
+                                          >
+                                            {part.text}
+                                          </MarkdownRenderer>
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    );
+                                  }
+                                  if (isToolUIPart(part)) {
+                                    const toolName = getToolName(
+                                      part,
+                                    ) as ToolName;
+                                    const {
+                                      running,
+                                      finished,
+                                      error,
+                                      icon: Icon,
+                                    } = formatToolNameForChat(toolName);
+
+                                    switch (part.state) {
+                                      case "input-streaming":
+                                      case "input-available":
+                                        return (
+                                          <TextShimmer
+                                            as="span"
+                                            duration={2}
+                                            className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
+                                            key={part.toolCallId}
+                                          >
+                                            {`Running ${running}`}
+                                          </TextShimmer>
+                                        );
+                                      case "output-available":
+                                        return (
+                                          <Collapsible
+                                            key={part.toolCallId}
+                                            className="flex flex-col gap-2"
+                                          >
+                                            <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
+                                              <Icon className="text-muted-foreground size-4.5" />
+                                              <span className="text-base font-medium text-muted-foreground">
+                                                Finished {finished}
+                                              </span>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="pl-4 border-l border-border text-muted-foreground">
+                                              {typeof part.output ===
+                                              "string" ? (
+                                                toolName === "scrapeWebpage" ? (
+                                                  <MarkdownRenderer
+                                                    animated={{
+                                                      animation: "blurIn",
+                                                      duration: 250,
+                                                      easing: "ease-out",
+                                                    }}
+                                                    isAnimating={
+                                                      status === "streaming" &&
+                                                      isLatestMsg &&
+                                                      isLatestPart
+                                                    }
+                                                    className="text-muted-foreground"
+                                                  >
+                                                    {part.output}
+                                                  </MarkdownRenderer>
+                                                ) : part.output.trim() ? (
+                                                  part.output
+                                                ) : (
+                                                  <span className="italic">
+                                                    No output
+                                                  </span>
+                                                )
+                                              ) : (
+                                                JSON.stringify(part.output)
+                                              )}
+                                            </CollapsibleContent>
+                                          </Collapsible>
+                                        );
+                                      case "output-error":
+                                        return (
+                                          <div
+                                            key={part.toolCallId}
+                                            className="flex items-center gap-2"
+                                          >
+                                            <Icon className="text-destructive size-4.5" />
+                                            <span className="text-base font-medium text-destructive">
+                                              {error} failed
+                                            </span>
+                                          </div>
+                                        );
+                                    }
+                                  }
+                                })}
                           </BubbleContent>
+                          {msg.role === "user" && msg.metadata?.createdAt && (
+                            <MessageFooter>
+                              Sent at {format(msg.metadata.createdAt, "p")}{" "}
+                              {isSameDay(new Date(), msg.metadata.createdAt)
+                                ? "earlier today"
+                                : format(msg.metadata.createdAt, " 'on' PP")}
+                            </MessageFooter>
+                          )}
                         </Bubble>
-                        {msg.role === "user" && msg.metadata?.createdAt && (
-                          <MessageFooter>
-                            Sent at {format(msg.metadata.createdAt, "p")}{" "}
-                            {isSameDay(new Date(), msg.metadata.createdAt)
-                              ? "earlier today"
-                              : format(msg.metadata.createdAt, " 'on' PP")}
-                          </MessageFooter>
-                        )}
                       </MessageContent>
                     </Message>
                   </MessageScrollerItem>
                 );
               })}
-              {/*todo: add error state as well*/}
+              {error && (
+                <MessageScrollerItem>
+                  <Message align="start">
+                    <MessageAvatar>
+                      <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
+                        {currentModelInfo ? (
+                          <SimpleIcon {...currentModelInfo.logo} />
+                        ) : (
+                          <span className="text-base font-medium text-muted-foreground">
+                            AI
+                          </span>
+                        )}
+                      </div>
+                    </MessageAvatar>
+
+                    <MessageContent className="flex flex-col gap-0.5 p-4 bg-destructive/10 border border-destructive/75">
+                      <h4 className="text-xl font-medium text-destructive">
+                        An error occurred
+                      </h4>
+                      <p className="text-base text-destructive">
+                        We were unable to generate your output. Try again or
+                        come back later if the issue persists.
+                      </p>
+                    </MessageContent>
+                  </Message>
+                </MessageScrollerItem>
+              )}
               {status === "submitted" && (
                 <MessageScrollerItem>
                   <Message align="start">

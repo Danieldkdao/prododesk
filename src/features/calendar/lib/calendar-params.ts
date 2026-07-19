@@ -1,5 +1,5 @@
 import { format, isValid, parse } from "date-fns";
-import { createLoader, createParser, parseAsIsoDateTime } from "nuqs/server";
+import { createLoader, createParser } from "nuqs/server";
 
 export const parseAsLocalDate = createParser<Date>({
   parse(queryValue) {
@@ -16,7 +16,7 @@ export const parseAsLocalDate = createParser<Date>({
 });
 
 const filterSearchParams = {
-  month: parseAsIsoDateTime
+  month: parseAsLocalDate
     .withDefault(new Date())
     .withOptions({ clearOnDefault: true }),
   day: parseAsLocalDate.withOptions({ clearOnDefault: true }),

@@ -1,21 +1,20 @@
 import { db } from "@/db/db";
-import { ModelId } from "@/db/shared";
 import { revalidateChatCache } from "@/features/chats/server/cache/chats";
 import { insertChatMessageDb } from "@/features/chats/server/chat-messages";
+import { insertMessagePartDb } from "@/features/chats/server/message-parts";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
+import { ModelId } from "@/services/ai/models";
 import { openrouter } from "@/services/ai/models/openrouter";
+import { CHAT_INSTRUCTIONS } from "@/services/ai/prompts";
+import { MessagePart } from "@/services/ai/tool-contracts";
+import { tools } from "@/services/ai/tools";
 import { CustomUIMessage } from "@/services/ai/types";
-import {
-  convertToModelMessages,
-  createUIMessageStreamResponse,
-  streamText,
-  toUIMessageStream,
-} from "ai";
+import { createAgentUIStreamResponse, ToolLoopAgent } from "ai";
 import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {
@@ -54,63 +53,115 @@ export const POST = async (req: Request) => {
     return NextResponse.json({ error: "No message found." }, { status: 400 });
 
   try {
-    const stream = await db.transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       const insertedMessage = await insertChatMessageDb(
         {
           chatId,
-          content: latestMessage,
           modelId: selectedModel,
           role: "user",
         },
         tx,
       );
 
-      revalidateChatCache(userId, insertedMessage.chatId);
-
       if (!insertedMessage)
         throw new Error("Failed to insert user chat message.");
 
-      const result = streamText({
-        model: openrouter(selectedModel),
-        messages: await convertToModelMessages(messages),
-        instructions: `
-        You are the assistant currently handling this conversation.
-        The active model selected for this response is "${selectedModel}".
+      const insertedPart = await insertMessagePartDb(
+        {
+          messageId: insertedMessage.id,
+          part: {
+            type: "text",
+            text: latestMessage,
+          },
+          order: 0,
+        },
+        tx,
+      );
 
-        Continue helping with the conversation, but do not copy or repeat previous
-        assistant claims about model identity. Do not claim to be a different model.
-          `.trim(),
-        onEnd: async ({ text }) => {
-          const insertedMessage = await insertChatMessageDb({
-            chatId,
-            content: text,
-            modelId: selectedModel,
-            role: "assistant",
-          });
+      if (!insertedPart) throw new Error("Failed to insert message part.");
+
+      revalidateChatCache(userId, insertedMessage.chatId);
+    });
+
+    const chatAgent = new ToolLoopAgent({
+      model: openrouter(selectedModel),
+      instructions: CHAT_INSTRUCTIONS(selectedModel),
+      tools,
+      onEnd: async ({ content }) => {
+        console.log(content);
+        const contentParts = content.filter(
+          (c) =>
+            c.type === "text" ||
+            c.type === "tool-call" ||
+            c.type === "reasoning",
+        );
+        const toolResultParts = content.filter((c) => c.type === "tool-result");
+
+        await db.transaction(async (tx) => {
+          const insertedMessage = await insertChatMessageDb(
+            {
+              chatId,
+              modelId: selectedModel,
+              role: "assistant",
+            },
+            tx,
+          );
 
           if (!insertedMessage)
             throw new Error("Failed to insert AI chat message.");
 
-          revalidateChatCache(userId, insertedMessage.chatId);
-        },
-      });
+          let order = 0;
 
-      return createUIMessageStreamResponse({
-        stream: toUIMessageStream({
-          stream: result.stream,
-          messageMetadata: ({ part }) => {
-            if (part.type === "finish") {
-              return {
-                modelId: selectedModel,
-                createdAt: new Date(),
-              };
-            }
-          },
-        }),
-      });
+          for (const part of contentParts) {
+            order++;
+            const storedPart: MessagePart =
+              part.type === "text"
+                ? {
+                    type: "text",
+                    text: part.text,
+                  }
+                : part.type === "reasoning"
+                  ? {
+                      type: "reasoning",
+                      text: part.text,
+                    }
+                  : {
+                      type: "dynamic-tool",
+                      toolName: part.toolName,
+                      toolCallId: part.toolCallId,
+                      state: "output-available",
+                      input: part.input,
+                      output: toolResultParts.find(
+                        (result) => result.toolCallId === part.toolCallId,
+                      )?.output,
+                    };
+            await insertMessagePartDb(
+              {
+                messageId: insertedMessage.id,
+                order,
+                part: storedPart,
+              },
+              tx,
+            );
+          }
+
+          revalidateChatCache(userId, insertedMessage.chatId);
+        });
+      },
     });
 
-    return stream;
+    return createAgentUIStreamResponse({
+      agent: chatAgent,
+      uiMessages: messages,
+      messageMetadata: ({ part }) => {
+        if (part.type === "finish") {
+          return {
+            modelId: selectedModel,
+            createdAt: new Date(),
+          };
+        }
+      },
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: GENERAL_ERROR_MESSAGE }, { status: 500 });

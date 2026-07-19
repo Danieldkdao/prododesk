@@ -2,11 +2,11 @@
 
 import { useChatProvider } from "@/hooks/use-chat-provider";
 import { CustomUIMessage } from "@/services/ai/types";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { GetChatActionReturnType } from "../actions/actions";
 import { ChatViewList } from "./chat-view-list";
 import { PendingChatView } from "./pending-chat-view";
-import { useRouter } from "next/navigation";
 
 export const ChatView = ({ chat }: { chat: GetChatActionReturnType }) => {
   const router = useRouter();
@@ -22,12 +22,7 @@ export const ChatView = ({ chat }: { chat: GetChatActionReturnType }) => {
     return chat.messages.map((msg) => ({
       id: msg.id,
       role: msg.role,
-      parts: [
-        {
-          type: "text",
-          text: msg.content,
-        },
-      ],
+      parts: msg.parts.map(({ part }) => part),
       metadata: {
         createdAt: msg.createdAt,
         modelId: msg.modelId,

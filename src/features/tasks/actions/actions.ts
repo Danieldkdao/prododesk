@@ -14,7 +14,7 @@ import {
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
 import { mergeDateTime } from "@/lib/utils";
-import { eachDayOfInterval, format } from "date-fns";
+import { eachDayOfInterval, format, isValid } from "date-fns";
 import {
   and,
   asc,
@@ -43,6 +43,8 @@ import {
   updateTaskDb,
 } from "../server/tasks";
 import { taskSchema, TaskSchemaType } from "./schemas";
+import { cacheTag } from "next/cache";
+import { getUserTaskTag } from "../server/cache/tasks";
 
 export const createTaskAction = async (unsafeData: TaskSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -53,11 +55,11 @@ export const createTaskAction = async (unsafeData: TaskSchemaType) => {
     };
   }
 
-  const { data, success } = taskSchema.safeParse(unsafeData);
+  const { data, success, error } = taskSchema.safeParse(unsafeData);
   if (!success) {
     return {
       error: true,
-      message: INVALID_DATA_ERROR_MESSAGE,
+      message: error.message,
     };
   }
 
@@ -178,9 +180,14 @@ export const deleteTaskAction = async (taskId: string) => {
   }
 };
 
-export const getCalendarTasksAction = async (dateToUse: Date) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
+export const getCalendarTasksAction = async (
+  userId: string,
+  dateToUse: Date,
+) => {
+  "use cache";
+  cacheTag(getUserTaskTag(userId));
+
+  if (!isValid(dateToUse)) return null;
 
   const { startOfMonth, endOfMonth, monthDays } =
     calculateCalendarValues(dateToUse);
@@ -219,6 +226,7 @@ export type GetCalendarTasksActionReturnType = UnwrapAsync<
 >;
 
 export const getDayTasksAction = async (
+  userId: string,
   selectedDay: Date | null,
   filterOptions: {
     search: string;
@@ -231,8 +239,10 @@ export const getDayTasksAction = async (
     page: number;
   },
 ) => {
-  const { userId } = await getCurrentUser();
-  if (!userId || !selectedDay) return null;
+  "use cache";
+  cacheTag(getUserTaskTag(userId));
+
+  if (!selectedDay) return null;
 
   const formattedDay = format(selectedDay, "yyyy-MM-dd");
 
