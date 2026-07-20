@@ -72,3 +72,16 @@ export const formatToolNameForChat = (toolName: ToolName) => {
       throw new Error(`Unknown tool name: ${toolName satisfies never}`);
   }
 };
+
+export const getApprovalReason = (input: unknown) => {
+  if (
+    typeof input === "object" &&
+    input !== null &&
+    "approvalReason" in input &&
+    typeof input.approvalReason === "string"
+  ) {
+    return input.approvalReason;
+  }
+
+  return "This action needs your approval.";
+};

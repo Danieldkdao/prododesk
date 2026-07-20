@@ -31,6 +31,7 @@ export type ChatTools = {
           to?: string;
         };
       }>;
+      approvalReason: string;
     };
     output: string;
   };
@@ -46,12 +47,14 @@ export type ChatTools = {
         endAt?: string | null;
         rangeFrom: string;
       };
+      approvalReason: string;
     };
     output: string;
   };
   deleteTask: {
     input: {
       id: string;
+      approvalReason: string;
     };
     output: string;
   };
@@ -62,6 +65,7 @@ export type ChatTools = {
   toggleTasksCompletionStatus: {
     input: {
       ids: string[];
+      approvalReason: string;
     };
     output: string;
   };

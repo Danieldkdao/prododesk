@@ -38,7 +38,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { GetChatActionReturnType } from "../actions/actions";
 import { ChatHeader } from "../chat-header";
-import { formatToolNameForChat } from "../lib/formatters";
+import { formatToolNameForChat, getApprovalReason } from "../lib/formatters";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export const ChatViewList = ({
   chat,
@@ -54,6 +56,7 @@ export const ChatViewList = ({
     sendChatMessage,
     error,
     clearError,
+    addToolApprovalResponse,
   } = useChatProvider();
   const previousResponseModelId = messages.at(-1)?.metadata?.modelId ?? null;
   const currentModelInfo = getModelInfo(
@@ -99,7 +102,10 @@ export const ChatViewList = ({
                 const isLatestMsg = messages.at(-1)?.id === msg.id;
 
                 return (
-                  <MessageScrollerItem key={msg.id}>
+                  <MessageScrollerItem
+                    key={msg.id}
+                    scrollAnchor={msg.role === "user"}
+                  >
                     <Message align={msg.role === "user" ? "end" : "start"}>
                       <MessageAvatar>
                         {msg.role === "user" ? (
@@ -196,6 +202,54 @@ export const ChatViewList = ({
                                     );
                                   }
                                   if (isToolUIPart(part)) {
+                                    console.log("Tool part state:", {
+                                      toolName: getToolName(part),
+                                      toolCallId: part.toolCallId,
+                                      state: part.state,
+                                      part,
+                                    });
+                                    if (
+                                      part.state === "approval-requested" &&
+                                      !part.approval.isAutomatic
+                                    ) {
+                                      const approvalReason = getApprovalReason(
+                                        part.input,
+                                      );
+
+                                      return (
+                                        <div
+                                          key={part.toolCallId}
+                                          className="flex flex-col gap-2"
+                                        >
+                                          <span className="text-muted-foreground font-medium text-base">
+                                            {approvalReason}
+                                          </span>
+                                          <div className="flex items-center gap-2">
+                                            <Button
+                                              onClick={() =>
+                                                addToolApprovalResponse({
+                                                  id: part.approval.id,
+                                                  approved: true,
+                                                })
+                                              }
+                                            >
+                                              Approve
+                                            </Button>
+                                            <Button
+                                              variant="outline"
+                                              onClick={() =>
+                                                addToolApprovalResponse({
+                                                  id: part.approval.id,
+                                                  approved: false,
+                                                })
+                                              }
+                                            >
+                                              Deny
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
                                     const toolName = getToolName(
                                       part,
                                     ) as ToolName;
@@ -235,30 +289,74 @@ export const ChatViewList = ({
                                               {typeof part.output ===
                                               "string" ? (
                                                 toolName === "scrapeWebpage" ? (
-                                                  <MarkdownRenderer
-                                                    animated={{
-                                                      animation: "blurIn",
-                                                      duration: 250,
-                                                      easing: "ease-out",
-                                                    }}
-                                                    isAnimating={
-                                                      status === "streaming" &&
-                                                      isLatestMsg &&
-                                                      isLatestPart
-                                                    }
-                                                    className="text-muted-foreground"
-                                                  >
-                                                    {part.output}
-                                                  </MarkdownRenderer>
+                                                  <div className="flex flex-col gap-2">
+                                                    <span className="text-muted-foreground font-medium">
+                                                      Scraped{" "}
+                                                      {typeof part.input ===
+                                                        "object" &&
+                                                      part.input !== null &&
+                                                      "url" in part.input &&
+                                                      typeof part.input.url ===
+                                                        "string" ? (
+                                                        <Link
+                                                          href={part.input.url}
+                                                          target="_blank"
+                                                          rel="noopener"
+                                                          className="text-primary"
+                                                        >
+                                                          {part.input.url}
+                                                        </Link>
+                                                      ) : (
+                                                        "Unknown URL"
+                                                      )}
+                                                    </span>
+                                                    <MarkdownRenderer
+                                                      animated={{
+                                                        animation: "blurIn",
+                                                        duration: 250,
+                                                        easing: "ease-out",
+                                                      }}
+                                                      isAnimating={
+                                                        status ===
+                                                          "streaming" &&
+                                                        isLatestMsg &&
+                                                        isLatestPart
+                                                      }
+                                                      className="text-muted-foreground"
+                                                    >
+                                                      {part.output}
+                                                    </MarkdownRenderer>
+                                                  </div>
                                                 ) : part.output.trim() ? (
-                                                  part.output
+                                                  toolName === "searchWeb" ? (
+                                                    <div className="flex flex-col gap-2">
+                                                      <span className="text-muted-foreground font-medium">
+                                                        Searched for{" "}
+                                                        {typeof part.input ===
+                                                          "object" &&
+                                                        part.input !== null &&
+                                                        "query" in part.input &&
+                                                        typeof part.input
+                                                          .query === "string"
+                                                          ? `"${part.input.query}"`
+                                                          : "unknown query"}
+                                                      </span>
+                                                      <p className="text-muted-foreground">
+                                                        {part.output}
+                                                      </p>
+                                                    </div>
+                                                  ) : (
+                                                    part.output
+                                                  )
                                                 ) : (
                                                   <span className="italic">
                                                     No output
                                                   </span>
                                                 )
-                                              ) : (
+                                              ) : part.output ? (
                                                 JSON.stringify(part.output)
+                                              ) : (
+                                                "No output"
                                               )}
                                             </CollapsibleContent>
                                           </Collapsible>

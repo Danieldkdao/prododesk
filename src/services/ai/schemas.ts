@@ -3,6 +3,17 @@ import { aiTimeSchema, timeSchema } from "@/lib/schemas";
 import { parse } from "date-fns";
 import z from "zod";
 
+export const approvalReasonSchema = z
+  .string()
+  .trim()
+  .min(20, {
+    error: "The approval reason must provide meaningful detail.",
+  })
+  .max(500)
+  .describe(
+    "A detailed, user-facing explanation of why this action is necessary, exactly what will change, and which tasks will be affected. Never use a vague statement.",
+  );
+
 export const searchWebToolSchema = z.object({
   query: z
     .string()
@@ -76,6 +87,7 @@ export const createTasksToolSchema = z.object({
     )
     .min(1, { error: "Please enter at least one task in the array." })
     .describe("The tasks you would like to create."),
+  approvalReason: approvalReasonSchema,
 });
 
 export const readTasksToolSchema = z
@@ -135,14 +147,17 @@ export const updateTaskToolSchema = z.object({
     .describe(
       "The updated version of the task that will replace the old task values.",
     ),
+  approvalReason: approvalReasonSchema,
 });
 
 export const toggleTasksCompletionStatusToolSchema = z.object({
   ids: z
     .array(z.uuid())
     .min(1, { error: "Please enter at least one task to update." }),
+  approvalReason: approvalReasonSchema,
 });
 
 export const deleteTaskToolSchema = z.object({
   id: z.uuid().describe("The ID of the task that you would like to update."),
+  approvalReason: approvalReasonSchema,
 });

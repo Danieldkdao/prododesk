@@ -11,10 +11,9 @@ import {
 import { ModelId } from "@/services/ai/models";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { CHAT_INSTRUCTIONS } from "@/services/ai/prompts";
-import { MessagePart } from "@/services/ai/tool-contracts";
 import { tools } from "@/services/ai/tools";
 import { CustomUIMessage } from "@/services/ai/types";
-import { createAgentUIStreamResponse, ToolLoopAgent } from "ai";
+import { createAgentUIStreamResponse, isToolUIPart, ToolLoopAgent } from "ai";
 import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {
@@ -42,111 +41,55 @@ export const POST = async (req: Request) => {
     );
   }
 
-  const latestMessage = messages
-    .filter((msg) => msg.role === "user")
-    .at(-1)
-    ?.parts.filter((part) => part.type === "text")
-    .map((part) => part.text)
-    .join("");
-
-  if (!latestMessage)
-    return NextResponse.json({ error: "No message found." }, { status: 400 });
+  const userMessage = messages.at(-1);
 
   try {
-    await db.transaction(async (tx) => {
-      const insertedMessage = await insertChatMessageDb(
-        {
-          chatId,
-          modelId: selectedModel,
-          role: "user",
-        },
-        tx,
-      );
+    if (userMessage?.role === "user") {
+      const latestMessage = userMessage.parts
+        .filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join("");
 
-      if (!insertedMessage)
-        throw new Error("Failed to insert user chat message.");
-
-      const insertedPart = await insertMessagePartDb(
-        {
-          messageId: insertedMessage.id,
-          part: {
-            type: "text",
-            text: latestMessage,
+      await db.transaction(async (tx) => {
+        const insertedMessage = await insertChatMessageDb(
+          {
+            chatId,
+            modelId: selectedModel,
+            role: "user",
           },
-          order: 0,
-        },
-        tx,
-      );
+          tx,
+        );
 
-      if (!insertedPart) throw new Error("Failed to insert message part.");
+        if (!insertedMessage)
+          throw new Error("Failed to insert user chat message.");
 
-      revalidateChatCache(userId, insertedMessage.chatId);
-    });
+        const insertedPart = await insertMessagePartDb(
+          {
+            messageId: insertedMessage.id,
+            part: {
+              type: "text",
+              text: latestMessage,
+            },
+            order: 0,
+          },
+          tx,
+        );
+
+        if (!insertedPart) throw new Error("Failed to insert message part.");
+
+        revalidateChatCache(userId, insertedMessage.chatId);
+      });
+    }
 
     const chatAgent = new ToolLoopAgent({
       model: openrouter(selectedModel),
       instructions: CHAT_INSTRUCTIONS(selectedModel),
       tools,
-      onEnd: async ({ content }) => {
-        console.log(content);
-        const contentParts = content.filter(
-          (c) =>
-            c.type === "text" ||
-            c.type === "tool-call" ||
-            c.type === "reasoning",
-        );
-        const toolResultParts = content.filter((c) => c.type === "tool-result");
-
-        await db.transaction(async (tx) => {
-          const insertedMessage = await insertChatMessageDb(
-            {
-              chatId,
-              modelId: selectedModel,
-              role: "assistant",
-            },
-            tx,
-          );
-
-          if (!insertedMessage)
-            throw new Error("Failed to insert AI chat message.");
-
-          let order = 0;
-
-          for (const part of contentParts) {
-            order++;
-            const storedPart: MessagePart =
-              part.type === "text"
-                ? {
-                    type: "text",
-                    text: part.text,
-                  }
-                : part.type === "reasoning"
-                  ? {
-                      type: "reasoning",
-                      text: part.text,
-                    }
-                  : {
-                      type: "dynamic-tool",
-                      toolName: part.toolName,
-                      toolCallId: part.toolCallId,
-                      state: "output-available",
-                      input: part.input,
-                      output: toolResultParts.find(
-                        (result) => result.toolCallId === part.toolCallId,
-                      )?.output,
-                    };
-            await insertMessagePartDb(
-              {
-                messageId: insertedMessage.id,
-                order,
-                part: storedPart,
-              },
-              tx,
-            );
-          }
-
-          revalidateChatCache(userId, insertedMessage.chatId);
-        });
+      toolApproval: {
+        createTasks: "user-approval",
+        deleteTask: "user-approval",
+        updateTask: "user-approval",
+        toggleTasksCompletionStatus: "user-approval",
       },
     });
 
@@ -160,6 +103,39 @@ export const POST = async (req: Request) => {
             createdAt: new Date(),
           };
         }
+      },
+      onEnd: async ({ responseMessage, isAborted }) => {
+        if (isAborted) return;
+
+        const hasPendingApproval = responseMessage.parts.some(
+          (part) => isToolUIPart(part) && part.state === "approval-requested",
+        );
+
+        if (hasPendingApproval) return;
+
+        await db.transaction(async (tx) => {
+          const insertedMessage = await insertChatMessageDb(
+            { chatId, role: "assistant", modelId: selectedModel },
+            tx,
+          );
+
+          let order = 0;
+
+          for (const part of responseMessage.parts) {
+            if (part.type === "step-start") continue;
+
+            await insertMessagePartDb(
+              {
+                messageId: insertedMessage.id,
+                order,
+                part,
+              },
+              tx,
+            );
+
+            order++;
+          }
+        });
       },
     });
   } catch (error) {

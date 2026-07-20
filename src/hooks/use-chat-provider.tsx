@@ -3,7 +3,10 @@
 import { ModelId } from "@/services/ai/models";
 import { CustomUIMessage } from "@/services/ai/types";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
+} from "ai";
 import { usePathname } from "next/navigation";
 import {
   createContext,
@@ -63,6 +66,7 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
   const data = useChat<CustomUIMessage>({
     id: chatId,
     transport,
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
   });
 
   const sendChatMessage = useCallback(
