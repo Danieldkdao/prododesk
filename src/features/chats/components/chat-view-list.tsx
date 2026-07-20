@@ -33,7 +33,7 @@ import { ToolName } from "@/services/ai/tool-contracts";
 import { CustomUIMessage } from "@/services/ai/types";
 import { getToolName, isToolUIPart } from "ai";
 import { format, isSameDay } from "date-fns";
-import { BrainIcon } from "lucide-react";
+import { BrainIcon, CircleCheckIcon, CircleXIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { GetChatActionReturnType } from "../actions/actions";
@@ -202,59 +202,11 @@ export const ChatViewList = ({
                                     );
                                   }
                                   if (isToolUIPart(part)) {
-                                    console.log("Tool part state:", {
-                                      toolName: getToolName(part),
-                                      toolCallId: part.toolCallId,
-                                      state: part.state,
-                                      part,
-                                    });
-                                    if (
-                                      part.state === "approval-requested" &&
-                                      !part.approval.isAutomatic
-                                    ) {
-                                      const approvalReason = getApprovalReason(
-                                        part.input,
-                                      );
-
-                                      return (
-                                        <div
-                                          key={part.toolCallId}
-                                          className="flex flex-col gap-2"
-                                        >
-                                          <span className="text-muted-foreground font-medium text-base">
-                                            {approvalReason}
-                                          </span>
-                                          <div className="flex items-center gap-2">
-                                            <Button
-                                              onClick={() =>
-                                                addToolApprovalResponse({
-                                                  id: part.approval.id,
-                                                  approved: true,
-                                                })
-                                              }
-                                            >
-                                              Approve
-                                            </Button>
-                                            <Button
-                                              variant="outline"
-                                              onClick={() =>
-                                                addToolApprovalResponse({
-                                                  id: part.approval.id,
-                                                  approved: false,
-                                                })
-                                              }
-                                            >
-                                              Deny
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      );
-                                    }
                                     const toolName = getToolName(
                                       part,
                                     ) as ToolName;
                                     const {
-                                      running,
+                                      preparing,
                                       finished,
                                       error,
                                       icon: Icon,
@@ -270,8 +222,79 @@ export const ChatViewList = ({
                                             className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
                                             key={part.toolCallId}
                                           >
-                                            {`Running ${running}`}
+                                            {`Preparing ${preparing}`}
                                           </TextShimmer>
+                                        );
+                                      case "approval-requested":
+                                        if (part.approval.isAutomatic) {
+                                          return (
+                                            <TextShimmer
+                                              as="span"
+                                              duration={2}
+                                              className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
+                                              key={part.toolCallId}
+                                            >
+                                              {`Running ${preparing}`}
+                                            </TextShimmer>
+                                          );
+                                        }
+                                        const approvalReason =
+                                          getApprovalReason(part.input);
+
+                                        return (
+                                          <div
+                                            key={part.toolCallId}
+                                            className="flex flex-col gap-2"
+                                          >
+                                            <span className="text-muted-foreground font-medium text-base">
+                                              {approvalReason}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                              <Button
+                                                onClick={() =>
+                                                  addToolApprovalResponse({
+                                                    id: part.approval.id,
+                                                    approved: true,
+                                                  })
+                                                }
+                                              >
+                                                Approve
+                                              </Button>
+                                              <Button
+                                                variant="outline"
+                                                onClick={() =>
+                                                  addToolApprovalResponse({
+                                                    id: part.approval.id,
+                                                    approved: false,
+                                                  })
+                                                }
+                                              >
+                                                Deny
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        );
+                                      case "approval-responded":
+                                        return part.approval.approved ? (
+                                          <TextShimmer
+                                            as="span"
+                                            duration={2}
+                                            className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
+                                            key={part.toolCallId}
+                                          >
+                                            {`Running ${preparing}`}
+                                          </TextShimmer>
+                                        ) : (
+                                          <div
+                                            className="flex items-center gap-2"
+                                            key={part.toolCallId}
+                                          >
+                                            <CircleXIcon className="text-muted-foreground size-5" />
+                                            <span className="text-muted-foreground text-base">
+                                              You denied the agent to run{" "}
+                                              {preparing}
+                                            </span>
+                                          </div>
                                         );
                                       case "output-available":
                                         return (
@@ -279,11 +302,25 @@ export const ChatViewList = ({
                                             key={part.toolCallId}
                                             className="flex flex-col gap-2"
                                           >
-                                            <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
-                                              <Icon className="text-muted-foreground size-4.5" />
-                                              <span className="text-base font-medium text-muted-foreground">
-                                                Finished {finished}
-                                              </span>
+                                            <CollapsibleTrigger className="flex flex-col gap-4 cursor-pointer">
+                                              {part.approval?.approved && (
+                                                <div
+                                                  className="flex items-center gap-2"
+                                                  key={part.toolCallId}
+                                                >
+                                                  <CircleCheckIcon className="text-muted-foreground size-5" />
+                                                  <span className="text-muted-foreground text-base font-medium">
+                                                    You approved the agent to
+                                                    run {preparing}
+                                                  </span>
+                                                </div>
+                                              )}
+                                              <div className="flex items-center gap-2">
+                                                <Icon className="text-muted-foreground size-4.5" />
+                                                <span className="text-base font-medium text-muted-foreground">
+                                                  Finished {finished}
+                                                </span>
+                                              </div>
                                             </CollapsibleTrigger>
                                             <CollapsibleContent className="pl-4 border-l border-border text-muted-foreground">
                                               {typeof part.output ===
@@ -360,6 +397,19 @@ export const ChatViewList = ({
                                               )}
                                             </CollapsibleContent>
                                           </Collapsible>
+                                        );
+                                      case "output-denied":
+                                        return (
+                                          <div
+                                            className="flex items-center gap-2"
+                                            key={part.toolCallId}
+                                          >
+                                            <CircleXIcon className="text-muted-foreground size-5" />
+                                            <span className="text-muted-foreground text-base">
+                                              You denied the agent to run{" "}
+                                              {preparing}
+                                            </span>
+                                          </div>
                                         );
                                       case "output-error":
                                         return (
