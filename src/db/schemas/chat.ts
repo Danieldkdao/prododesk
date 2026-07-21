@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { pgTable, text } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { ChatMessageTable } from "./chat-message";
+import { ChatRunTable } from "./chat-run";
 import { user } from "./user";
 
 export const ChatTable = pgTable("chats", {
@@ -23,4 +24,5 @@ export const chatRelations = relations(ChatTable, ({ one, many }) => ({
     references: [user.id],
   }),
   messages: many(ChatMessageTable),
+  chatRuns: many(ChatRunTable),
 }));

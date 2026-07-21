@@ -161,3 +161,7 @@ export const deleteTaskToolSchema = z.object({
   id: z.uuid().describe("The ID of the task that you would like to update."),
   approvalReason: approvalReasonSchema,
 });
+
+export const runIdContextSchema = z.object({
+  runId: z.uuid(),
+});

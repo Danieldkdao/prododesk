@@ -15,6 +15,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -53,6 +54,8 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
   const [queuedMessage, setQueuedMessage] = useState<QueuedMessage>(null);
   const [selectedModel, setSelectedModel] = useState<ModelId | null>(null);
 
+  const chatRef = useRef<ReturnType<typeof useChat<CustomUIMessage>>>(null);
+
   const transport = useMemo(() => {
     return new DefaultChatTransport({
       api: "/api/chat",
@@ -67,6 +70,20 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
     id: chatId,
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
+    onData: async (part) => {
+      if (part.type !== "data-chat-sync-required") return;
+
+      const response = await fetch(`/api/chats/${part.data.chatId}/messages`);
+      if (!response.ok) return;
+
+      const data: { data: CustomUIMessage[] } | { error: string } =
+        await response.json();
+      if ("error" in data) return;
+
+      const messages = data.data;
+
+      chatRef.current?.setMessages(messages);
+    },
   });
 
   const sendChatMessage = useCallback(

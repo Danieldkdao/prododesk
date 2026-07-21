@@ -30,7 +30,9 @@ export const SidebarChatItem = ({
               href={`/dashboard/ai/chat/${chat.id}`}
               className="min-w-0 flex-1 flex items-center gap-2"
             >
-              <MessageCircleIcon className="size-5" />
+              {state !== "expanded" && (isMobile || !isMobile) && (
+                <MessageCircleIcon className="size-5" />
+              )}
               <span className="flex-1 truncate">{chat.name}</span>
             </Link>
             {state === "expanded" && (isMobile || !isMobile) && (

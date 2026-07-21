@@ -13,3 +13,26 @@ export const modelIdEnum = pgEnum("model_ids", modelIds);
 
 export const toolCallResults = ["finished", "error"] as const;
 export type ToolCallResult = (typeof toolCallResults)[number];
+
+export const chatRunStatuses = [
+  "pending",
+  "streaming",
+  "awaiting-approval",
+  "running-tool",
+  "completed",
+  "failed",
+  "cancelled",
+] as const;
+export type ChatRunStatus = (typeof chatRunStatuses)[number];
+export const chatRunStatusEnum = pgEnum("chat_run_statuses", chatRunStatuses);
+
+export const toolExecutionStatuses = [
+  "pending",
+  "completed",
+  "failed",
+] as const;
+export type ToolExecutionStatus = (typeof toolExecutionStatuses)[number];
+export const ToolExecutionStatusEnum = pgEnum(
+  "tool_execution_statuses",
+  toolExecutionStatuses,
+);

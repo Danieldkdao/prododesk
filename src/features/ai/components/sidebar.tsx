@@ -11,13 +11,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatList } from "@/features/chats/components/chat-list";
 import { ChatSearchCommandDialog } from "@/features/chats/components/chat-search-command-dialog";
-import {
-  ArrowBigUpIcon,
-  CommandIcon,
-  EditIcon,
-  SearchIcon,
-} from "lucide-react";
-import Link from "next/link";
+import { NewChatButton } from "@/features/chats/components/new-chat-button";
+import { CommandIcon, SearchIcon } from "lucide-react";
 
 export const AISidebar = () => {
   return (
@@ -26,24 +21,7 @@ export const AISidebar = () => {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="New chat"
-                render={
-                  <Link
-                    href="/dashboard/ai/new"
-                    className="w-full min-w-0 flex items-center gap-2"
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <EditIcon />
-                      <span>New chat</span>
-                    </div>
-                    <Kbd className="text-sm">
-                      <CommandIcon className="size-4" />
-                      <ArrowBigUpIcon className="size-4" />O
-                    </Kbd>
-                  </Link>
-                }
-              />
+              <NewChatButton />
             </SidebarMenuItem>
             <SidebarMenuItem>
               <ChatSearchCommandDialog>

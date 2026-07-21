@@ -2,6 +2,11 @@ import { envServer } from "@/data/env/server";
 import { db } from "@/db/db";
 import { TaskTable } from "@/db/schema";
 import {
+  findToolExecutionDb,
+  insertToolExecutionDb,
+  updateToolExecutionDb,
+} from "@/features/chats/server/tool-executions";
+import {
   createTaskAction,
   deleteTaskAction,
   toggleTaskCompletionAction,
@@ -11,7 +16,9 @@ import { getCurrentUser } from "@/lib/auth/helpers";
 import { tool } from "ai";
 import { format, parse } from "date-fns";
 import { and, eq, ilike, inArray } from "drizzle-orm";
+import z from "zod";
 import {
+  runIdContextSchema,
   createTasksToolSchema,
   deleteTaskToolSchema,
   readTasksToolSchema,
@@ -22,7 +29,6 @@ import {
   toggleTasksCompletionStatusToolSchema,
   updateTaskToolSchema,
 } from "./schemas";
-import z from "zod";
 import { ChatToolSet, ToolName } from "./tool-contracts";
 
 const searchWebTool = tool({
@@ -145,8 +151,28 @@ const readTasksTool = tool({
 const createTasksTool = tool({
   description: "Allows you to create new tasks for the user.",
   inputSchema: createTasksToolSchema,
-  execute: async ({ tasks }): Promise<string> => {
+  contextSchema: runIdContextSchema,
+  execute: async ({ tasks }, { context, toolCallId }): Promise<string> => {
     if (!tasks.length) return "You submitted an empty array. Please try again.";
+
+    const existingExecution = await findToolExecutionDb(
+      context.runId,
+      toolCallId,
+    );
+    if (existingExecution?.status === "pending")
+      return "This execution is pending.";
+    if (existingExecution?.status === "completed")
+      return JSON.stringify(existingExecution.output) ?? "No output.";
+
+    const insertedToolExecution = await insertToolExecutionDb({
+      runId: context.runId,
+      toolCallId,
+      toolName: "createTasks",
+    });
+
+    if (!insertedToolExecution)
+      throw new Error("Failed to execute tool. Please try again.");
+
     const responses = await Promise.all(
       tasks.map((task) =>
         createTaskAction({
@@ -160,21 +186,51 @@ const createTasksTool = tool({
         }),
       ),
     );
-    if (responses.every((response) => !response.error)) {
-      return "Success! Tasks created successfully!";
-    } else {
-      throw new Error(
-        responses.at(0)?.message ??
-          "An error occurred. Unable to create all tasks.",
-      );
-    }
+
+    const isSuccess = responses.every((response) => !response.error);
+
+    const output = isSuccess
+      ? "Success! Tasks created successfully!"
+      : (responses.at(0)?.message ??
+        "An error occurred. Unable to create all tasks.");
+
+    await updateToolExecutionDb(
+      insertedToolExecution.runId,
+      insertedToolExecution.toolCallId,
+      { output, status: isSuccess ? "completed" : "failed" },
+    );
+
+    if (isSuccess) return output;
+    throw new Error(output);
   },
 });
 
 const updateTaskTool = tool({
   description: "Allows you to update ONE of the user's tasks.",
   inputSchema: updateTaskToolSchema,
-  execute: async ({ id, updateFields }) => {
+  contextSchema: runIdContextSchema,
+  execute: async (
+    { id, updateFields },
+    { context, toolCallId },
+  ): Promise<string> => {
+    const existingToolExecution = await findToolExecutionDb(
+      context.runId,
+      toolCallId,
+    );
+    if (existingToolExecution?.status === "pending")
+      return "This execution is pending.";
+    if (existingToolExecution?.status === "completed")
+      return JSON.stringify(existingToolExecution.output) ?? "No output";
+
+    const insertedToolExecution = await insertToolExecutionDb({
+      runId: context.runId,
+      toolCallId,
+      toolName: "updateTask",
+    });
+
+    if (!insertedToolExecution)
+      throw new Error("Failed to execute tool. Please try again.");
+
     const response = await updateTaskAction(id, {
       ...updateFields,
       range: {
@@ -182,29 +238,103 @@ const updateTaskTool = tool({
         to: undefined,
       },
     });
-    return response.message;
+
+    const output = response.message;
+
+    await updateToolExecutionDb(
+      insertedToolExecution.runId,
+      insertedToolExecution.toolCallId,
+      {
+        output,
+        status: response.error ? "failed" : "completed",
+      },
+    );
+
+    if (response.error) throw new Error(output);
+    return output;
   },
 });
 
 const toggleTasksCompletionStatusTool = tool({
   description: "Allows you to mark tasks as complete/uncomplete.",
   inputSchema: toggleTasksCompletionStatusToolSchema,
-  execute: async ({ ids }): Promise<string> => {
+  contextSchema: runIdContextSchema,
+  execute: async ({ ids }, { context, toolCallId }): Promise<string> => {
+    const existingToolExecution = await findToolExecutionDb(
+      context.runId,
+      toolCallId,
+    );
+    if (existingToolExecution?.status === "pending")
+      return "This execution is pending.";
+    if (existingToolExecution?.status === "completed")
+      return JSON.stringify(existingToolExecution.output) ?? "No output.";
+
+    const insertedToolExecution = await insertToolExecutionDb({
+      runId: context.runId,
+      toolCallId,
+      toolName: "toggleTasksCompletionStatus",
+    });
+    if (!insertedToolExecution)
+      throw new Error("Failed to execute tool. Please try again.");
+
     const responses = await Promise.all(
       ids.map((id) => toggleTaskCompletionAction(id)),
     );
-    if (responses.every((response) => !response.error))
-      return "Tasks updated successfully!";
-    else throw new Error("Something went wrong. Unable to update tasks.");
+
+    const isSuccess = responses.every((response) => !response.error);
+
+    const output = isSuccess
+      ? "Tasks updated successfully!"
+      : (responses.at(0)?.message ??
+        "Something went wrong. Unable to update tasks.");
+
+    await updateToolExecutionDb(context.runId, toolCallId, {
+      output,
+      status: isSuccess ? "completed" : "failed",
+    });
+
+    if (responses.every((response) => !response.error)) return output;
+    else throw new Error(output);
   },
 });
 
 const deleteTaskTool = tool({
   description: "Allows you to delete ONE of the user's tasks.",
   inputSchema: deleteTaskToolSchema,
-  execute: async ({ id }) => {
+  contextSchema: runIdContextSchema,
+  execute: async ({ id }, { context, toolCallId }): Promise<string> => {
+    const existingToolExecution = await findToolExecutionDb(
+      context.runId,
+      toolCallId,
+    );
+    if (existingToolExecution?.status === "pending")
+      return "This execution is pending.";
+    if (existingToolExecution?.status === "completed")
+      return JSON.stringify(existingToolExecution.output) ?? "No output.";
+
+    const insertedToolExecution = await insertToolExecutionDb({
+      runId: context.runId,
+      toolCallId,
+      toolName: "deleteTask",
+    });
+    if (!insertedToolExecution)
+      throw new Error("Failed to execute tool. Please try again.");
+
     const response = await deleteTaskAction(id);
-    return response.message;
+
+    const output = response.message;
+
+    await updateToolExecutionDb(
+      insertedToolExecution.runId,
+      insertedToolExecution.toolCallId,
+      {
+        output,
+        status: response.error ? "failed" : "completed",
+      },
+    );
+
+    if (response.error) throw new Error(output);
+    return output;
   },
 });
 

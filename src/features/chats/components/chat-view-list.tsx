@@ -464,6 +464,9 @@ export const ChatViewList = ({
                         We were unable to generate your output. Try again or
                         come back later if the issue persists.
                       </p>
+                      <p className="text-base text-destructive">
+                        {JSON.stringify(error.message)}
+                      </p>
                     </MessageContent>
                   </Message>
                 </MessageScrollerItem>
