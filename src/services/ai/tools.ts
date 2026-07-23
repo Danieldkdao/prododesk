@@ -3,7 +3,7 @@ import { db } from "@/db/db";
 import { TaskTable } from "@/db/schema";
 import {
   findToolExecutionDb,
-  insertToolExecutionDb,
+  upsertToolExecutionDb,
   updateToolExecutionDb,
 } from "@/features/chats/server/tool-executions";
 import {
@@ -30,11 +30,12 @@ import {
   updateTaskToolSchema,
 } from "./schemas";
 import { ChatToolSet, ToolName } from "./tool-contracts";
+import removeMd from "remove-markdown";
 
 const searchWebTool = tool({
   description: "Searches the web and returns search results.",
   inputSchema: searchWebToolSchema,
-  execute: async ({ query }) => {
+  execute: async ({ query }, { abortSignal }) => {
     const userId = await getCurrentUser();
     if (!userId)
       throw new Error(
@@ -50,6 +51,7 @@ const searchWebTool = tool({
           Authorization: `Bearer ${envServer.HACK_CLUB_AI_API_KEY}`,
         },
         body: JSON.stringify({ query, numResults: 5 }),
+        signal: abortSignal,
       },
     );
     const unparsedData = await response.json();
@@ -72,7 +74,7 @@ const searchWebTool = tool({
 const scrapeWebpageTool = tool({
   description: "Scrapes given webpage and returns clean information.",
   inputSchema: scrapeWebpageToolSchema,
-  execute: async ({ url }) => {
+  execute: async ({ url }, { abortSignal }) => {
     const userId = await getCurrentUser();
     if (!userId)
       throw new Error(
@@ -103,20 +105,25 @@ const scrapeWebpageTool = tool({
         redactPII: false,
         zeroDataRetention: false,
       }),
+      signal: abortSignal,
     });
     const unparsedData = await response.json();
     const { data, success } =
       scrapeWebpageToolValidationSchema.safeParse(unparsedData);
     if (!success) throw new Error("Invalid response data. Please try again.");
 
-    return data.data.markdown;
+    const normalText = removeMd(data.data.markdown);
+
+    return normalText;
   },
 });
 
 const readTasksTool = tool({
   description: "Allows you to read the user's tasks.",
   inputSchema: readTasksToolSchema,
-  execute: async ({ day, priorities, search }) => {
+  execute: async ({ day, priorities, search }, { abortSignal }) => {
+    abortSignal?.throwIfAborted();
+
     const { userId } = await getCurrentUser();
     if (!userId)
       throw new Error(
@@ -152,56 +159,76 @@ const createTasksTool = tool({
   description: "Allows you to create new tasks for the user.",
   inputSchema: createTasksToolSchema,
   contextSchema: runIdContextSchema,
-  execute: async ({ tasks }, { context, toolCallId }): Promise<string> => {
-    if (!tasks.length) return "You submitted an empty array. Please try again.";
+  execute: async (
+    { tasks },
+    { context, toolCallId, abortSignal },
+  ): Promise<string> => {
+    try {
+      if (!tasks.length)
+        throw new Error("You submitted an empty array. Please try again.");
 
-    const existingExecution = await findToolExecutionDb(
-      context.runId,
-      toolCallId,
-    );
-    if (existingExecution?.status === "pending")
-      return "This execution is pending.";
-    if (existingExecution?.status === "completed")
-      return JSON.stringify(existingExecution.output) ?? "No output.";
+      const existingExecution = await findToolExecutionDb(
+        context.runId,
+        toolCallId,
+      );
+      if (existingExecution?.status === "pending")
+        return "This execution is pending.";
+      if (existingExecution?.status === "completed")
+        return JSON.stringify(existingExecution.output) ?? "No output.";
 
-    const insertedToolExecution = await insertToolExecutionDb({
-      runId: context.runId,
-      toolCallId,
-      toolName: "createTasks",
-    });
+      const insertedToolExecution = await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "createTasks",
+      });
 
-    if (!insertedToolExecution)
-      throw new Error("Failed to execute tool. Please try again.");
+      if (!insertedToolExecution)
+        throw new Error("Failed to execute tool. Please try again.");
 
-    const responses = await Promise.all(
-      tasks.map((task) =>
-        createTaskAction({
-          ...task,
-          range: {
-            from: parse(task.range.from, "yyyy-MM-dd", new Date()),
-            to: task.range.to
-              ? parse(task.range.to, "yyyy-MM-dd", new Date())
-              : undefined,
-          },
+      const responses = await Promise.all(
+        tasks.map((task) => {
+          abortSignal?.throwIfAborted();
+          return createTaskAction({
+            ...task,
+            range: {
+              from: parse(task.range.from, "yyyy-MM-dd", new Date()),
+              to: task.range.to
+                ? parse(task.range.to, "yyyy-MM-dd", new Date())
+                : undefined,
+            },
+          });
         }),
-      ),
-    );
+      );
 
-    const isSuccess = responses.every((response) => !response.error);
+      const isSuccess = responses.every((response) => !response.error);
 
-    const output = isSuccess
-      ? "Success! Tasks created successfully!"
-      : (responses.at(0)?.message ??
-        "An error occurred. Unable to create all tasks.");
+      const output = isSuccess
+        ? "Success! Tasks created successfully!"
+        : (responses.at(0)?.message ??
+          "An error occurred. Unable to create all tasks.");
 
-    await updateToolExecutionDb(
-      insertedToolExecution.runId,
-      insertedToolExecution.toolCallId,
-      { output, status: isSuccess ? "completed" : "failed" },
-    );
+      await updateToolExecutionDb(
+        insertedToolExecution.runId,
+        insertedToolExecution.toolCallId,
+        { output, status: isSuccess ? "completed" : "failed" },
+      );
 
-    if (isSuccess) return output;
-    throw new Error(output);
+      if (isSuccess) return output;
+      throw new Error(output);
+    } catch (error) {
+      console.error(error);
+      const errorMessage = Error.isError(error)
+        ? error.message
+        : "Something went wrong. Please try again.";
+      await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "createTasks",
+        output: errorMessage,
+        status: "failed",
+      });
+      throw new Error(errorMessage);
+    }
   },
 });
 
@@ -211,47 +238,63 @@ const updateTaskTool = tool({
   contextSchema: runIdContextSchema,
   execute: async (
     { id, updateFields },
-    { context, toolCallId },
+    { context, toolCallId, abortSignal },
   ): Promise<string> => {
-    const existingToolExecution = await findToolExecutionDb(
-      context.runId,
-      toolCallId,
-    );
-    if (existingToolExecution?.status === "pending")
-      return "This execution is pending.";
-    if (existingToolExecution?.status === "completed")
-      return JSON.stringify(existingToolExecution.output) ?? "No output";
+    try {
+      const existingToolExecution = await findToolExecutionDb(
+        context.runId,
+        toolCallId,
+      );
+      if (existingToolExecution?.status === "pending")
+        return "This execution is pending.";
+      if (existingToolExecution?.status === "completed")
+        return JSON.stringify(existingToolExecution.output) ?? "No output";
 
-    const insertedToolExecution = await insertToolExecutionDb({
-      runId: context.runId,
-      toolCallId,
-      toolName: "updateTask",
-    });
+      const insertedToolExecution = await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "updateTask",
+      });
 
-    if (!insertedToolExecution)
-      throw new Error("Failed to execute tool. Please try again.");
+      if (!insertedToolExecution)
+        throw new Error("Failed to execute tool. Please try again.");
 
-    const response = await updateTaskAction(id, {
-      ...updateFields,
-      range: {
-        from: parse(updateFields.rangeFrom, "yyyy-MM-dd", new Date()),
-        to: undefined,
-      },
-    });
+      abortSignal?.throwIfAborted();
+      const response = await updateTaskAction(id, {
+        ...updateFields,
+        range: {
+          from: parse(updateFields.rangeFrom, "yyyy-MM-dd", new Date()),
+          to: undefined,
+        },
+      });
 
-    const output = response.message;
+      const output = response.message;
 
-    await updateToolExecutionDb(
-      insertedToolExecution.runId,
-      insertedToolExecution.toolCallId,
-      {
-        output,
-        status: response.error ? "failed" : "completed",
-      },
-    );
+      await updateToolExecutionDb(
+        insertedToolExecution.runId,
+        insertedToolExecution.toolCallId,
+        {
+          output,
+          status: response.error ? "failed" : "completed",
+        },
+      );
 
-    if (response.error) throw new Error(output);
-    return output;
+      if (response.error) throw new Error(output);
+      return output;
+    } catch (error) {
+      console.error(error);
+      const errorMessage = Error.isError(error)
+        ? error.message
+        : "Something went wrong. Please try again.";
+      await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "updateTask",
+        output: errorMessage,
+        status: "failed",
+      });
+      throw new Error(errorMessage);
+    }
   },
 });
 
@@ -259,42 +302,63 @@ const toggleTasksCompletionStatusTool = tool({
   description: "Allows you to mark tasks as complete/uncomplete.",
   inputSchema: toggleTasksCompletionStatusToolSchema,
   contextSchema: runIdContextSchema,
-  execute: async ({ ids }, { context, toolCallId }): Promise<string> => {
-    const existingToolExecution = await findToolExecutionDb(
-      context.runId,
-      toolCallId,
-    );
-    if (existingToolExecution?.status === "pending")
-      return "This execution is pending.";
-    if (existingToolExecution?.status === "completed")
-      return JSON.stringify(existingToolExecution.output) ?? "No output.";
+  execute: async (
+    { ids },
+    { context, toolCallId, abortSignal },
+  ): Promise<string> => {
+    try {
+      const existingToolExecution = await findToolExecutionDb(
+        context.runId,
+        toolCallId,
+      );
+      if (existingToolExecution?.status === "pending")
+        return "This execution is pending.";
+      if (existingToolExecution?.status === "completed")
+        return JSON.stringify(existingToolExecution.output) ?? "No output.";
 
-    const insertedToolExecution = await insertToolExecutionDb({
-      runId: context.runId,
-      toolCallId,
-      toolName: "toggleTasksCompletionStatus",
-    });
-    if (!insertedToolExecution)
-      throw new Error("Failed to execute tool. Please try again.");
+      const insertedToolExecution = await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "toggleTasksCompletionStatus",
+      });
+      if (!insertedToolExecution)
+        throw new Error("Failed to execute tool. Please try again.");
 
-    const responses = await Promise.all(
-      ids.map((id) => toggleTaskCompletionAction(id)),
-    );
+      const responses = await Promise.all(
+        ids.map((id) => {
+          abortSignal?.throwIfAborted();
+          return toggleTaskCompletionAction(id);
+        }),
+      );
 
-    const isSuccess = responses.every((response) => !response.error);
+      const isSuccess = responses.every((response) => !response.error);
 
-    const output = isSuccess
-      ? "Tasks updated successfully!"
-      : (responses.at(0)?.message ??
-        "Something went wrong. Unable to update tasks.");
+      const output = isSuccess
+        ? "Tasks updated successfully!"
+        : (responses.at(0)?.message ??
+          "Something went wrong. Unable to update tasks.");
 
-    await updateToolExecutionDb(context.runId, toolCallId, {
-      output,
-      status: isSuccess ? "completed" : "failed",
-    });
+      await updateToolExecutionDb(context.runId, toolCallId, {
+        output,
+        status: isSuccess ? "completed" : "failed",
+      });
 
-    if (responses.every((response) => !response.error)) return output;
-    else throw new Error(output);
+      if (responses.every((response) => !response.error)) return output;
+      else throw new Error(output);
+    } catch (error) {
+      console.error(error);
+      const errorMessage = Error.isError(error)
+        ? error.message
+        : "Something went wrong. Please try again.";
+      await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "toggleTasksCompletionStatus",
+        output: errorMessage,
+        status: "failed",
+      });
+      throw new Error(errorMessage);
+    }
   },
 });
 
@@ -302,39 +366,58 @@ const deleteTaskTool = tool({
   description: "Allows you to delete ONE of the user's tasks.",
   inputSchema: deleteTaskToolSchema,
   contextSchema: runIdContextSchema,
-  execute: async ({ id }, { context, toolCallId }): Promise<string> => {
-    const existingToolExecution = await findToolExecutionDb(
-      context.runId,
-      toolCallId,
-    );
-    if (existingToolExecution?.status === "pending")
-      return "This execution is pending.";
-    if (existingToolExecution?.status === "completed")
-      return JSON.stringify(existingToolExecution.output) ?? "No output.";
+  execute: async (
+    { id },
+    { context, toolCallId, abortSignal },
+  ): Promise<string> => {
+    try {
+      const existingToolExecution = await findToolExecutionDb(
+        context.runId,
+        toolCallId,
+      );
+      if (existingToolExecution?.status === "pending")
+        return "This execution is pending.";
+      if (existingToolExecution?.status === "completed")
+        return JSON.stringify(existingToolExecution.output) ?? "No output.";
 
-    const insertedToolExecution = await insertToolExecutionDb({
-      runId: context.runId,
-      toolCallId,
-      toolName: "deleteTask",
-    });
-    if (!insertedToolExecution)
-      throw new Error("Failed to execute tool. Please try again.");
+      const insertedToolExecution = await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "deleteTask",
+      });
+      if (!insertedToolExecution)
+        throw new Error("Failed to execute tool. Please try again.");
 
-    const response = await deleteTaskAction(id);
+      abortSignal?.throwIfAborted();
+      const response = await deleteTaskAction(id);
 
-    const output = response.message;
+      const output = response.message;
 
-    await updateToolExecutionDb(
-      insertedToolExecution.runId,
-      insertedToolExecution.toolCallId,
-      {
-        output,
-        status: response.error ? "failed" : "completed",
-      },
-    );
+      await updateToolExecutionDb(
+        insertedToolExecution.runId,
+        insertedToolExecution.toolCallId,
+        {
+          output,
+          status: response.error ? "failed" : "completed",
+        },
+      );
 
-    if (response.error) throw new Error(output);
-    return output;
+      if (response.error) throw new Error(output);
+      return output;
+    } catch (error) {
+      console.error(error);
+      const errorMessage = Error.isError(error)
+        ? error.message
+        : "Something went wrong. Please try again.";
+      await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "deleteTask",
+        output: errorMessage,
+        status: "failed",
+      });
+      throw new Error(errorMessage);
+    }
   },
 });
 

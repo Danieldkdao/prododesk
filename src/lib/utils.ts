@@ -35,3 +35,11 @@ export const areValidIds = (ids: string | string[]) => {
     return results.every(Boolean);
   }
 };
+
+export const formatMs = (ms: number) => {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${seconds % 60}s`;
+};

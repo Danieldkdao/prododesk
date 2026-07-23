@@ -1,5 +1,5 @@
 import { db } from "@/db/db";
-import { MessagePartTable } from "@/db/schema";
+import { ChatMessageTable, ChatRunTable, MessagePartTable } from "@/db/schema";
 import { revalidateChatCache } from "@/features/chats/server/cache/chats";
 import {
   findChatMessageDb,
@@ -10,6 +10,7 @@ import {
   findChatRunDb,
   insertChatRunDb,
   updateChatRunDb,
+  upsertChatRunDb,
 } from "@/features/chats/server/chat-runs";
 import { insertMessagePartDb } from "@/features/chats/server/message-parts";
 import { getCurrentUser } from "@/lib/auth/helpers";
@@ -18,22 +19,43 @@ import {
   INVALID_DATA_ERROR_MESSAGE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
-import { ModelId } from "@/services/ai/models";
+import { APIError } from "@/lib/errors";
+import { COMPACT_AFTER_TOKENS, estimateTokens } from "@/services/ai/helpers";
+import { ModelId } from "@/services/ai/model-ids";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { CHAT_INSTRUCTIONS } from "@/services/ai/prompts";
 import { tools } from "@/services/ai/tools";
 import { CustomUIMessage } from "@/services/ai/types";
 import {
+  consumeStream,
   createAgentUIStreamResponse,
   createUIMessageStream,
   createUIMessageStreamResponse,
   isToolUIPart,
+  pruneMessages,
   ToolLoopAgent,
 } from "ai";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {
+  let runId: string | null = null;
+
+  const data: {
+    id: string;
+    messages: CustomUIMessage[];
+    selectedModel?: ModelId;
+    chatId?: string;
+    trigger?: "regenerate-message";
+    assistantMessageId?: string;
+  } = await req.json();
+
+  const { messages, selectedModel, chatId, trigger, assistantMessageId } = data;
+
+  const isRegenerating = trigger === "regenerate-message";
+
+  const latestUserMessage = messages.findLast((msg) => msg.role === "user");
+
   const { userId } = await getCurrentUser();
   if (!userId) {
     return NextResponse.json(
@@ -42,30 +64,19 @@ export const POST = async (req: Request) => {
     );
   }
 
-  // todo: maybe implement credit system later?
-
-  const {
-    messages,
-    selectedModel,
-    chatId,
-  }: { messages: CustomUIMessage[]; selectedModel?: ModelId; chatId?: string } =
-    await req.json();
-
-  if (!selectedModel || !chatId) {
-    return NextResponse.json(
-      { error: INVALID_DATA_ERROR_MESSAGE },
-      { status: 400 },
-    );
-  }
-
-  const latestUserMessage = messages.findLast((msg) => msg.role === "user");
-
-  if (!latestUserMessage)
-    return NextResponse.json({ error: "No user message." }, { status: 400 });
-
-  let runId: string | null = null;
-
   try {
+    // todo: maybe implement credit system later?
+
+    if (isRegenerating && !assistantMessageId) {
+      throw new APIError(INVALID_DATA_ERROR_MESSAGE, 400);
+    }
+
+    if (!selectedModel || !chatId) {
+      throw new APIError(INVALID_DATA_ERROR_MESSAGE, 400);
+    }
+
+    if (!latestUserMessage) throw new APIError("No user message", 400);
+
     const insertedChatRun = await insertChatRunDb({
       chatId,
       userMessageClientId: latestUserMessage.id,
@@ -91,7 +102,7 @@ export const POST = async (req: Request) => {
         );
 
         if (!insertedMessage)
-          throw new Error("Failed to insert user chat message.");
+          throw new APIError("Failed to insert user chat message.");
 
         const insertedPart = await insertMessagePartDb(
           {
@@ -105,7 +116,7 @@ export const POST = async (req: Request) => {
           tx,
         );
 
-        if (!insertedPart) throw new Error("Failed to insert message part.");
+        if (!insertedPart) throw new APIError("Failed to insert message part.");
 
         revalidateChatCache(userId, insertedMessage.chatId);
       });
@@ -116,7 +127,7 @@ export const POST = async (req: Request) => {
       });
 
       if (!existingChatRun)
-        throw new Error("Failed to find existing chat run.");
+        throw new APIError("Failed to find existing chat run.");
 
       runId = existingChatRun.id;
 
@@ -124,33 +135,24 @@ export const POST = async (req: Request) => {
         case "pending":
         case "streaming":
         case "running-tool":
-          return Response.json(
-            { error: "This message is already being processed." },
-            { status: 409 },
-          );
+          throw new APIError("This message is already being processed.", 409);
         case "awaiting-approval":
           runId = existingChatRun.id;
           break;
         case "completed":
           if (!existingChatRun.assistantMessageId)
-            return NextResponse.json(
-              {
-                error:
-                  "Completed run does not have assistant message attached.",
-              },
-              { status: 500 },
+            throw new APIError(
+              "Completed run does not have assistant message attached.",
             );
           const existingMessage = await findChatMessageDb(
             existingChatRun.assistantMessageId,
           );
           if (!existingMessage)
-            return NextResponse.json(
-              {
-                error:
-                  "Completed run does not have assistant message attached.",
-              },
-              { status: 500 },
+            throw new APIError(
+              "Completed run does not have assistant message attached.",
             );
+
+          if (isRegenerating) break;
 
           const clientAlreadyHasResponse = messages.some(
             (msg) => msg.id === existingMessage.clientMessageId,
@@ -178,26 +180,24 @@ export const POST = async (req: Request) => {
           return createUIMessageStreamResponse({ stream });
         case "cancelled":
         case "failed":
-          return NextResponse.json({
-            error: "This response already failed. Please try a new message.",
-          });
+          break;
         default:
-          throw new Error(
+          throw new APIError(
             `Unknown chat run status: ${existingChatRun.status satisfies never}`,
           );
       }
     }
 
     if (!runId) {
-      return NextResponse.json(
-        { error: "Failed to log chat run." },
-        { status: 500 },
-      );
+      throw new APIError("Failed to log chat run.");
     }
+
+    let responseTimeMs = 0;
 
     const chatAgent = new ToolLoopAgent({
       model: openrouter(selectedModel),
       instructions: CHAT_INSTRUCTIONS(selectedModel),
+      temperature: 0.4,
       tools,
       toolsContext: {
         createTasks: {
@@ -219,6 +219,34 @@ export const POST = async (req: Request) => {
         updateTask: "user-approval",
         toggleTasksCompletionStatus: "user-approval",
       },
+      timeout: {
+        totalMs: 120_000,
+        stepMs: 60_000,
+        chunkMs: 30_000,
+        toolMs: 15_000,
+        tools: {
+          searchWebMs: 30_000,
+          scrapeWebpageMs: 60_000,
+          readTasksMs: 10_000,
+          createTasksMs: 30_000,
+          updateTaskMs: 20_000,
+          deleteTaskMs: 15_000,
+          toggleTasksCompletionStatusMs: 30_000,
+          getCurrentTimeMs: 2_000,
+        },
+      },
+      prepareStep: ({ messages }) => {
+        if (estimateTokens(messages) > COMPACT_AFTER_TOKENS) {
+          return {
+            messages: pruneMessages({
+              messages,
+              reasoning: "all",
+              toolCalls: "before-last-3-messages",
+              emptyMessages: "remove",
+            }),
+          };
+        }
+      },
       onToolExecutionEnd: async () => {
         if (runId) {
           await updateChatRunDb(runId, {
@@ -226,17 +254,24 @@ export const POST = async (req: Request) => {
           });
         }
       },
+      onStepEnd: ({ performance }) => {
+        responseTimeMs += performance.stepTimeMs;
+      },
     });
 
     return createAgentUIStreamResponse({
       agent: chatAgent,
       uiMessages: messages,
+      abortSignal: req.signal,
       generateMessageId: () => crypto.randomUUID(),
       messageMetadata: ({ part }) => {
         if (part.type === "finish") {
           return {
             modelId: selectedModel,
+            chatId,
             createdAt: new Date(),
+            responseTimeMs: Math.round(responseTimeMs),
+            responseToClientId: latestUserMessage.id,
           };
         }
       },
@@ -247,16 +282,21 @@ export const POST = async (req: Request) => {
         return errorMessage;
       },
       onEnd: async ({ responseMessage, isAborted }) => {
-        if (isAborted || !runId) return;
+        if (!runId || !responseMessage?.id) return;
 
         const hasPendingApproval = responseMessage.parts.some(
           (part) => isToolUIPart(part) && part.state === "approval-requested",
         );
 
+        const roundedRTM = Math.round(responseTimeMs);
+
         if (hasPendingApproval) {
           await updateChatRunDb(runId, {
             status: "awaiting-approval",
+            responseTimeMs: sql`${ChatRunTable.responseTimeMs} + ${roundedRTM}`,
           });
+
+          revalidateChatCache(userId, chatId);
 
           return;
         }
@@ -267,7 +307,8 @@ export const POST = async (req: Request) => {
               chatId,
               role: "assistant",
               modelId: selectedModel,
-              clientMessageId: responseMessage.id,
+              clientMessageId: assistantMessageId ?? responseMessage.id,
+              responseToClientId: latestUserMessage.id,
             },
             tx,
           );
@@ -276,43 +317,134 @@ export const POST = async (req: Request) => {
             .delete(MessagePartTable)
             .where(eq(MessagePartTable.messageId, insertedMessage.id));
 
-          await tx.insert(MessagePartTable).values(
-            responseMessage.parts.map((part, order) => ({
-              messageId: insertedMessage.id,
-              order,
-              part,
-            })),
-          );
+          if (responseMessage.parts.length > 0) {
+            await tx.insert(MessagePartTable).values(
+              responseMessage.parts.map((part, order) => ({
+                messageId: insertedMessage.id,
+                order,
+                part,
+              })),
+            );
+          }
 
           if (runId) {
             await updateChatRunDb(
               runId,
               {
-                status: "completed",
+                status: isAborted ? "cancelled" : "completed",
                 assistantMessageId: insertedMessage.id,
-                finishedAt: new Date(),
+                finishedAt: isAborted ? null : new Date(),
+                responseTimeMs: isRegenerating
+                  ? roundedRTM
+                  : sql`${ChatRunTable.responseTimeMs} + ${roundedRTM}`,
               },
               tx,
             );
           }
+          responseTimeMs = 0;
+
+          revalidateChatCache(userId, chatId);
         });
       },
+      consumeSseStream: consumeStream,
     });
   } catch (error) {
     console.error(error);
 
-    const errorMessage = Error.isError(error)
-      ? error.message
-      : "Something went wrong during generation. Please try again.";
+    let errorMessage: string = GENERAL_ERROR_MESSAGE;
+    let status: number = 500;
 
-    if (runId) {
-      await updateChatRunDb(runId, {
-        status: "failed",
-        error: errorMessage,
-        finishedAt: new Date(),
-      });
-    }
+    errorMessage =
+      error instanceof Error ? error.message : GENERAL_ERROR_MESSAGE;
+    status = error instanceof APIError ? error.status : 500;
 
-    return NextResponse.json({ error: GENERAL_ERROR_MESSAGE }, { status: 500 });
+    const userMessageClientId = latestUserMessage?.id;
+    let assistantMessageClientId: string | null = null;
+
+    await db.transaction(async (tx) => {
+      if (chatId && selectedModel && userMessageClientId) {
+        const userMessageId = (
+          await upsertChatMessageDb(
+            {
+              chatId,
+              clientMessageId: userMessageClientId,
+              modelId: selectedModel,
+              role: "user",
+            },
+            tx,
+          )
+        ).id;
+        await insertMessagePartDb(
+          {
+            messageId: userMessageId,
+            order: 0,
+            part: {
+              type: "text",
+              text:
+                latestUserMessage?.parts
+                  .filter((part) => part.type === "text")
+                  .map((part) => part.text)
+                  .join(" ") ?? "",
+            },
+          },
+          tx,
+        );
+
+        const existingAssistantResponse =
+          await tx.query.ChatMessageTable.findFirst({
+            where: and(
+              eq(ChatMessageTable.role, "assistant"),
+              eq(ChatMessageTable.chatId, chatId),
+              eq(ChatMessageTable.responseToClientId, userMessageClientId),
+              eq(ChatMessageTable.modelId, selectedModel),
+            ),
+          });
+        console.log(existingAssistantResponse);
+        if (existingAssistantResponse) {
+          assistantMessageClientId = existingAssistantResponse.id;
+        } else {
+          const insertedChatMessage = await insertChatMessageDb(
+            {
+              chatId,
+              clientMessageId: crypto.randomUUID(),
+              modelId: selectedModel,
+              role: "assistant",
+              responseToClientId: userMessageClientId,
+            },
+            tx,
+          );
+          assistantMessageClientId = insertedChatMessage?.id;
+        }
+      }
+
+      if (runId) {
+        await updateChatRunDb(
+          runId,
+          {
+            status: "failed",
+            error: errorMessage,
+            finishedAt: new Date(),
+          },
+          tx,
+        );
+      }
+      if (chatId && userMessageClientId) {
+        await upsertChatRunDb(
+          {
+            chatId,
+            userMessageClientId: userMessageClientId,
+            assistantMessageId: assistantMessageClientId,
+            status: "failed",
+            error: errorMessage,
+            finishedAt: new Date(),
+          },
+          tx,
+        );
+
+        revalidateChatCache(userId, chatId);
+      }
+    });
+
+    return NextResponse.json(errorMessage, { status });
   }
 };

@@ -4,6 +4,7 @@ import {
   ChatRunSelectType,
   ChatRunTable,
 } from "@/db/schema";
+import { SQLUpdateMap } from "@/lib/types";
 import { and, eq } from "drizzle-orm";
 
 export const insertChatRunDb = async (
@@ -19,12 +20,34 @@ export const insertChatRunDb = async (
   return insertedChatRun ?? null;
 };
 
+export const upsertChatRunDb = async (
+  chatRun: ChatRunInsertType,
+  tx?: DbTransaction,
+) => {
+  const [upsertedChatRun] = await (tx ?? db)
+    .insert(ChatRunTable)
+    .values(chatRun)
+    .onConflictDoUpdate({
+      target: [ChatRunTable.chatId, ChatRunTable.userMessageClientId],
+      set: chatRun,
+    })
+    .returning();
+
+  return upsertedChatRun ?? null;
+};
+
 export const updateChatRunDb = async (
   runId: string,
-  chatRun: Partial<
-    Pick<
-      ChatRunSelectType,
-      "assistantMessageId" | "status" | "finishedAt" | "error"
+  chatRun: SQLUpdateMap<
+    Partial<
+      Pick<
+        ChatRunSelectType,
+        | "assistantMessageId"
+        | "status"
+        | "finishedAt"
+        | "error"
+        | "responseTimeMs"
+      >
     >
   >,
   tx?: DbTransaction,

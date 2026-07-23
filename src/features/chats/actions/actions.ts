@@ -92,6 +92,7 @@ export const getChatAction = async (userId: string, chatId: string) => {
       messages: {
         orderBy: asc(ChatMessageTable.createdAt),
         with: {
+          chatRun: true,
           parts: {
             orderBy: asc(MessagePartTable.order),
           },

@@ -1,6 +1,9 @@
-import { ToolName } from "@/services/ai/tool-contracts";
+import { ChatTools, ToolName } from "@/services/ai/tool-contracts";
+import { ChatDataParts } from "@/services/ai/types";
+import { getToolName, isToolUIPart, UIMessagePart } from "ai";
 import {
   BookOpenIcon,
+  BrainIcon,
   ClockIcon,
   EditIcon,
   ListChecksIcon,
@@ -84,4 +87,27 @@ export const getApprovalReason = (input: unknown) => {
   }
 
   return "This action needs your approval.";
+};
+
+export const formatCurrentAction = (
+  part: UIMessagePart<ChatDataParts, ChatTools> | undefined,
+) => {
+  const defaultData = {
+    icon: BrainIcon,
+    text: "Thinking",
+  };
+  if (!part || part.type === "reasoning") return defaultData;
+
+  if (isToolUIPart(part)) {
+    const toolName = getToolName(part) as ToolName;
+
+    const { finished, icon } = formatToolNameForChat(toolName);
+
+    return {
+      icon,
+      text: finished.at(0)?.toUpperCase() + finished.slice(1),
+    };
+  }
+
+  return defaultData;
 };

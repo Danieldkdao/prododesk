@@ -1,6 +1,7 @@
 import { db, DbTransaction } from "@/db/db";
 import { ChatMessageInsertType, ChatMessageTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { revalidateChatCache } from "./cache/chats";
 
 export const findChatMessageDb = async (messageId: string) => {
   return (

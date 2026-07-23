@@ -10,11 +10,13 @@ import { CustomUIMessage } from "@/services/ai/types";
 import { asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-export const POST = async (
+export const GET = async (
   req: Request,
   ctx: RouteContext<"/api/chats/[chatId]/messages">,
 ) => {
   const { chatId } = await ctx.params;
+
+  console.log();
 
   const { userId } = await getCurrentUser();
   if (!userId)

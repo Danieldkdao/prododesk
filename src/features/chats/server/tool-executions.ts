@@ -6,7 +6,7 @@ import {
 } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 
-export const insertToolExecutionDb = async (
+export const upsertToolExecutionDb = async (
   toolExecution: ToolExecutionInsertType,
   tx?: DbTransaction,
 ) => {
@@ -15,10 +15,7 @@ export const insertToolExecutionDb = async (
     .values(toolExecution)
     .onConflictDoUpdate({
       target: [ToolExecutionTable.runId, ToolExecutionTable.toolCallId],
-      set: {
-        status: "pending",
-        output: null,
-      },
+      set: toolExecution,
     })
     .returning();
 

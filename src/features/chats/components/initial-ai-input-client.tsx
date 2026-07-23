@@ -17,6 +17,7 @@ import { createChatAction } from "../actions/actions";
 import { ChatMessageSchemaType } from "../actions/schemas";
 import { PendingChatMessagesView } from "./pending-chat-messages-view";
 import { ChatHeader } from "../chat-header";
+import { useAbortableAction } from "@/hooks/use-abortable-action";
 
 const recommendedPrompts = [
   "What are my tasks for today?",
@@ -39,6 +40,8 @@ export const InitialAIInputClient = () => {
   const router = useRouter();
   const { sendQueuedMessage } = useChatProvider();
 
+  const abortableCreateChatAction = useAbortableAction(createChatAction);
+
   const handleSubmit = async () => {
     const submittedPrompt = prompt.trim();
 
@@ -55,7 +58,7 @@ export const InitialAIInputClient = () => {
         selectedModel: selectedModel.id,
       };
 
-      const response = await createChatAction(newChatMessage);
+      const response = await abortableCreateChatAction.run(newChatMessage);
       if (response.error || !response.chat) {
         toast.error(response.message);
         setPendingPrompt(null);
@@ -122,6 +125,10 @@ export const InitialAIInputClient = () => {
         isPending={isPending}
         selectedModel={selectedModel}
         onSelectedModelChange={setSelectedModel}
+        onStop={() => {
+          abortableCreateChatAction.abort();
+          setIsCreating(false);
+        }}
         className={isPending && selectedModel ? "max-w-400" : "max-w-6xl"}
       />
     </div>

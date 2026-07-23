@@ -1,65 +1,97 @@
 import {
-  siDeepseek,
-  siGooglegemini,
-  siMinimax,
-  SimpleIcon,
-  siQwen,
-  siZdotai,
-} from "simple-icons";
+  OpenAI,
+  Grok,
+  Claude,
+  Gemini,
+  DeepSeek,
+  Qwen,
+  ZAI,
+  Minimax,
+  IconType,
+} from "@lobehub/icons";
+import { ModelId } from "./model-ids";
 
-const modelIds = [
-  "deepseek/deepseek-v4-pro",
-  "qwen/qwen3.6-35b-a3b",
-  "z-ai/glm-5.2",
-  "minimax/minimax-m3",
-  "google/gemini-3.1-flash-lite",
-] as const;
-type ModelId = (typeof modelIds)[number];
+type LLMModelKind = "fast-cost-efficient" | "most-powerful";
 
 type LLMModel = {
   name: string;
   id: ModelId;
-  description: string;
-  logo: SimpleIcon;
+  logo: IconType;
+  kind: LLMModelKind;
+  logoColor?: string;
 };
 
 const models = [
   {
-    name: "DeepSeek V4 Pro",
-    id: "deepseek/deepseek-v4-pro" as const,
-    description: "Best for complex reasoning and demanding workflows.",
-    logo: siDeepseek,
+    name: "GPT-5.6 Sol",
+    id: "openai/gpt-5.6-sol" as const,
+    kind: "most-powerful" as const,
+    logo: OpenAI,
+    logoColor: OpenAI.colorPrimary,
   },
   {
-    name: "Qwen 3.6 35B A3B",
-    id: "qwen/qwen3.6-35b-a3b" as const,
-    description: "Best for fast multimodal tasks and tool use.",
-    logo: siQwen,
+    name: "Claude Opus 4.8",
+    id: "anthropic/claude-opus-4.8" as const,
+    kind: "most-powerful" as const,
+    logo: Claude,
+    logoColor: Claude.colorPrimary,
+  },
+  {
+    name: "Gemini 3.1 Pro Preview",
+    id: "google/gemini-3.1-pro-preview" as const,
+    kind: "most-powerful" as const,
+    logo: Gemini.Color,
+  },
+  {
+    name: "Grok 4.5",
+    id: "x-ai/grok-4.5" as const,
+    kind: "most-powerful" as const,
+    logo: Grok,
+    logoColor: Grok.colorPrimary,
+  },
+  {
+    name: "DeepSeek V4 Pro",
+    id: "deepseek/deepseek-v4-pro" as const,
+    logo: DeepSeek.Color,
+    kind: "fast-cost-efficient",
+  },
+  {
+    name: "Qwen 3.7 Plus",
+    id: "qwen/qwen3.7-plus" as const,
+    logo: Qwen.Color,
+    kind: "fast-cost-efficient",
   },
   {
     name: "GLM-5.2",
     id: "z-ai/glm-5.2" as const,
-    description: "Best for long-running agents and automation.",
-    logo: siZdotai,
+    logo: ZAI,
+    kind: "fast-cost-efficient",
   },
   {
     name: "MiniMax M3",
     id: "minimax/minimax-m3" as const,
-    description: "Best for large-context and multimodal workflows.",
-    logo: siMinimax,
+    logo: Minimax.Color,
+    kind: "fast-cost-efficient",
   },
   {
     name: "Gemini 3.1 Flash Lite",
     id: "google/gemini-3.1-flash-lite" as const,
-    description: "Best for fast, affordable multimodal tasks.",
-    logo: siGooglegemini,
+    logo: Gemini.Color,
+    kind: "fast-cost-efficient",
   },
 ] satisfies LLMModel[];
+
+export const mostPowerfulModels = models.filter(
+  (m) => m.kind === "most-powerful",
+);
+export const fastCostEfficientModels = models.filter(
+  (m) => m.kind === "fast-cost-efficient",
+);
 
 const getModelInfo = (modelId?: ModelId | null | undefined) => {
   if (!modelId) return null;
   return models.find((model) => model.id === modelId) ?? null;
 };
 
-export { getModelInfo, modelIds, models };
-export type { LLMModel, ModelId };
+export { getModelInfo, models };
+export type { LLMModel };

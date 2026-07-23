@@ -18,12 +18,17 @@ export const ChatView = ({ chat }: { chat: GetChatActionReturnType }) => {
 
   const persistedMessages: CustomUIMessage[] = useMemo(() => {
     return chat.messages.map((msg) => ({
-      id: msg.id,
+      id: msg.clientMessageId,
       role: msg.role,
       parts: msg.parts.map(({ part }) => part),
       metadata: {
         createdAt: msg.createdAt,
         modelId: msg.modelId,
+        chatId: msg.chatId,
+        runError: msg.chatRun?.error,
+        responseTimeMs: msg.chatRun?.responseTimeMs,
+        runStatus: msg.chatRun?.status,
+        responseToClientId: msg.responseToClientId,
       },
     })) as unknown as CustomUIMessage[];
   }, [chat.messages]);

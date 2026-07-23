@@ -38,6 +38,12 @@ const MarkdownLink = ({
   </a>
 );
 
+export const markdownAnimateOptions = {
+  animation: "blurIn",
+  duration: 250,
+  easing: "ease-out",
+} as const;
+
 export const MarkdownRenderer = ({
   children,
   className,

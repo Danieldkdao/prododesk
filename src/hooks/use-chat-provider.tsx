@@ -1,10 +1,12 @@
 "use client";
 
-import { ModelId } from "@/services/ai/models";
+import { SetterType } from "@/lib/types";
+import { ModelId } from "@/services/ai/model-ids";
 import { CustomUIMessage } from "@/services/ai/types";
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
+  generateId,
   lastAssistantMessageIsCompleteWithApprovalResponses,
 } from "ai";
 import { usePathname } from "next/navigation";
@@ -37,6 +39,8 @@ type ChatProviderContextType = ReturnType<typeof useChat<CustomUIMessage>> & {
   selectedModel: ModelId | null;
   queuedMessage: QueuedMessage;
   sendQueuedMessage: (message: QueuedMessage) => void;
+  cancelledMessageIds: Set<string>;
+  setCancelledMessageIds: SetterType<Set<string>>;
 };
 
 const ChatProviderContext = createContext<ChatProviderContextType | null>(null);
@@ -51,6 +55,9 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
 
   const chatId = routeChatId ?? "pending-chat";
 
+  const [cancelledMessageIds, setCancelledMessageIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [queuedMessage, setQueuedMessage] = useState<QueuedMessage>(null);
   const [selectedModel, setSelectedModel] = useState<ModelId | null>(null);
 
@@ -83,6 +90,26 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
       const messages = data.data;
 
       chatRef.current?.setMessages(messages);
+    },
+    onError: (error) => {
+      chatRef.current?.setMessages([
+        ...(chatRef.current.messages ?? []),
+        {
+          id: generateId(),
+          parts: [],
+          role: "assistant",
+          metadata: { runStatus: "failed", runError: error.message },
+        },
+      ]);
+    },
+    onFinish: ({ message, isAbort }) => {
+      if (!isAbort) return;
+
+      setCancelledMessageIds((current) => {
+        const next = new Set(current);
+        next.add(message.id);
+        return next;
+      });
     },
   });
 
@@ -117,6 +144,10 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    chatRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
     if (!queuedMessage || queuedMessage.chatId !== data.id) return;
 
     const message = queuedMessage;
@@ -133,6 +164,8 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
         selectedModel,
         queuedMessage,
         sendQueuedMessage,
+        cancelledMessageIds,
+        setCancelledMessageIds,
       }}
     >
       {children}

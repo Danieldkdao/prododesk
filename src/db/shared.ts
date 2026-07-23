@@ -1,4 +1,4 @@
-import { modelIds } from "@/services/ai/models";
+import { modelIds } from "@/services/ai/model-ids";
 import { pgEnum } from "drizzle-orm/pg-core";
 
 export const taskPriorities = ["low", "medium", "high", "urgent"] as const;

@@ -1,4 +1,5 @@
-import { getModelInfo, ModelId } from "./models";
+import { getModelInfo } from "./models";
+import { ModelId } from "./model-ids";
 
 export const GENERATE_CHAT_NAME_INSTRUCTIONS = `
 Generate a concise title for a conversation based on the user's first message.
@@ -94,4 +95,9 @@ Never use vague approval reasons such as "This requires approval" or
 input and must not describe actions absent from that input.
 
 Try to be efficient and keep the tool calls to the minimum amount that gets the best output.
+
+Do not repeat sentences or phrases.
+Once the requested answer is complete, stop generating.
+
+Be very confident with your answer. If you really need to double check, do it ONCE and then move on and return the output.
 `.trim();

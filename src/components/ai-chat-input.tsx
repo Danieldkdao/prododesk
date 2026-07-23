@@ -1,18 +1,22 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { LLMModel, models } from "@/services/ai/models";
-import { PlusIcon, SendIcon } from "lucide-react";
+import {
+  fastCostEfficientModels,
+  LLMModel,
+  mostPowerfulModels,
+} from "@/services/ai/models";
+import { PlusIcon, SendIcon, SquareIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { SimpleIcon } from "./simple-icon";
 import { TooltipWrapper } from "./tooltip-wrapper";
 import { Button } from "./ui/button";
-import { LoadingSwap } from "./ui/loading-swap";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
@@ -31,6 +35,7 @@ export const AIChatInput = ({
   selectedModel,
   onSelectedModelChange,
   onSubmit,
+  onStop,
   isPending = false,
   className,
 }: {
@@ -39,6 +44,7 @@ export const AIChatInput = ({
   selectedModel: LLMModel | null;
   onSelectedModelChange: (modelId: LLMModel | null) => void;
   onSubmit: () => void;
+  onStop: () => void;
   isPending?: boolean;
   className?: string;
 }) => {
@@ -156,7 +162,10 @@ export const AIChatInput = ({
             <SelectValue>
               {selectedModel ? (
                 <div className="flex items-center gap-2">
-                  <SimpleIcon {...selectedModel.logo} />
+                  <selectedModel.logo
+                    color={selectedModel.logoColor}
+                    className="size-5"
+                  />
                   <span>{selectedModel.name}</span>
                 </div>
               ) : (
@@ -165,35 +174,49 @@ export const AIChatInput = ({
             </SelectValue>
           </SelectTrigger>
           <SelectContent dynamicWidth className="border">
-            {models.map((model) => (
-              <SelectItem
-                key={model.id}
-                value={model}
-                className="max-w-84 w-full items-start whitespace-normal"
-              >
-                <SimpleIcon {...model.logo} className="mt-0.5" />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="whitespace-normal font-medium text-base">
-                    {model.name}
-                  </span>
-
-                  <p className="whitespace-normal wrap-break-word text-sm leading-4 text-muted-foreground">
-                    {model.description}
-                  </p>
-                </div>
-              </SelectItem>
-            ))}
+            <SelectGroup>
+              <SelectLabel>Most Powerful</SelectLabel>
+              {mostPowerfulModels.map((model) => (
+                <SelectItem
+                  key={model.id}
+                  value={model}
+                  className="max-w-84 w-full items-start whitespace-normal"
+                >
+                  <div className="flex items-center gap-2">
+                    <model.logo color={model.logoColor} className="size-5" />
+                    <span className="whitespace-normal font-medium text-base">
+                      {model.name}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Fast & Cost Efficient</SelectLabel>
+              {fastCostEfficientModels.map((model) => (
+                <SelectItem
+                  key={model.id}
+                  value={model}
+                  className="max-w-84 w-full items-start whitespace-normal"
+                >
+                  <div className="flex items-center gap-2">
+                    <model.logo color={model.logoColor} className="size-5" />
+                    <span className="whitespace-normal font-medium text-base">
+                      {model.name}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
         <Button
           type="button"
           size="icon-sm"
-          disabled={!value.trim().length || isPending || !selectedModel}
-          onClick={onSubmit}
+          disabled={!isPending && (!value.trim().length || !selectedModel)}
+          onClick={isPending ? onStop : onSubmit}
         >
-          <LoadingSwap isLoading={isPending}>
-            <SendIcon />
-          </LoadingSwap>
+          {isPending ? <SquareIcon /> : <SendIcon />}
         </Button>
       </motion.div>
     </motion.div>

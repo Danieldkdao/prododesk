@@ -1,8 +1,15 @@
-import { pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
-import { createdAt, id, updatedAt } from "../helpers";
-import { ChatTable } from "./chat";
-import { chatRunStatusEnum } from "../shared";
 import { relations } from "drizzle-orm";
+import {
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { createdAt, id, updatedAt } from "../helpers";
+import { chatRunStatusEnum } from "../shared";
+import { ChatTable } from "./chat";
 import { ChatMessageTable } from "./chat-message";
 
 export const ChatRunTable = pgTable(
@@ -17,6 +24,7 @@ export const ChatRunTable = pgTable(
       () => ChatMessageTable.id,
       { onDelete: "set null" },
     ),
+    responseTimeMs: integer("response_time_ms").default(0).notNull(),
     status: chatRunStatusEnum("status").default("pending").notNull(),
     error: text("error"),
     startedAt: timestamp("started_at", { withTimezone: true }).defaultNow(),

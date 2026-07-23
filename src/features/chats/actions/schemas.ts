@@ -1,4 +1,4 @@
-import { modelIds } from "@/services/ai/models";
+import { modelIds } from "@/services/ai/model-ids";
 import z from "zod";
 
 export const chatMessageSchema = z.object({

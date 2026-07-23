@@ -1,7 +1,6 @@
 "use client";
 
 import { AILoadingAnimation } from "@/components/ai-loading-animation";
-import { SimpleIcon } from "@/components/simple-icon";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import {
   Message,
@@ -18,9 +17,9 @@ import {
 } from "@/components/ui/message-scroller";
 import { TextShimmer } from "@/components/ui/text-shimmer";
 import { UserAvatar } from "@/components/user-avatar";
-import { ModelId } from "@/services/ai/models";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { getModelInfo } from "@/services/ai/models";
+import { ModelId } from "@/services/ai/model-ids";
 
 export const PendingChatMessagesView = ({
   prompt,
@@ -59,7 +58,10 @@ export const PendingChatMessagesView = ({
                 <MessageAvatar>
                   <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
                     {modelInfo ? (
-                      <SimpleIcon {...modelInfo.logo} />
+                      <modelInfo.logo
+                        color={modelInfo.logoColor}
+                        className="size-5"
+                      />
                     ) : (
                       <span className="text-base font-medium text-muted-foreground">
                         AI

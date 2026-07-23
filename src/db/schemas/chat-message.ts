@@ -16,11 +16,16 @@ export const ChatMessageTable = pgTable(
     role: chatRoleEnum("role").notNull(),
     modelId: modelIdEnum("model_id").notNull(),
     clientMessageId: text("client_message_id").notNull(),
+    responseToClientId: text("response_to_client_id"),
     createdAt,
     updatedAt,
   },
   (t) => [
     unique("chat_message_client_id_unique").on(t.chatId, t.clientMessageId),
+    unique("chat_message_response_id_unique").on(
+      t.chatId,
+      t.responseToClientId,
+    ),
   ],
 );
 
@@ -35,6 +40,6 @@ export const chatMessageRelations = relations(
       references: [ChatTable.id],
     }),
     parts: many(MessagePartTable),
-    chatRuns: many(ChatRunTable),
+    chatRun: one(ChatRunTable),
   }),
 );
