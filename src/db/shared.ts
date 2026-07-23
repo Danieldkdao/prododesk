@@ -36,3 +36,7 @@ export const ToolExecutionStatusEnum = pgEnum(
   "tool_execution_statuses",
   toolExecutionStatuses,
 );
+
+export const areaStatuses = ["active", "archived"] as const;
+export type AreaStatus = (typeof areaStatuses)[number];
+export const areaStatusEnum = pgEnum("area_statuses", areaStatuses);

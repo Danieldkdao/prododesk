@@ -6,3 +6,4 @@ export * from "./schemas/chat-message";
 export * from "./schemas/message-part";
 export * from "./schemas/chat-run";
 export * from "./schemas/tool-execution";
+export * from "./schemas/area";
