@@ -1,6 +1,5 @@
 import { db } from "@/db/db";
 import { ChatMessageTable, ChatRunTable, MessagePartTable } from "@/db/schema";
-import { revalidateChatCache } from "@/features/chats/server/cache/chats";
 import {
   findChatMessageDb,
   insertChatMessageDb,
@@ -67,8 +66,8 @@ export const POST = async (req: Request) => {
     return NextResponse.json(INVALID_DATA_ERROR_MESSAGE, { status: 400 });
   }
 
-  const existingChat = await confirmChatOwnership(userId, chatId);
-  if (!existingChat) {
+  const confirmation = await confirmChatOwnership(chatId);
+  if (!confirmation) {
     return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 403 });
   }
 
@@ -121,8 +120,6 @@ export const POST = async (req: Request) => {
         );
 
         if (!insertedPart) throw new APIError("Failed to insert message part.");
-
-        revalidateChatCache(userId, insertedMessage.chatId);
       });
     } else {
       const existingChatRun = await findChatRunDb({
@@ -300,8 +297,6 @@ export const POST = async (req: Request) => {
             responseTimeMs: sql`${ChatRunTable.responseTimeMs} + ${roundedRTM}`,
           });
 
-          revalidateChatCache(userId, chatId);
-
           return;
         }
 
@@ -316,6 +311,9 @@ export const POST = async (req: Request) => {
             },
             tx,
           );
+
+          if (!insertedMessage)
+            throw new APIError("Failed to insert assistant message.");
 
           await tx
             .delete(MessagePartTable)
@@ -346,8 +344,6 @@ export const POST = async (req: Request) => {
             );
           }
           responseTimeMs = 0;
-
-          revalidateChatCache(userId, chatId);
         });
       },
       consumeSseStream: consumeStream,
@@ -361,6 +357,8 @@ export const POST = async (req: Request) => {
     errorMessage =
       error instanceof Error ? error.message : GENERAL_ERROR_MESSAGE;
     status = error instanceof APIError ? error.status : 500;
+
+    const response = NextResponse.json(errorMessage, { status });
 
     const userMessageClientId = latestUserMessage?.id;
     let assistantMessageClientId: string | null = null;
@@ -377,7 +375,9 @@ export const POST = async (req: Request) => {
             },
             tx,
           )
-        ).id;
+        )?.id;
+        if (!userMessageId) return response;
+
         await insertMessagePartDb(
           {
             messageId: userMessageId,
@@ -416,7 +416,7 @@ export const POST = async (req: Request) => {
             },
             tx,
           );
-          assistantMessageClientId = insertedChatMessage?.id;
+          assistantMessageClientId = insertedChatMessage?.id ?? null;
         }
       }
       if (runId) {
@@ -442,11 +442,9 @@ export const POST = async (req: Request) => {
           },
           tx,
         );
-
-        revalidateChatCache(userId, chatId);
       }
     });
 
-    return NextResponse.json(errorMessage, { status });
+    return response;
   }
 };

@@ -2,6 +2,7 @@ import { db, DbTransaction } from "@/db/db";
 import { ChatTable, ChatTableInsertType } from "@/db/schema";
 import { revalidateChatCache } from "./cache/chats";
 import { and, eq, SQL } from "drizzle-orm";
+import { getCurrentUser } from "@/lib/auth/helpers";
 
 export const insertChatDb = async (
   chat: ChatTableInsertType,
@@ -34,10 +35,12 @@ export const updateChatDb = async (
 };
 
 export const confirmChatOwnership = async (
-  userId: string,
   chatId: string,
   otherQueries?: SQL<unknown> | undefined,
 ) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
   const [existingChat] = await db
     .select()
     .from(ChatTable)

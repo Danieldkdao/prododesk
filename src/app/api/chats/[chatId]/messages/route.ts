@@ -25,7 +25,7 @@ export const GET = async (
       { status: 401 },
     );
 
-  const existingChat = await confirmChatOwnership(userId, chatId);
+  const existingChat = await confirmChatOwnership(chatId);
   if (!existingChat)
     return NextResponse.json(
       { error: NO_PERMISSION_DATA_MESSAGE },

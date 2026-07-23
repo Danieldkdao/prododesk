@@ -169,7 +169,7 @@ export const updateChatAction = async (
     };
   }
 
-  const existingChat = await confirmChatOwnership(userId, chatId);
+  const existingChat = await confirmChatOwnership(chatId);
   if (!existingChat) {
     return {
       error: true,
@@ -218,7 +218,7 @@ export const deleteChatAction = async (chatId: string) => {
     };
   }
 
-  const existingChat = await confirmChatOwnership(userId, chatId);
+  const existingChat = await confirmChatOwnership(chatId);
   if (!existingChat) {
     return {
       error: true,
