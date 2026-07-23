@@ -6,6 +6,7 @@ import {
 } from "@/db/schema";
 import { revalidateTaskCache } from "./cache/tasks";
 import { and, eq, SQL } from "drizzle-orm";
+import { getCurrentUser } from "@/lib/auth/helpers";
 
 export const confirmUserTaskOwnership = async (
   userId: string,
@@ -43,10 +44,16 @@ export const updateTaskDb = async (
     "id" | "name" | "createdAt" | "updatedAt" | "userId"
   >,
 ) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  const existingTask = await confirmUserTaskOwnership(userId, taskId);
+  if (!existingTask) return null;
+
   const [updatedTask] = await db
     .update(TaskTable)
     .set(taskData)
-    .where(eq(TaskTable.id, taskId))
+    .where(eq(TaskTable.id, existingTask.id))
     .returning();
 
   revalidateTaskCache(updatedTask.userId, updatedTask.id);
@@ -55,9 +62,15 @@ export const updateTaskDb = async (
 };
 
 export const deleteTaskDb = async (taskId: string) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  const existingTask = await confirmUserTaskOwnership(userId, taskId);
+  if (!existingTask) return null;
+
   const [deletedTask] = await db
     .delete(TaskTable)
-    .where(eq(TaskTable.id, taskId))
+    .where(eq(TaskTable.id, existingTask.id))
     .returning();
 
   revalidateTaskCache(deletedTask.userId, deletedTask.id);

@@ -121,10 +121,18 @@ export const updateTaskAction = async (
     };
   }
 
+  const existingTask = await confirmUserTaskOwnership(userId, taskId);
+  if (!existingTask) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
   const { range, startAt, endAt, ...rest } = data;
 
   try {
-    const updatedTask = await updateTaskDb(taskId, {
+    const updatedTask = await updateTaskDb(existingTask.id, {
       startAt: startAt ? mergeDateTime(range.from, startAt) : null,
       endAt: endAt ? mergeDateTime(range.from, endAt) : null,
       day: format(range.from, "yyyy-MM-dd"),
@@ -180,10 +188,7 @@ export const deleteTaskAction = async (taskId: string) => {
   }
 };
 
-export const getCalendarTasksAction = async (
-  userId: string,
-  dateToUse: Date,
-) => {
+const getCachedCalendarTasks = async (userId: string, dateToUse: Date) => {
   "use cache";
   cacheTag(getUserTaskTag(userId));
 
@@ -221,11 +226,17 @@ export const getCalendarTasksAction = async (
     monthDaysTasks: monthDaysWithTasks,
   };
 };
+export const getCalendarTasksAction = async (dateToUse: Date) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  return getCachedCalendarTasks(userId, dateToUse);
+};
 export type GetCalendarTasksActionReturnType = UnwrapAsync<
   typeof getCalendarTasksAction
 >;
 
-export const getDayTasksAction = async (
+const getCachedDayTasks = async (
   userId: string,
   selectedDay: Date | null,
   filterOptions: {
@@ -370,6 +381,24 @@ export const getDayTasksAction = async (
       allTasksCompleted: totalCompletedTasks.count === totalSelectedTasks.count,
     },
   };
+};
+export const getDayTasksAction = async (
+  selectedDay: Date | null,
+  filterOptions: {
+    search: string;
+    sortBy: DayTasksSortByOption;
+    priorities: TaskPriority[];
+    status: DayTasksStatus;
+    schedule: DayTasksSchedule;
+    timeStartRange: Date | null;
+    timeEndRange: Date | null;
+    page: number;
+  },
+) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  return getCachedDayTasks(userId, selectedDay, filterOptions);
 };
 export type GetDayTasksActionReturnType = UnwrapAsync<typeof getDayTasksAction>;
 

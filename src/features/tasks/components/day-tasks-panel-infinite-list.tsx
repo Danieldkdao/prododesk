@@ -1,6 +1,7 @@
 "use client";
 
 import { NotFound } from "@/components/not-found";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TaskTableSelectType } from "@/db/schema";
 import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
@@ -15,12 +16,10 @@ import {
 import { useEffect, useRef, useState, useTransition } from "react";
 import { getDayTasksAction } from "../actions/actions";
 import { useDayTasksParams } from "../hooks/use-day-tasks-params";
+import { defaultDayTasksParamsOptions } from "../lib/day-tasks-params";
 import { DayTasksPanelFilters } from "./day-tasks-panel-filters";
 import { Task } from "./task";
 import { TaskDialog } from "./task-dialog";
-import { defaultDayTasksParamsOptions } from "../lib/day-tasks-params";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useAuthSession } from "@/hooks/use-auth-session";
 
 export const DayTasksPanelInfiniteCardList = ({
   initialDayTasks,
@@ -31,7 +30,6 @@ export const DayTasksPanelInfiniteCardList = ({
   initialHasNextPage: boolean;
   allTasksCompleted: boolean;
 }) => {
-  const { data: session } = useAuthSession();
   const [calendarFilters] = useCalendarParams();
   const [dayTasksFilters, setDayTasksFilters] = useDayTasksParams();
 
@@ -45,14 +43,7 @@ export const DayTasksPanelInfiniteCardList = ({
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (
-      !sentinel ||
-      isPending ||
-      !hasNextPage ||
-      !calendarFilters.day ||
-      !session?.user.id
-    )
-      return;
+    if (!sentinel || isPending || !hasNextPage || !calendarFilters.day) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -61,14 +52,10 @@ export const DayTasksPanelInfiniteCardList = ({
         startTransition(async () => {
           const nextPage = page + 1;
 
-          const response = await getDayTasksAction(
-            session.user.id,
-            calendarFilters.day,
-            {
-              ...dayTasksFilters,
-              page: nextPage,
-            },
-          );
+          const response = await getDayTasksAction(calendarFilters.day, {
+            ...dayTasksFilters,
+            page: nextPage,
+          });
           if (!response) return;
 
           const { selectedDayTasks, metadata } = response;
@@ -95,7 +82,6 @@ export const DayTasksPanelInfiniteCardList = ({
     isPending,
     dayTasks,
     setDayTasks,
-    session?.user.id,
   ]);
 
   if (!calendarFilters.day) return null;

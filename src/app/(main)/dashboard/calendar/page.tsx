@@ -47,8 +47,8 @@ const DashboardCalendarSuspense = async ({
   ]);
 
   const [monthDaysTasks, selectedDayTasks] = await Promise.all([
-    getCalendarTasksAction(userId, calendarFilters.month),
-    getDayTasksAction(userId, calendarFilters.day, {
+    getCalendarTasksAction(calendarFilters.month),
+    getDayTasksAction(calendarFilters.day, {
       ...dayTasksFilters,
       page: DEFAULT_PAGE,
     }),

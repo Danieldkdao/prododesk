@@ -12,11 +12,13 @@ import {
   updateChatRunDb,
   upsertChatRunDb,
 } from "@/features/chats/server/chat-runs";
+import { confirmChatOwnership } from "@/features/chats/server/chats";
 import { insertMessagePartDb } from "@/features/chats/server/message-parts";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
+  NOT_FOUND_ERROR_MESSAGE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { APIError } from "@/lib/errors";
@@ -58,20 +60,22 @@ export const POST = async (req: Request) => {
 
   const { userId } = await getCurrentUser();
   if (!userId) {
-    return NextResponse.json(
-      { error: UNAUTHED_ERROR_MESSAGE },
-      { status: 401 },
-    );
+    return NextResponse.json(UNAUTHED_ERROR_MESSAGE, { status: 401 });
+  }
+
+  if (!selectedModel || !chatId) {
+    return NextResponse.json(INVALID_DATA_ERROR_MESSAGE, { status: 400 });
+  }
+
+  const existingChat = await confirmChatOwnership(userId, chatId);
+  if (!existingChat) {
+    return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 403 });
   }
 
   try {
     // todo: maybe implement credit system later?
 
     if (isRegenerating && !assistantMessageId) {
-      throw new APIError(INVALID_DATA_ERROR_MESSAGE, 400);
-    }
-
-    if (!selectedModel || !chatId) {
       throw new APIError(INVALID_DATA_ERROR_MESSAGE, 400);
     }
 
@@ -362,11 +366,11 @@ export const POST = async (req: Request) => {
     let assistantMessageClientId: string | null = null;
 
     await db.transaction(async (tx) => {
-      if (chatId && selectedModel && userMessageClientId) {
+      if (userMessageClientId) {
         const userMessageId = (
           await upsertChatMessageDb(
             {
-              chatId,
+              chatId: chatId,
               clientMessageId: userMessageClientId,
               modelId: selectedModel,
               role: "user",
@@ -399,13 +403,12 @@ export const POST = async (req: Request) => {
               eq(ChatMessageTable.modelId, selectedModel),
             ),
           });
-        console.log(existingAssistantResponse);
         if (existingAssistantResponse) {
           assistantMessageClientId = existingAssistantResponse.id;
         } else {
           const insertedChatMessage = await insertChatMessageDb(
             {
-              chatId,
+              chatId: chatId,
               clientMessageId: crypto.randomUUID(),
               modelId: selectedModel,
               role: "assistant",
@@ -416,7 +419,6 @@ export const POST = async (req: Request) => {
           assistantMessageClientId = insertedChatMessage?.id;
         }
       }
-
       if (runId) {
         await updateChatRunDb(
           runId,
@@ -428,10 +430,10 @@ export const POST = async (req: Request) => {
           tx,
         );
       }
-      if (chatId && userMessageClientId) {
+      if (userMessageClientId) {
         await upsertChatRunDb(
           {
-            chatId,
+            chatId: chatId,
             userMessageClientId: userMessageClientId,
             assistantMessageId: assistantMessageClientId,
             status: "failed",
