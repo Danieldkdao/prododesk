@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { index, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { chatRoleEnum, modelIdEnum } from "../shared";
 import { ChatTable } from "./chat";
@@ -26,6 +26,7 @@ export const ChatMessageTable = pgTable(
       t.chatId,
       t.responseToClientId,
     ),
+    index("chat_messages_chat_created_at_idx").on(t.chatId, t.createdAt.asc()),
   ],
 );
 

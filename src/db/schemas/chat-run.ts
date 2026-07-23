@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  index,
   integer,
   pgTable,
   text,
@@ -34,6 +35,7 @@ export const ChatRunTable = pgTable(
   },
   (t) => [
     unique("chat_run_user_message_unique").on(t.chatId, t.userMessageClientId),
+    index("chat_runs_assistant_message_id_idx").on(t.assistantMessageId),
   ],
 );
 
