@@ -9,7 +9,7 @@ import {
   FieldError,
   FieldLabel,
 } from "@/components/ui/field";
-import { ChatTableSelectType } from "@/db/schema";
+import { ChatSelectType } from "@/db/schema";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LoadingSwap } from "@/components/ui/loading-swap";
@@ -21,7 +21,7 @@ export const UpdateChatForm = ({
   existingChat,
   afterAction,
 }: {
-  existingChat: ChatTableSelectType;
+  existingChat: ChatSelectType;
   afterAction?: () => void;
 }) => {
   const router = useRouter();

@@ -1,11 +1,11 @@
 import { db, DbTransaction } from "@/db/db";
-import { ChatTable, ChatTableInsertType } from "@/db/schema";
+import { ChatTable, ChatInsertType } from "@/db/schema";
 import { revalidateChatCache } from "./cache/chats";
 import { and, eq, SQL } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth/helpers";
 
 export const insertChatDb = async (
-  chat: ChatTableInsertType,
+  chat: ChatInsertType,
   tx?: DbTransaction,
 ) => {
   const [insertedChat] = await (tx ?? db)
@@ -20,7 +20,7 @@ export const insertChatDb = async (
 
 export const updateChatDb = async (
   chatId: string,
-  chat: Pick<ChatTableInsertType, "name">,
+  chat: Pick<ChatInsertType, "name">,
   tx?: DbTransaction,
 ) => {
   const [updatedChat] = await (tx ?? db)

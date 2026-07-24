@@ -4,15 +4,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 export const TooltipWrapper = ({
   content,
   children,
-  ...contentProps
+  ...triggerProps
 }: {
   content: ReactNode;
   children: ReactElement;
-} & Omit<ComponentProps<typeof TooltipContent>, "children" | "render">) => {
+} & Omit<ComponentProps<typeof TooltipTrigger>, "children" | "render">) => {
   return (
     <Tooltip>
-      <TooltipTrigger render={children} />
-      <TooltipContent {...contentProps}>{content}</TooltipContent>
+      <TooltipTrigger {...triggerProps} render={children} />
+      <TooltipContent>{content}</TooltipContent>
     </Tooltip>
   );
 };

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { TextEffect } from "@/components/ui/text-effect";
 import { TextShimmer } from "@/components/ui/text-shimmer";
-import { ChatTableSelectType } from "@/db/schema";
+import { ChatSelectType } from "@/db/schema";
 import { EllipsisVerticalIcon, PanelLeftIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { ChatOptions } from "./components/chat-options";
@@ -13,7 +13,7 @@ export const ChatHeader = ({
   chat,
   shimmerText = false,
 }: {
-  chat?: ChatTableSelectType;
+  chat?: ChatSelectType;
   shimmerText?: boolean;
 }) => {
   const headingClasses = "text-2xl font-semibold flex-1 min-w-0 truncate";

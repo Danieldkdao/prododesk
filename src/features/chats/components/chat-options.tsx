@@ -9,14 +9,14 @@ import {
 import { EditIcon, Trash2Icon } from "lucide-react";
 import { ComponentProps, ReactElement, useState } from "react";
 import { UpdateChatDialog } from "./update-chat-dialog";
-import { ChatTableSelectType } from "@/db/schema";
+import { ChatSelectType } from "@/db/schema";
 import { DeleteChatButton } from "./delete-chat-button";
 
 export const ChatOptions = ({
   chat,
   children,
   ...props
-}: { chat: ChatTableSelectType; children: ReactElement } & ComponentProps<
+}: { chat: ChatSelectType; children: ReactElement } & ComponentProps<
   typeof DropdownMenuContent
 >) => {
   const [open, setOpen] = useState(false);

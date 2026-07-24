@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChatTableSelectType } from "@/db/schema";
+import { ChatSelectType } from "@/db/schema";
 import { SetterType } from "@/lib/types";
 import { UpdateChatForm } from "./update-chat-form";
 
@@ -16,7 +16,7 @@ export const UpdateChatDialog = ({
   open,
   setOpen,
 }: {
-  existingChat: ChatTableSelectType;
+  existingChat: ChatSelectType;
   open: boolean;
   setOpen: SetterType<boolean>;
 }) => {

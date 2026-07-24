@@ -1,10 +1,10 @@
 "use client";
 
 import { CommandItemLink } from "@/components/ui/command";
-import { ChatTableSelectType } from "@/db/schema";
+import { ChatSelectType } from "@/db/schema";
 import { MessageCircleIcon } from "lucide-react";
 
-export const ChatSearchItem = ({ chat }: { chat: ChatTableSelectType }) => {
+export const ChatSearchItem = ({ chat }: { chat: ChatSelectType }) => {
   return (
     <CommandItemLink
       href={`/dashboard/ai/chat/${chat.id}`}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChatTableSelectType } from "@/db/schema";
+import { ChatSelectType } from "@/db/schema";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { useDialogStateStore } from "@/store/use-dialog-state-store";
 import {
@@ -23,9 +23,9 @@ export const InfiniteChatList = ({
 }: {
   userId: string;
   useSearch: boolean;
-  initialChats: ChatTableSelectType[];
+  initialChats: ChatSelectType[];
   initialHasNextPage: boolean;
-  ChatItem: (chat: ChatTableSelectType) => JSX.Element;
+  ChatItem: (chat: ChatSelectType) => JSX.Element;
   skeleton: ReactNode;
 }) => {
   const sentinelRef = useRef<HTMLDivElement>(null);

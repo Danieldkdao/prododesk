@@ -4,7 +4,7 @@ import {
   ChatRunSelectType,
   ChatRunTable,
 } from "@/db/schema";
-import { SQLUpdateMap } from "@/lib/types";
+import { SQLMap } from "@/lib/types";
 import { and, eq } from "drizzle-orm";
 import { confirmChatOwnership } from "./chats";
 import { revalidateChatCache } from "./cache/chats";
@@ -66,7 +66,7 @@ export const upsertChatRunDb = async (
 
 export const updateChatRunDb = async (
   runId: string,
-  chatRun: SQLUpdateMap<
+  chatRun: SQLMap<
     Partial<
       Pick<
         ChatRunSelectType,

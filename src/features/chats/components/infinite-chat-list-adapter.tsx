@@ -1,6 +1,6 @@
 "use client";
 
-import { ChatTableSelectType } from "@/db/schema";
+import { ChatSelectType } from "@/db/schema";
 import { ReactNode } from "react";
 import { SidebarChatItem } from "./sidebar-chat-item";
 import { ChatSearchItem } from "./chat-search-item";
@@ -15,11 +15,11 @@ export const InfiniteChatListAdapter = ({
   variant: ChatListVariant;
   userId: string;
   useSearch: boolean;
-  initialChats: ChatTableSelectType[];
+  initialChats: ChatSelectType[];
   initialHasNextPage: boolean;
   skeleton: ReactNode;
 }) => {
-  const ChatItem = (chat: ChatTableSelectType) => {
+  const ChatItem = (chat: ChatSelectType) => {
     switch (variant) {
       case "sidebar":
         return <SidebarChatItem chat={chat} />;

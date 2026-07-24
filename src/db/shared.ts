@@ -40,3 +40,18 @@ export const ToolExecutionStatusEnum = pgEnum(
 export const areaStatuses = ["active", "archived"] as const;
 export type AreaStatus = (typeof areaStatuses)[number];
 export const areaStatusEnum = pgEnum("area_statuses", areaStatuses);
+
+export const colors = [
+  "cyan",
+  "pink",
+  "blue",
+  "green",
+  "purple",
+  "rose",
+  "orange",
+  "amber",
+  "slate",
+  "stone",
+] as const;
+export type Color = (typeof colors)[number];
+export const colorEnum = pgEnum("colors", colors);
