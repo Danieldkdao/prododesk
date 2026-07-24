@@ -3,6 +3,7 @@ import { createdAt, id, updatedAt } from "../helpers";
 import { areaStatusEnum, colorEnum } from "../shared";
 import { user } from "./user";
 import { relations } from "drizzle-orm";
+import { ProjectTable } from "./project";
 
 export const AreaTable = pgTable("areas", {
   id,
@@ -22,9 +23,10 @@ export const AreaTable = pgTable("areas", {
 export type AreaInsertType = typeof AreaTable.$inferInsert;
 export type AreaSelectType = typeof AreaTable.$inferSelect;
 
-export const areaRelations = relations(AreaTable, ({ one }) => ({
+export const areaRelations = relations(AreaTable, ({ one, many }) => ({
   user: one(user, {
     fields: [AreaTable.userId],
     references: [user.id],
   }),
+  projects: many(ProjectTable),
 }));

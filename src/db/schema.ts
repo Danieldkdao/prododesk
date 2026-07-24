@@ -7,3 +7,4 @@ export * from "./schemas/message-part";
 export * from "./schemas/chat-run";
 export * from "./schemas/tool-execution";
 export * from "./schemas/area";
+export * from "./schemas/project";

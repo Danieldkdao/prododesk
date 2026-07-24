@@ -55,3 +55,13 @@ export const colors = [
 ] as const;
 export type Color = (typeof colors)[number];
 export const colorEnum = pgEnum("colors", colors);
+
+export const projectStatuses = [
+  "planned",
+  "active",
+  "on_hold",
+  "completed",
+  "cancelled",
+] as const;
+export type ProjectStatus = (typeof projectStatuses)[number];
+export const projectStatusEnum = pgEnum("project_statuses", projectStatuses);
