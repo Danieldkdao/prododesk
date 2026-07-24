@@ -15,22 +15,24 @@ export const ErrorState = ({
   children?: ReactNode;
 }) => {
   return (
-    <Card
-      className={cn(
-        "ring-0 border-4 border-dashed border-destructive w-full p-4",
-        className,
-      )}
-    >
-      <CardContent className="flex flex-col gap-2 items-center">
-        <CircleXIcon className="text-destructive size-10" />
-        <h2 className="text-2xl font-semibold text-center text-destructive">
-          {title}
-        </h2>
-        <p className="text-destructive text-lg text-center max-w-150">
-          {description}
-        </p>
-        <div className="w-full max-w-150">{children}</div>
-      </CardContent>
-    </Card>
+    <div className="w-full h-full p-10 flex items-center justify-center">
+      <Card
+        className={cn(
+          "ring-0 border-4 border-dashed border-destructive w-full p-4",
+          className,
+        )}
+      >
+        <CardContent className="flex flex-col gap-2 items-center">
+          <CircleXIcon className="text-destructive size-10" />
+          <h2 className="text-2xl font-semibold text-center text-destructive">
+            {title}
+          </h2>
+          <p className="text-destructive text-lg text-center max-w-150">
+            {description}
+          </p>
+          <div className="w-full max-w-150">{children}</div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };

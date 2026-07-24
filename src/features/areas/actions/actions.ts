@@ -12,6 +12,7 @@ import {
   confirmUserAreaOwnership,
   deleteAreaDb,
   insertAreaDb,
+  updateAreaDb,
 } from "../server/areas";
 import { asc, eq, sql } from "drizzle-orm";
 import { AreaTable } from "@/db/schema";
@@ -96,6 +97,8 @@ export const updateAreaAction = async (
     };
   }
 
+  console.log("HERE?");
+
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -103,6 +106,8 @@ export const updateAreaAction = async (
       message: UNAUTHED_ERROR_MESSAGE,
     };
   }
+
+  console.log("WHAT ABOUT HERE?");
 
   const existingArea = await confirmUserAreaOwnership(areaId);
   if (!existingArea) {
@@ -112,6 +117,8 @@ export const updateAreaAction = async (
     };
   }
 
+  console.log("EXISTING AREA");
+
   const { success, data } = areaSchema.safeParse(areaData);
   if (!success) {
     return {
@@ -120,8 +127,10 @@ export const updateAreaAction = async (
     };
   }
 
+  console.log("HERE?");
+
   try {
-    const updatedArea = await updateAreaAction(existingArea.id, data);
+    const updatedArea = await updateAreaDb(existingArea.id, data);
     if (!updatedArea) throw new Error("Failed to update area.");
 
     return {

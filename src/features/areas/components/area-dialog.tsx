@@ -11,25 +11,33 @@ import {
 import { AreaSelectType } from "@/db/schema";
 import { ReactElement, useState } from "react";
 import { AreaForm } from "./area-form";
+import { SetterType } from "@/lib/types";
 
 export const AreaDialog = ({
   existingArea,
   children,
+  manualOpen,
+  setManualOpen,
 }: {
   existingArea?: AreaSelectType;
-  children: ReactElement;
+  children?: ReactElement;
+  manualOpen?: boolean;
+  setManualOpen?: SetterType<boolean>;
 }) => {
   const [open, setOpen] = useState(false);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={children} />
+    <Dialog
+      open={children ? open : (manualOpen ?? open)}
+      onOpenChange={children ? setOpen : setManualOpen}
+    >
+      {children && <DialogTrigger render={children} />}
       <DialogContent>
-        <DialogHeader className="sr-only">
+        <DialogHeader>
           <DialogTitle>
             {existingArea ? "Update area" : "Create area"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="sr-only">
             {existingArea ? "Update area" : "Create area"}
           </DialogDescription>
         </DialogHeader>
