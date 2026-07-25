@@ -8,6 +8,8 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogOverlay,
+  DialogPortal,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -35,6 +37,8 @@ function Command({
 }
 
 function CommandDialog({
+  open: manualOpen,
+  onOpenChange: onManualOpenChange,
   title = "Command Palette",
   description = "Search for a command to run...",
   children,
@@ -42,10 +46,7 @@ function CommandDialog({
   showCloseButton = false,
   trigger,
   ...props
-}: Omit<
-  React.ComponentProps<typeof Dialog>,
-  "children" | "open" | "onOpenChange"
-> & {
+}: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
   title?: string;
   description?: string;
   className?: string;
@@ -73,14 +74,22 @@ function CommandDialog({
   }, [setOpen]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen} {...props}>
+    <Dialog
+      open={manualOpen ?? open}
+      onOpenChange={onManualOpenChange ?? setOpen}
+      {...props}
+    >
       {trigger && <DialogTrigger render={trigger} />}
       <DialogHeader className="sr-only">
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
       <DialogContent
-        className={cn("top-1/3 translate-y-0 overflow-hidden p-0", className)}
+        className={cn(
+          "top-1/3 translate-y-0 overflow-hidden p-0 z-61",
+          className,
+        )}
+        overlayClassName="z-60 bg-black/40"
         showCloseButton={showCloseButton}
       >
         {children}
@@ -91,12 +100,13 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  value: manualValue,
+  onValueChange: onManualValueChange,
   useDebouncedSearch = false,
   ...props
-}: Omit<
-  React.ComponentProps<typeof CommandPrimitive.Input>,
-  "value" | "onValueChange"
-> & { useDebouncedSearch?: boolean }) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+  useDebouncedSearch?: boolean;
+}) {
   const open = useDialogStateStore((state) => state.open);
   const outsideSearch = useDialogStateStore((state) => state.search);
   const setOutsideSearch = useDialogStateStore((state) => state.setSearch);
@@ -107,11 +117,14 @@ function CommandInput({
 
   const [search, setSearch] = React.useState("");
 
+  const searchToUse = manualValue ?? search;
+  const setSearchToUse = onManualValueChange ?? setSearch;
+
   React.useEffect(() => {
-    if (search !== outsideSearch) {
-      setOutsideSearch(search);
+    if (searchToUse !== outsideSearch && useDebouncedSearch) {
+      setOutsideSearch(searchToUse);
     }
-  }, [open, outsideSearch, search, setOutsideSearch]);
+  }, [outsideSearch, searchToUse, setOutsideSearch, useDebouncedSearch, open]);
 
   return (
     <div data-slot="command-input-wrapper" className="p-1">
@@ -122,9 +135,9 @@ function CommandInput({
             "w-full px-2 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
             className,
           )}
-          value={search}
+          value={searchToUse}
           onValueChange={(value) => {
-            setSearch(value);
+            setSearchToUse(value);
             if (useDebouncedSearch) {
               setDebouncedOutsideSearch(value);
             }

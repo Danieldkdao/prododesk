@@ -1,12 +1,7 @@
 import { taskPriorities } from "@/db/shared";
-import { timeSchema } from "@/lib/schemas";
+import { dateRangeSchema, timeSchema } from "@/lib/schemas";
 import { startOfDay } from "date-fns";
 import z from "zod";
-
-const dateRangeSchema = z.object({
-  from: z.date(),
-  to: z.date().optional(),
-});
 
 export const taskSchema = z
   .object({

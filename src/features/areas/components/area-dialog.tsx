@@ -16,34 +16,34 @@ import { SetterType } from "@/lib/types";
 export const AreaDialog = ({
   existingArea,
   children,
-  manualOpen,
-  setManualOpen,
+  open,
+  onOpenChange,
 }: {
   existingArea?: AreaSelectType;
   children?: ReactElement;
-  manualOpen?: boolean;
-  setManualOpen?: SetterType<boolean>;
+  open?: boolean;
+  onOpenChange?: SetterType<boolean>;
 }) => {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const openToUse = open ?? isOpen;
+  const handleOpenChange = onOpenChange ?? setIsOpen;
 
   return (
-    <Dialog
-      open={children ? open : (manualOpen ?? open)}
-      onOpenChange={children ? setOpen : setManualOpen}
-    >
+    <Dialog open={openToUse} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger render={children} />}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {existingArea ? "Update area" : "Create area"}
+            {existingArea ? "Update Area" : "Create Area"}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            {existingArea ? "Update area" : "Create area"}
+            {existingArea ? "Update Area" : "Create Area"}
           </DialogDescription>
         </DialogHeader>
         <AreaForm
           existingArea={existingArea}
-          afterAction={() => setOpen(false)}
+          afterAction={() => handleOpenChange(false)}
         />
       </DialogContent>
     </Dialog>

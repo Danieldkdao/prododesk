@@ -39,8 +39,8 @@ export const AreaCard = ({
     <>
       <AreaDialog
         existingArea={area}
-        manualOpen={updateDialogOpen}
-        setManualOpen={setUpdateDialogOpen}
+        open={updateDialogOpen}
+        onOpenChange={setUpdateDialogOpen}
       />
       <Card
         className={cn(
@@ -111,8 +111,10 @@ export const AreaCard = ({
           )}
         </CardContent>
         <CardFooter>
-          <div className="flex items-center gap-2">
-            <ClockIcon className="size-5 text-muted-foreground" />
+          <div className="flex items-start gap-2 leading-6">
+            <span className="h-[1lh] shrink-0 flex items-center">
+              <ClockIcon className="size-5 text-muted-foreground" />
+            </span>
             <span className="text-base text-muted-foreground">
               {`Last updated ${formatDistanceToNow(area.updatedAt, { includeSeconds: true, addSuffix: true })}`}
             </span>

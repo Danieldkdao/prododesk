@@ -2,7 +2,7 @@ import { pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { user } from "./user";
 import { AreaTable } from "./area";
-import { projectStatusEnum } from "../shared";
+import { colorEnum, projectStatusEnum } from "../shared";
 import { relations } from "drizzle-orm";
 
 export const ProjectTable = pgTable("projects", {
@@ -11,13 +11,13 @@ export const ProjectTable = pgTable("projects", {
     .references(() => user.id, { onDelete: "cascade" })
     .notNull(),
   name: varchar("name").notNull(),
-  description: text("description"),
+  outcome: text("outcome"),
   icon: varchar("icon"),
-  color: varchar("color"),
+  color: colorEnum("color"),
   areaId: uuid("area").references(() => AreaTable.id, { onDelete: "set null" }),
   startAt: timestamp("started_at", { withTimezone: true }),
   endAt: timestamp("end_at", { withTimezone: true }),
-  status: projectStatusEnum("status").notNull().default("active"),
+  status: projectStatusEnum("status").notNull(),
   createdAt,
   updatedAt,
 });

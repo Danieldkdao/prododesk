@@ -8,21 +8,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { TaskTableSelectType } from "@/db/schema";
-import { ReactElement, useState } from "react";
-import { TaskForm } from "./task-form";
+import { ProjectSelectType } from "@/db/schema";
 import { SetterType } from "@/lib/types";
+import { ReactElement, useState } from "react";
+import { ProjectForm } from "./project-form";
 
-export const TaskDialog = ({
-  defaultDay,
+export const ProjectDialog = ({
+  existingProject,
   children,
-  existingTask,
   open,
   onOpenChange,
 }: {
-  defaultDay?: Date;
+  existingProject?: ProjectSelectType;
   children?: ReactElement;
-  existingTask?: TaskTableSelectType;
   open?: boolean;
   onOpenChange?: SetterType<boolean>;
 }) => {
@@ -37,15 +35,14 @@ export const TaskDialog = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {existingTask ? "Update Task" : "Create Task"}
+            {existingProject ? "Update Project" : "Create Project"}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            {existingTask ? "Update Task" : "Create Task"}
+            {existingProject ? "Update Project" : "Create Project"}
           </DialogDescription>
         </DialogHeader>
-        <TaskForm
-          defaultDay={defaultDay}
-          existingTask={existingTask}
+        <ProjectForm
+          existingProject={existingProject}
           afterAction={() => handleOpenChange(false)}
         />
       </DialogContent>

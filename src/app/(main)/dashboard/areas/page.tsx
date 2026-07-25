@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { readUserAreasAction } from "@/features/areas/actions/actions";
 import { AreaCard } from "@/features/areas/components/area-card";
 import { AreaDialog } from "@/features/areas/components/area-dialog";
+import { DEFAULT_PAGE } from "@/lib/constants";
 import { PlusIcon } from "lucide-react";
 import { Suspense } from "react";
 
@@ -64,8 +65,12 @@ const AreasLoading = () => {
 };
 
 const AreasSuspense = async () => {
-  const areas = await readUserAreasAction();
-  if (!areas) {
+  // todo: add proper filters
+  const response = await readUserAreasAction({
+    search: "",
+    page: DEFAULT_PAGE,
+  });
+  if (!response) {
     return (
       <ErrorState
         title="An error occurred"
@@ -73,6 +78,8 @@ const AreasSuspense = async () => {
       />
     );
   }
+
+  const { areas } = response;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">

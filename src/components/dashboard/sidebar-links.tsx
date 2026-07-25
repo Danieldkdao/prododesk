@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
-import { LayoutDashboardIcon, CalendarIcon, SparklesIcon } from "lucide-react";
+import {
+  LayoutDashboardIcon,
+  CalendarIcon,
+  SparklesIcon,
+  ShapesIcon,
+  FolderKanbanIcon,
+} from "lucide-react";
 
 export const SidebarLinks = () => {
   const pathname = usePathname();
@@ -13,6 +19,16 @@ export const SidebarLinks = () => {
       label: "Dashboard",
       icon: LayoutDashboardIcon,
       href: "/dashboard",
+    },
+    {
+      label: "Areas",
+      icon: ShapesIcon,
+      href: "/dashboard/areas",
+    },
+    {
+      label: "Projects",
+      icon: FolderKanbanIcon,
+      href: "/dashboard/projects",
     },
     {
       label: "Calendar",

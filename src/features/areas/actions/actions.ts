@@ -5,6 +5,7 @@ import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
   NOT_FOUND_ERROR_MESSAGE,
+  PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { areaSchema, AreaSchemaType } from "./schemas";
@@ -14,7 +15,7 @@ import {
   insertAreaDb,
   updateAreaDb,
 } from "../server/areas";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, count, eq, ilike, or, sql } from "drizzle-orm";
 import { AreaTable } from "@/db/schema";
 import { areValidIds } from "@/lib/utils";
 import { cacheTag } from "next/cache";
@@ -22,23 +23,61 @@ import { getUserAreaTag } from "../server/cache/areas";
 import { db } from "@/db/db";
 import { UnwrapAsync } from "@/lib/types";
 
-const readCachedUserAreas = async (userId: string) => {
+const readCachedUserAreas = async (
+  userId: string,
+  filterOptions: { search: string; page: number },
+) => {
   "use cache";
   cacheTag(getUserAreaTag(userId));
+
+  const { search, page } = filterOptions;
+
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const searchTerm = `%${search.trim()}%`;
+  const searchQuery = search.trim()
+    ? or(
+        ilike(AreaTable.name, searchTerm),
+        ilike(AreaTable.description, searchTerm),
+      )
+    : undefined;
+
+  const whereQuery = and(eq(AreaTable.userId, userId), searchQuery);
 
   const areas = await db
     .select()
     .from(AreaTable)
-    .where(eq(AreaTable.userId, userId))
-    .orderBy(asc(AreaTable.position));
+    .where(whereQuery)
+    .orderBy(asc(AreaTable.position))
+    .offset(offset)
+    .limit(PAGE_SIZE);
 
-  return areas;
+  const [totalAreas] = await db
+    .select({
+      count: count(),
+    })
+    .from(AreaTable)
+    .where(whereQuery);
+
+  const hasPrevPage = page > 1;
+  const hasNextPage = page * PAGE_SIZE < totalAreas.count;
+
+  return {
+    areas,
+    metadata: {
+      hasPrevPage,
+      hasNextPage,
+    },
+  };
 };
-export const readUserAreasAction = async () => {
+export const readUserAreasAction = async (filterOptions: {
+  search: string;
+  page: number;
+}) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  return readCachedUserAreas(userId);
+  return readCachedUserAreas(userId, filterOptions);
 };
 export type ReadUserAreasActionReturnType = UnwrapAsync<
   typeof readUserAreasAction
@@ -97,8 +136,6 @@ export const updateAreaAction = async (
     };
   }
 
-  console.log("HERE?");
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -106,8 +143,6 @@ export const updateAreaAction = async (
       message: UNAUTHED_ERROR_MESSAGE,
     };
   }
-
-  console.log("WHAT ABOUT HERE?");
 
   const existingArea = await confirmUserAreaOwnership(areaId);
   if (!existingArea) {
@@ -117,8 +152,6 @@ export const updateAreaAction = async (
     };
   }
 
-  console.log("EXISTING AREA");
-
   const { success, data } = areaSchema.safeParse(areaData);
   if (!success) {
     return {
@@ -126,8 +159,6 @@ export const updateAreaAction = async (
       message: INVALID_DATA_ERROR_MESSAGE,
     };
   }
-
-  console.log("HERE?");
 
   try {
     const updatedArea = await updateAreaDb(existingArea.id, data);

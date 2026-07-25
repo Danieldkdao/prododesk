@@ -10,3 +10,8 @@ export const aiTimeSchema = z
   .string()
   .regex(/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/)
   .transform((time) => (time.length === 5 ? `${time}:00` : time));
+
+export const dateRangeSchema = z.object({
+  from: z.date(),
+  to: z.date().optional(),
+});

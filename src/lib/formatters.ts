@@ -1,4 +1,6 @@
 import { Color } from "@/db/shared";
+import { format } from "date-fns";
+import { DateRange } from "react-day-picker";
 
 export const formatColor = (color: Color) => {
   switch (color) {
@@ -95,4 +97,22 @@ export const formatColor = (color: Color) => {
     default:
       throw new Error(`Unknown color: ${color satisfies never}`);
   }
+};
+
+export const formatCalendarValue = (
+  value: Date | Date[] | DateRange | null | undefined,
+) => {
+  if (!value) return "No dates selected";
+
+  if (Array.isArray(value)) {
+    return value.map((date) => format(date, "PP")).join(", ");
+  }
+
+  if ("from" in value) {
+    if (!value.from) return "No dates selected";
+
+    return `${format(value.from, "PP")}${value.to ? `  -  ${format(value.to, "PP")}` : ""}`;
+  }
+
+  return format(value, "PP");
 };
