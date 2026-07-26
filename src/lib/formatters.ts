@@ -1,5 +1,6 @@
 import { Color } from "@/db/shared";
 import { format } from "date-fns";
+import { ArchiveIcon, CircleCheckIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
 export const formatColor = (color: Color) => {
@@ -125,4 +126,18 @@ export const formatCalendarValue = (
   }
 
   return format(value, "PP");
+};
+
+export const formatArchivedStatus = (isArchived: boolean) => {
+  if (isArchived) {
+    return {
+      text: "Archived",
+      icon: ArchiveIcon,
+    };
+  }
+
+  return {
+    text: "Active",
+    icon: CircleCheckIcon,
+  };
 };

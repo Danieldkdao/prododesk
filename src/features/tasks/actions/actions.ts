@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db/db";
-import { TaskPriority, TaskTable } from "@/db/schema";
+import { ProjectTable, TaskPriority, TaskTable } from "@/db/schema";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -21,6 +21,7 @@ import {
   count,
   desc,
   eq,
+  getTableColumns,
   gte,
   ilike,
   inArray,
@@ -293,6 +294,7 @@ const getCachedDayTasks = async (
     ? or(
         ilike(TaskTable.name, searchTerm),
         ilike(TaskTable.description, searchTerm),
+        ilike(ProjectTable.name, searchTerm),
       )
     : undefined;
 
@@ -343,9 +345,13 @@ const getCachedDayTasks = async (
   );
 
   const selectedDayTasks = await db
-    .select()
+    .select({
+      ...getTableColumns(TaskTable),
+      project: getTableColumns(ProjectTable),
+    })
     .from(TaskTable)
     .where(whereQuery)
+    .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
     .orderBy(sortByMap[sortBy])
     .offset(offset)
     .limit(PAGE_SIZE);

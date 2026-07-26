@@ -3,7 +3,6 @@
 import { NotFound } from "@/components/not-found";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { TaskTableSelectType } from "@/db/schema";
 import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
 import { calculateCalendarDayTasksValues } from "@/features/calendar/lib/utils";
 import { DEFAULT_PAGE } from "@/lib/constants";
@@ -14,7 +13,10 @@ import {
   PlusIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { getDayTasksAction } from "../actions/actions";
+import {
+  getDayTasksAction,
+  GetDayTasksActionReturnType,
+} from "../actions/actions";
 import { useDayTasksParams } from "../hooks/use-day-tasks-params";
 import { defaultDayTasksParamsOptions } from "../lib/day-tasks-params";
 import { DayTasksPanelFilters } from "./day-tasks-panel-filters";
@@ -26,7 +28,7 @@ export const DayTasksPanelInfiniteCardList = ({
   initialHasNextPage,
   allTasksCompleted,
 }: {
-  initialDayTasks: TaskTableSelectType[];
+  initialDayTasks: GetDayTasksActionReturnType["selectedDayTasks"];
   initialHasNextPage: boolean;
   allTasksCompleted: boolean;
 }) => {

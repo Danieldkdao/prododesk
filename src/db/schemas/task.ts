@@ -6,11 +6,13 @@ import {
   pgTable,
   text,
   timestamp,
+  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { taskPriorityEnum } from "../shared";
 import { user } from "./user";
+import { ProjectTable } from "./project";
 
 export const TaskTable = pgTable(
   "tasks",
@@ -28,6 +30,9 @@ export const TaskTable = pgTable(
     endAt: timestamp("end_at", { withTimezone: true }),
     isCompleted: boolean("is_completed").notNull().default(false),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    projectId: uuid("project_id").references(() => ProjectTable.id, {
+      onDelete: "cascade",
+    }),
     createdAt,
     updatedAt,
   },
@@ -54,5 +59,9 @@ export const taskRelations = relations(TaskTable, ({ one }) => ({
   user: one(user, {
     fields: [TaskTable.userId],
     references: [user.id],
+  }),
+  project: one(ProjectTable, {
+    fields: [TaskTable.projectId],
+    references: [ProjectTable.id],
   }),
 }));

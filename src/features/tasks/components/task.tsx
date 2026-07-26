@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { TaskTableSelectType } from "@/db/schema";
+import { useConfetti } from "@/hooks/use-confetti";
 import { cn } from "@/lib/utils";
 import { format, isSameDay, parse } from "date-fns";
 import {
@@ -23,21 +23,23 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { toggleTaskCompletionAction } from "../actions/actions";
+import {
+  GetDayTasksActionReturnType,
+  toggleTaskCompletionAction,
+} from "../actions/actions";
 import {
   formatTaskPriority,
   getTaskPriorityBadgeClasses,
 } from "../lib/formatters";
 import { DeleteTaskButton } from "./delete-task-button";
 import { TaskDialog } from "./task-dialog";
-import { useConfetti } from "@/hooks/use-confetti";
 
 export const Task = ({
   task,
   disabled = false,
   index,
 }: {
-  task: TaskTableSelectType;
+  task: GetDayTasksActionReturnType["selectedDayTasks"][number];
   disabled?: boolean;
   index: number;
 }) => {

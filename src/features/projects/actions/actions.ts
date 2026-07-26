@@ -5,6 +5,7 @@ import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
   NOT_FOUND_ERROR_MESSAGE,
+  PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import {
@@ -20,12 +21,31 @@ import { cacheTag } from "next/cache";
 import { getUserProjectTag } from "../server/cache/projects";
 import { db } from "@/db/db";
 import { AreaTable, ProjectTable } from "@/db/schema";
-import { desc, eq, getTableColumns } from "drizzle-orm";
+import { and, count, desc, eq, getTableColumns, ilike, or } from "drizzle-orm";
 import { UnwrapAsync } from "@/lib/types";
 
-const readCachedProjectsAction = async (userId: string) => {
+const readCachedProjectsAction = async (
+  userId: string,
+  filterOptions: { search: string; page: number },
+) => {
   "use cache";
   cacheTag(getUserProjectTag(userId));
+
+  const { search, page } = filterOptions;
+
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const searchTerm = `%${search.trim()}%`;
+  const searchQuery = search.trim()
+    ? or(
+        ilike(ProjectTable.name, searchTerm),
+        ilike(ProjectTable.outcome, searchTerm),
+        ilike(AreaTable.name, searchTerm),
+        ilike(AreaTable.description, searchTerm),
+      )
+    : undefined;
+
+  const whereQuery = and(eq(ProjectTable.userId, userId), searchQuery);
 
   const projects = await db
     .select({
@@ -33,17 +53,39 @@ const readCachedProjectsAction = async (userId: string) => {
       area: getTableColumns(AreaTable),
     })
     .from(ProjectTable)
-    .where(eq(ProjectTable.userId, userId))
+    .where(whereQuery)
     .leftJoin(AreaTable, eq(AreaTable.id, ProjectTable.areaId))
-    .orderBy(desc(ProjectTable.createdAt));
+    .orderBy(desc(ProjectTable.createdAt))
+    .offset(offset)
+    .limit(PAGE_SIZE);
 
-  return projects;
+  console.log(projects);
+
+  const [totalProjects] = await db
+    .select({ count: count() })
+    .from(ProjectTable)
+    .where(whereQuery)
+    .leftJoin(AreaTable, eq(AreaTable.id, ProjectTable.areaId));
+
+  const hasPrevPage = page > 1;
+  const hasNextPage = page * PAGE_SIZE < totalProjects.count;
+
+  return {
+    projects,
+    metadata: {
+      hasPrevPage,
+      hasNextPage,
+    },
+  };
 };
-export const readProjectsAction = async () => {
+export const readProjectsAction = async (filterOptions: {
+  search: string;
+  page: number;
+}) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  return readCachedProjectsAction(userId);
+  return readCachedProjectsAction(userId, filterOptions);
 };
 export type ReadProjectsActionReturnType = UnwrapAsync<
   typeof readProjectsAction

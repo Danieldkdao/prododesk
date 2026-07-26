@@ -17,13 +17,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { AreaSelectType } from "@/db/schema";
 import { DEFAULT_PAGE } from "@/lib/constants";
-import { formatColor } from "@/lib/formatters";
+import { formatArchivedStatus, formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { useDebouncedCallback } from "@tanstack/react-pacer";
 import { ChevronDownIcon, ShapesIcon } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { readUserAreasAction } from "../actions/actions";
-import { formatAreaStatus } from "../lib/formatters";
 
 export const AreaCommandSelect = ({
   initialValue,
@@ -164,7 +163,7 @@ export const AreaCommandSelect = ({
                     <AreaCommandItemSkeleton key={index} />
                   ))
                 : areas.map((area) => {
-                    const { icon: StatusIcon } = formatAreaStatus(
+                    const { icon: StatusIcon } = formatArchivedStatus(
                       area.isArchived,
                     );
                     const isSelected = area.id === selectedArea?.id;

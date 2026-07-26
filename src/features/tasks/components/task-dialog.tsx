@@ -22,7 +22,9 @@ export const TaskDialog = ({
 }: {
   defaultDay?: Date;
   children?: ReactElement;
-  existingTask?: TaskTableSelectType;
+  existingTask?: TaskTableSelectType & {
+    project?: { name: string; icon?: string | null } | null;
+  };
   open?: boolean;
   onOpenChange?: SetterType<boolean>;
 }) => {

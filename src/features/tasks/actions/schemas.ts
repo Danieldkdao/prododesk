@@ -12,6 +12,7 @@ export const taskSchema = z
     priority: z.enum(taskPriorities),
     description: z.string().nullish(),
     emoji: z.string().nullish(),
+    projectId: z.uuid().nullish(),
     startAt: timeSchema.transform((val) => (val === "" ? null : val)).nullish(),
     endAt: timeSchema.transform((val) => (val === "" ? null : val)).nullish(),
     range: dateRangeSchema,

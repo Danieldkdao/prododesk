@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { readProjectsAction } from "@/features/projects/actions/actions";
 import { ProjectCard } from "@/features/projects/components/project-card";
 import { ProjectDialog } from "@/features/projects/components/project-dialog";
+import { DEFAULT_PAGE } from "@/lib/constants";
 import { PlusIcon } from "lucide-react";
 import { Suspense } from "react";
 
@@ -34,14 +35,16 @@ const ProjectsLoading = () => {
 };
 
 const ProjectsSuspense = async () => {
-  const projects = await readProjectsAction();
-  if (!projects)
+  const response = await readProjectsAction({ search: "", page: DEFAULT_PAGE });
+  if (!response)
     return (
       <ErrorState
         title="An error occurred"
         description="We were unable to load your projects. Try refreshing the page or come back later if the issue persists."
       />
     );
+
+  const { projects } = response;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

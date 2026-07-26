@@ -43,6 +43,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import { ProjectCommandSelect } from "@/features/projects/components/project-command-select";
 
 export const TaskForm = ({
   defaultDay,
@@ -50,7 +51,9 @@ export const TaskForm = ({
   afterAction,
 }: {
   defaultDay?: Date;
-  existingTask?: TaskTableSelectType;
+  existingTask?: TaskTableSelectType & {
+    project?: { name: string; icon?: string | null } | null;
+  };
   afterAction?: () => void;
 }) => {
   const today = startOfDay(new Date());
@@ -67,6 +70,7 @@ export const TaskForm = ({
           startAt: existingTask.startAt
             ? format(existingTask.startAt, "HH:mm:ss")
             : null,
+          projectId: existingTask.projectId,
           endAt: existingTask.endAt
             ? format(existingTask.endAt, "HH:mm:ss")
             : null,
@@ -80,6 +84,7 @@ export const TaskForm = ({
           priority: "low",
           description: "",
           emoji: "",
+          projectId: null,
           startAt: null,
           endAt: null,
           range: {
@@ -279,6 +284,23 @@ export const TaskForm = ({
                 aria-invalid={!!fieldState.error}
                 value={value ?? ""}
                 {...props}
+              />
+            </FieldContent>
+            {fieldState.error && <FieldError errors={[fieldState.error]} />}
+          </Field>
+        )}
+      />
+      <Controller
+        control={form.control}
+        name="projectId"
+        render={({ field, fieldState }) => (
+          <Field data-invalid={!!fieldState.error}>
+            <FieldLabel>Project</FieldLabel>
+            <FieldContent>
+              <ProjectCommandSelect
+                initialProject={existingTask?.project}
+                projectId={field.value}
+                onProjectIdChange={field.onChange}
               />
             </FieldContent>
             {fieldState.error && <FieldError errors={[fieldState.error]} />}
