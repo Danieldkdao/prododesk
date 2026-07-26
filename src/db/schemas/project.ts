@@ -1,4 +1,12 @@
-import { pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  date,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { user } from "./user";
 import { AreaTable } from "./area";
@@ -13,11 +21,13 @@ export const ProjectTable = pgTable("projects", {
   name: varchar("name").notNull(),
   outcome: text("outcome"),
   icon: varchar("icon"),
-  color: colorEnum("color"),
+  color: colorEnum("color").notNull(),
   areaId: uuid("area").references(() => AreaTable.id, { onDelete: "set null" }),
-  startAt: timestamp("started_at", { withTimezone: true }),
-  endAt: timestamp("end_at", { withTimezone: true }),
+  startAt: date("started_at", { mode: "string" }),
+  endAt: date("end_at", { mode: "string" }),
   status: projectStatusEnum("status").notNull(),
+  isArchived: boolean("is_archived").notNull(),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt,
   updatedAt,
 });

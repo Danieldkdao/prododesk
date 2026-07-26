@@ -19,17 +19,23 @@ import { areValidIds } from "@/lib/utils";
 import { cacheTag } from "next/cache";
 import { getUserProjectTag } from "../server/cache/projects";
 import { db } from "@/db/db";
-import { ProjectTable } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { AreaTable, ProjectTable } from "@/db/schema";
+import { desc, eq, getTableColumns } from "drizzle-orm";
+import { UnwrapAsync } from "@/lib/types";
 
 const readCachedProjectsAction = async (userId: string) => {
   "use cache";
   cacheTag(getUserProjectTag(userId));
 
   const projects = await db
-    .select()
+    .select({
+      ...getTableColumns(ProjectTable),
+      area: getTableColumns(AreaTable),
+    })
     .from(ProjectTable)
-    .where(eq(ProjectTable.userId, userId));
+    .where(eq(ProjectTable.userId, userId))
+    .leftJoin(AreaTable, eq(AreaTable.id, ProjectTable.areaId))
+    .orderBy(desc(ProjectTable.createdAt));
 
   return projects;
 };
@@ -39,6 +45,9 @@ export const readProjectsAction = async () => {
 
   return readCachedProjectsAction(userId);
 };
+export type ReadProjectsActionReturnType = UnwrapAsync<
+  typeof readProjectsAction
+>;
 
 export const createProjectAction = async (unsafeData: ProjectSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -58,6 +67,8 @@ export const createProjectAction = async (unsafeData: ProjectSchemaType) => {
   }
 
   const parsedData = parseProjectData(userId, data);
+
+  console.log(parsedData);
 
   try {
     const createdProject = await insertProjectDb(parsedData);
@@ -120,6 +131,56 @@ export const updateProjectAction = async (
     return {
       error: false,
       message: "Project updated successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
+
+export const toggleProjectArchiveStatusAction = async (
+  projectId: string,
+  newArchiveStatus: boolean,
+) => {
+  if (!areValidIds(projectId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const existingProject = await confirmUserProjectOwnership(projectId);
+  if (!existingProject) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  try {
+    const updatedProject = await updateProjectDb(existingProject.id, {
+      isArchived: newArchiveStatus,
+      archivedAt: new Date(),
+    });
+    if (!updatedProject)
+      throw new Error("Failed to toggle project archive status.");
+
+    return {
+      error: false,
+      message: newArchiveStatus
+        ? "Project archived successfully!"
+        : "Project reactivated successfully!",
     };
   } catch (error) {
     console.error(error);

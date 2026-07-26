@@ -1,5 +1,4 @@
 import { colors, projectStatuses } from "@/db/shared";
-import { timeSchema } from "@/lib/schemas";
 import z from "zod";
 
 export const projectSchema = z
@@ -14,16 +13,11 @@ export const projectSchema = z
     outcome: z.string().nullish(),
     icon: z.string().nullish(),
     status: z.enum(projectStatuses),
-    color: z.enum(colors).nullish(),
+    color: z.enum(colors),
     areaId: z.uuid().nullish(),
-    startAt: z.iso
-      .date()
-      .transform((val) => (val === "" ? null : val))
-      .nullish(),
-    endAt: z.iso
-      .date()
-      .transform((val) => (val === "" ? null : val))
-      .nullish(),
+    isArchived: z.boolean(),
+    startAt: z.date().nullish(),
+    endAt: z.date().nullish(),
   })
   .superRefine((data, ctx) => {
     if (data.endAt && !data.startAt) {

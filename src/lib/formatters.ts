@@ -12,6 +12,7 @@ export const formatColor = (color: Color) => {
         text: "text-amber-500",
         border: "border-amber-500",
         borderLeft: "border-l-amber-500",
+        borderTop: "border-t-amber-500",
       };
     case "blue":
       return {
@@ -21,6 +22,7 @@ export const formatColor = (color: Color) => {
         text: "text-blue-500",
         border: "border-blue-500",
         borderLeft: "border-l-blue-500",
+        borderTop: "border-t-blue-500",
       };
     case "cyan":
       return {
@@ -30,6 +32,7 @@ export const formatColor = (color: Color) => {
         text: "text-cyan-500",
         border: "border-cyan-500",
         borderLeft: "border-l-cyan-500",
+        borderTop: "border-t-cyan-500",
       };
     case "green":
       return {
@@ -39,6 +42,7 @@ export const formatColor = (color: Color) => {
         text: "text-green-500",
         border: "border-green-500",
         borderLeft: "border-l-green-500",
+        borderTop: "border-t-green-500",
       };
     case "orange":
       return {
@@ -48,6 +52,7 @@ export const formatColor = (color: Color) => {
         text: "text-orange-500",
         border: "border-orange-500",
         borderLeft: "border-l-orange-500",
+        borderTop: "border-t-orange-500",
       };
     case "pink":
       return {
@@ -57,6 +62,7 @@ export const formatColor = (color: Color) => {
         text: "text-pink-500",
         border: "border-pink-500",
         borderLeft: "border-l-pink-500",
+        borderTop: "border-t-pink-500",
       };
     case "purple":
       return {
@@ -66,6 +72,7 @@ export const formatColor = (color: Color) => {
         text: "text-purple-500",
         border: "border-purple-500",
         borderLeft: "border-l-purple-500",
+        borderTop: "border-t-purple-500",
       };
     case "rose":
       return {
@@ -75,6 +82,7 @@ export const formatColor = (color: Color) => {
         text: "text-rose-500",
         border: "border-rose-500",
         borderLeft: "border-l-rose-500",
+        borderTop: "border-t-rose-500",
       };
     case "slate":
       return {
@@ -84,6 +92,7 @@ export const formatColor = (color: Color) => {
         text: "text-slate-500",
         border: "border-slate-500",
         borderLeft: "border-l-slate-500",
+        borderTop: "border-t-slate-500",
       };
     case "stone":
       return {
@@ -93,6 +102,7 @@ export const formatColor = (color: Color) => {
         text: "text-stone-500",
         border: "border-stone-500",
         borderLeft: "border-l-stone-500",
+        borderTop: "border-t-stone-500",
       };
     default:
       throw new Error(`Unknown color: ${color satisfies never}`);
@@ -108,7 +118,7 @@ export const formatCalendarValue = (
     return value.map((date) => format(date, "PP")).join(", ");
   }
 
-  if ("from" in value) {
+  if (typeof value === "object" && "from" in value) {
     if (!value.from) return "No dates selected";
 
     return `${format(value.from, "PP")}${value.to ? `  -  ${format(value.to, "PP")}` : ""}`;

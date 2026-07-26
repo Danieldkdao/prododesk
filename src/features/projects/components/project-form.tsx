@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ProjectSelectType, projectStatuses } from "@/db/schema";
 import { AreaCommandSelect } from "@/features/areas/components/area-command-select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { addDays, format, parse, subDays } from "date-fns";
+import { addDays, parse, subDays } from "date-fns";
 import { SmilePlusIcon } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { projectSchema, ProjectSchemaType } from "../actions/schemas";
@@ -31,12 +31,15 @@ import { LoadingSwap } from "@/components/ui/loading-swap";
 import { createProjectAction, updateProjectAction } from "../actions/actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const ProjectForm = ({
   existingProject,
   afterAction,
 }: {
-  existingProject?: ProjectSelectType;
+  existingProject?: ProjectSelectType & {
+    area?: { name: string; icon?: string | null } | null;
+  };
   afterAction?: () => void;
 }) => {
   const router = useRouter();
@@ -51,10 +54,10 @@ export const ProjectForm = ({
           color: existingProject.color,
           icon: existingProject.icon ?? "",
           startAt: existingProject.startAt
-            ? format(existingProject.startAt, "yyyy-MM-dd")
+            ? parse(existingProject.startAt, "yyyy-MM-dd", new Date())
             : undefined,
           endAt: existingProject.endAt
-            ? format(existingProject.endAt, "yyyy-MM-dd")
+            ? parse(existingProject.endAt, "yyyy-MM-dd", new Date())
             : undefined,
         }
       : {
@@ -64,6 +67,7 @@ export const ProjectForm = ({
           status: "active",
           color: "cyan",
           icon: "",
+          isArchived: false,
           startAt: undefined,
           endAt: undefined,
         },
@@ -244,6 +248,7 @@ export const ProjectForm = ({
             <FieldLabel>Area</FieldLabel>
             <FieldContent>
               <AreaCommandSelect
+                initialValue={existingProject?.area}
                 value={field.value}
                 onValueChange={field.onChange}
               />
@@ -269,23 +274,13 @@ export const ProjectForm = ({
               <FieldContent>
                 <PopoverCalendar
                   mode="single"
-                  value={
-                    field.value
-                      ? parse(field.value, "yyyy-MM-dd", new Date())
-                      : undefined
-                  }
+                  value={field.value}
                   fieldError={!!fieldState.error}
                   errorStateId="invalid-project-start-at-input"
-                  onSelect={(date) =>
-                    field.onChange(
-                      date ? format(date, "yyyy-MM-dd") : undefined,
-                    )
-                  }
+                  onSelect={(date) => field.onChange(date)}
                   disabled={{
                     before: dateToUse,
-                    after: endAtValue
-                      ? subDays(parse(endAtValue, "yyyy-MM-dd", new Date()), 1)
-                      : undefined,
+                    after: endAtValue ? subDays(endAtValue, 1) : undefined,
                   }}
                 />
               </FieldContent>
@@ -306,25 +301,12 @@ export const ProjectForm = ({
               <FieldContent>
                 <PopoverCalendar
                   mode="single"
-                  value={
-                    field.value
-                      ? parse(field.value, "yyyy-MM-dd", new Date())
-                      : undefined
-                  }
+                  value={field.value}
                   fieldError={!!fieldState.error}
                   errorStateId="invalid-project-end-at-input"
-                  onSelect={(date) =>
-                    field.onChange(
-                      date ? format(date, "yyyy-MM-dd") : undefined,
-                    )
-                  }
+                  onSelect={(date) => field.onChange(date)}
                   disabled={{
-                    before: startAtValue
-                      ? addDays(
-                          parse(startAtValue, "yyyy-MM-dd", new Date()),
-                          1,
-                        )
-                      : dateToUse,
+                    before: startAtValue ? addDays(startAtValue, 1) : dateToUse,
                   }}
                 />
               </FieldContent>
@@ -333,6 +315,43 @@ export const ProjectForm = ({
           )}
         />
       </div>
+      <Controller
+        control={form.control}
+        name="isArchived"
+        render={({ field: { value, onChange, ...props }, fieldState }) => (
+          <Field data-invalid={!!fieldState.error}>
+            <label
+              id="project-is-archived-input-invalid"
+              className="flex flex-col gap-2 p-4 border cursor-pointer"
+            >
+              <div className="flex items-center justify-between gap-2 flex-wrap w-full">
+                <FieldLabel
+                  htmlFor={
+                    fieldState.error && "project-is-archived-input-invalid"
+                  }
+                  onClick={() => onChange(!value)}
+                >
+                  Archived
+                </FieldLabel>
+                <Checkbox
+                  id="project-is-archived-input-invalid"
+                  aria-invalid={!!fieldState.error}
+                  checked={value}
+                  onCheckedChange={(checked) => onChange(checked)}
+                  {...props}
+                />
+              </div>
+              <FieldDescription>
+                Archived projects are in a saved but non-active state. This
+                project is{" "}
+                <span className="text-foreground font-medium">
+                  {value ? "" : "not "}archived.
+                </span>
+              </FieldDescription>
+            </label>
+          </Field>
+        )}
+      />
       <Button
         type="submit"
         className="w-full"

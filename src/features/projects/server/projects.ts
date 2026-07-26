@@ -4,12 +4,12 @@ import {
   ProjectSelectType,
   ProjectTable,
 } from "@/db/schema";
-import { revalidateProjectCache } from "./cache/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
-import { and, eq } from "drizzle-orm";
 import { SQLMap } from "@/lib/types";
+import { and, eq } from "drizzle-orm";
 import { ProjectSchemaType } from "../actions/schemas";
-import { parse } from "date-fns";
+import { revalidateProjectCache } from "./cache/projects";
+import { format } from "date-fns";
 
 export const confirmUserProjectOwnership = async (projectId: string) => {
   const { userId } = await getCurrentUser();
@@ -33,8 +33,8 @@ export const parseProjectData = (
 
   return {
     ...rest,
-    startAt: startAt ? parse(startAt, "yyyy-MM-dd", new Date()) : null,
-    endAt: endAt ? parse(endAt, "yyyy-MM-dd", new Date()) : null,
+    startAt: startAt ? format(startAt, "yyyy-MM-dd") : null,
+    endAt: endAt ? format(endAt, "yyyy-MM-dd") : null,
     userId,
   };
 };

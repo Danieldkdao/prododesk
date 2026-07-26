@@ -13,7 +13,7 @@ export const AreaTable = pgTable("areas", {
   name: varchar("name").notNull(),
   description: text("description"),
   icon: varchar("icon"),
-  color: colorEnum("colors"),
+  color: colorEnum("colors").notNull(),
   position: integer().notNull(),
   status: areaStatusEnum("status").notNull().default("active"),
   createdAt,

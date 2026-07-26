@@ -30,8 +30,8 @@ const models = [
     logoColor: OpenAI.colorPrimary,
   },
   {
-    name: "Claude Opus 4.8",
-    id: "anthropic/claude-opus-4.8" as const,
+    name: "Claude Opus 5",
+    id: "anthropic/claude-opus-5" as const,
     kind: "most-powerful" as const,
     logo: Claude,
     logoColor: Claude.colorPrimary,

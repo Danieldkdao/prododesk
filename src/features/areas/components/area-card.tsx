@@ -31,7 +31,7 @@ import { DeleteAreaButton } from "./delete-area-button";
 export const AreaCard = ({
   area,
 }: {
-  area: ReadUserAreasActionReturnType[number];
+  area: ReadUserAreasActionReturnType["areas"][number];
 }) => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
 
@@ -45,7 +45,7 @@ export const AreaCard = ({
       <Card
         className={cn(
           "border border-l-6 w-full h-full relative",
-          area.color && formatColor(area.color).borderLeft,
+          formatColor(area.color).borderLeft,
         )}
       >
         <CardHeader className="flex items-center gap-2 justify-between flex-wrap">
@@ -54,7 +54,7 @@ export const AreaCard = ({
               <div
                 className={cn(
                   "size-10 shrink-0 flex items-center justify-center bg-muted",
-                  area.color && formatColor(area.color).bgLight,
+                  formatColor(area.color).bgLight,
                 )}
               >
                 {area.icon}

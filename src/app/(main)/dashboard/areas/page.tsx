@@ -11,20 +11,22 @@ import { Suspense } from "react";
 
 const AreasPage = () => {
   return (
-    <div className="flex flex-col gap-4 p-10 max-w-384 mx-auto">
-      <div className="flex items-center gap-2 flex-wrap justify-between">
-        <h1 className="text-3xl font-semibold">My Areas</h1>
-        <AreaDialog>
-          <TooltipWrapper content="Create new area">
-            <Button size="icon-sm">
-              <PlusIcon />
-            </Button>
-          </TooltipWrapper>
-        </AreaDialog>
+    <div className="w-full h-full overflow-y-auto">
+      <div className="flex flex-col gap-4 p-10 max-w-384 mx-auto">
+        <div className="flex items-center gap-2 flex-wrap justify-between">
+          <h1 className="text-3xl font-semibold">My Areas</h1>
+          <AreaDialog>
+            <TooltipWrapper content="Create new area">
+              <Button size="icon-sm">
+                <PlusIcon />
+              </Button>
+            </TooltipWrapper>
+          </AreaDialog>
+        </div>
+        <Suspense fallback={<AreasLoading />}>
+          <AreasSuspense />
+        </Suspense>
       </div>
-      <Suspense fallback={<AreasLoading />}>
-        <AreasSuspense />
-      </Suspense>
     </div>
   );
 };

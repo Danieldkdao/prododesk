@@ -19,7 +19,9 @@ export const ProjectDialog = ({
   open,
   onOpenChange,
 }: {
-  existingProject?: ProjectSelectType;
+  existingProject?: ProjectSelectType & {
+    area?: { name: string; icon?: string | null } | null;
+  };
   children?: ReactElement;
   open?: boolean;
   onOpenChange?: SetterType<boolean>;

@@ -1,5 +1,6 @@
 "use client";
 
+import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import {
   Command,
   CommandEmpty,
@@ -22,14 +23,14 @@ import { useDebouncedCallback } from "@tanstack/react-pacer";
 import { ChevronDownIcon, ShapesIcon } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { readUserAreasAction } from "../actions/actions";
-import { Badge } from "@/components/ui/badge";
 import { formatAreaStatus } from "../lib/formatters";
-import { TooltipWrapper } from "@/components/tooltip-wrapper";
 
 export const AreaCommandSelect = ({
+  initialValue,
   value,
   onValueChange,
 }: {
+  initialValue?: { name: string; icon?: string | null } | null | undefined;
   value?: string | null | undefined;
   onValueChange: (value: unknown) => void;
 }) => {
@@ -122,6 +123,17 @@ export const AreaCommandSelect = ({
               )}
               <span className="min-w-0 flex-1 truncate">
                 {selectedArea.name}
+              </span>
+            </div>
+          ) : initialValue ? (
+            <div className="flex min-w-0 items-center gap-2">
+              {initialValue?.icon ? (
+                <span className="shrink-0">{initialValue.icon}</span>
+              ) : (
+                <ShapesIcon className="size-4 text-muted-foreground" />
+              )}
+              <span className="min-w-0 flex-1 truncate">
+                {initialValue.name}
               </span>
             </div>
           ) : (
