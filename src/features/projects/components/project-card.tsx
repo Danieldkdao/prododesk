@@ -81,9 +81,9 @@ export const ProjectCard = ({
         )}
       >
         {project.isArchived && (
-          <div className="absolute z-10 inset-0 bg-muted/10 backdrop-blur-sm w-full h-full flex flex-col gap-0.5 items-center justify-center">
-            <h3 className="text-2xl font-semibold">Archived</h3>
-            <p className="text-muted-foreground text-lg">
+          <div className="absolute z-10 inset-0 bg-muted/10 backdrop-blur-sm w-full h-full flex flex-col gap-0.5 items-center justify-center p-4">
+            <h3 className="text-2xl font-semibold text-center">Archived</h3>
+            <p className="text-muted-foreground text-lg text-center">
               This project has been archived since{" "}
               {project.archivedAt
                 ? format(project.archivedAt, "PP")

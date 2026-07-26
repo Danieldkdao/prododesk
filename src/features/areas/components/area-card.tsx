@@ -15,11 +15,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import {
+  ArchiveIcon,
   ClockIcon,
   EditIcon,
   EllipsisVerticalIcon,
+  RefreshCcwIcon,
   Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
@@ -27,6 +29,7 @@ import { ReadUserAreasActionReturnType } from "../actions/actions";
 import { AreaDialog } from "./area-dialog";
 import { useState } from "react";
 import { DeleteAreaButton } from "./delete-area-button";
+import { ToggleAreaArchiveStatusButton } from "./toggle-area-archive-status-button";
 
 export const AreaCard = ({
   area,
@@ -48,6 +51,15 @@ export const AreaCard = ({
           formatColor(area.color).borderLeft,
         )}
       >
+        {area.isArchived && (
+          <div className="absolute z-10 inset-0 bg-muted/10 backdrop-blur-sm w-full h-full flex flex-col gap-0.5 items-center justify-center p-4">
+            <h3 className="text-2xl font-semibold text-center">Archived</h3>
+            <p className="text-muted-foreground text-lg text-center">
+              This area has been archived since{" "}
+              {area.archivedAt ? format(area.archivedAt, "PP") : "unknown"}.
+            </p>
+          </div>
+        )}
         <CardHeader className="flex items-center gap-2 justify-between flex-wrap">
           <div className="flex items-center gap-2">
             {area.icon && (
@@ -81,6 +93,29 @@ export const AreaCard = ({
                   <EditIcon />
                   Edit
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  nativeButton
+                  render={
+                    <ToggleAreaArchiveStatusButton
+                      areaId={area.id}
+                      newArchiveStatus={!area.isArchived}
+                      variant="ghost"
+                      className="w-full h-auto py-2 px-3.5 justify-start"
+                    >
+                      {area.isArchived ? (
+                        <>
+                          <RefreshCcwIcon />
+                          Reactivate
+                        </>
+                      ) : (
+                        <>
+                          <ArchiveIcon />
+                          Archive
+                        </>
+                      )}
+                    </ToggleAreaArchiveStatusButton>
+                  }
+                ></DropdownMenuItem>
                 <DropdownMenuItem
                   nativeButton
                   variant="destructive"

@@ -164,7 +164,9 @@ export const AreaCommandSelect = ({
                     <AreaCommandItemSkeleton key={index} />
                   ))
                 : areas.map((area) => {
-                    const { icon: StatusIcon } = formatAreaStatus(area.status);
+                    const { icon: StatusIcon } = formatAreaStatus(
+                      area.isArchived,
+                    );
                     const isSelected = area.id === selectedArea?.id;
 
                     return (
@@ -182,7 +184,9 @@ export const AreaCommandSelect = ({
                           setSearch("");
                         }}
                       >
-                        <TooltipWrapper content={`This area is ${area.status}`}>
+                        <TooltipWrapper
+                          content={`This area is ${area.isArchived ? "archived" : "active"}`}
+                        >
                           <div className="flex w-full min-w-0 items-center gap-2">
                             <div
                               className={cn(
@@ -205,9 +209,9 @@ export const AreaCommandSelect = ({
 
                                 <StatusIcon
                                   className={
-                                    area.status === "active"
-                                      ? "text-emerald-500"
-                                      : "text-muted-foreground"
+                                    area.isArchived
+                                      ? "text-muted-foreground"
+                                      : "text-emerald-500"
                                   }
                                 />
                               </div>

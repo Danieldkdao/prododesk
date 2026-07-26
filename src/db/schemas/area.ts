@@ -1,9 +1,16 @@
-import { integer, pgTable, text, varchar } from "drizzle-orm/pg-core";
-import { createdAt, id, updatedAt } from "../helpers";
-import { areaStatusEnum, colorEnum } from "../shared";
-import { user } from "./user";
 import { relations } from "drizzle-orm";
+import {
+  boolean,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  varchar,
+} from "drizzle-orm/pg-core";
+import { createdAt, id, updatedAt } from "../helpers";
+import { colorEnum } from "../shared";
 import { ProjectTable } from "./project";
+import { user } from "./user";
 
 export const AreaTable = pgTable("areas", {
   id,
@@ -15,7 +22,8 @@ export const AreaTable = pgTable("areas", {
   icon: varchar("icon"),
   color: colorEnum("colors").notNull(),
   position: integer().notNull(),
-  status: areaStatusEnum("status").notNull().default("active"),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt,
   updatedAt,
 });

@@ -177,6 +177,55 @@ export const updateAreaAction = async (
   }
 };
 
+export const toggleAreaArchiveStatusAction = async (
+  areaId: string,
+  newArchiveStatus: boolean,
+) => {
+  if (!areValidIds(areaId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const existingArea = await confirmUserAreaOwnership(areaId);
+  if (!existingArea) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  try {
+    const updatedArea = await updateAreaDb(existingArea.id, {
+      isArchived: newArchiveStatus,
+      archivedAt: new Date(),
+    });
+    if (!updatedArea) throw new Error("Failed to update area archive status.");
+
+    return {
+      error: false,
+      message: newArchiveStatus
+        ? "Area archived successfully!"
+        : "Area reactivated successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
+
 export const deleteAreaAction = async (areaId: string) => {
   if (!areValidIds(areaId)) {
     return {

@@ -9,6 +9,6 @@ export const areaSchema = z.object({
     .max(50, { error: "Name can be no longer than 50 characters." }),
   description: z.string().nullish(),
   icon: z.string().nullish(),
-  color: z.enum(colors).nullish(),
+  color: z.enum(colors),
 });
 export type AreaSchemaType = z.infer<typeof areaSchema>;
