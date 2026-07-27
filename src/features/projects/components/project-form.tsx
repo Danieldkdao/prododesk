@@ -53,6 +53,7 @@ export const ProjectForm = ({
           status: existingProject.status,
           color: existingProject.color,
           icon: existingProject.icon ?? "",
+          isArchived: existingProject.isArchived,
           startAt: existingProject.startAt
             ? parse(existingProject.startAt, "yyyy-MM-dd", new Date())
             : undefined,

@@ -18,11 +18,12 @@ import {
 import { projectSchema, ProjectSchemaType } from "./schemas";
 import { areValidIds } from "@/lib/utils";
 import { cacheTag } from "next/cache";
-import { getUserProjectTag } from "../server/cache/projects";
+import { getProjectIdTag, getUserProjectTag } from "../server/cache/projects";
 import { db } from "@/db/db";
 import { AreaTable, ProjectTable } from "@/db/schema";
 import { and, count, desc, eq, getTableColumns, ilike, or } from "drizzle-orm";
 import { UnwrapAsync } from "@/lib/types";
+import { cache } from "react";
 
 const readCachedProjectsAction = async (
   userId: string,
@@ -59,8 +60,6 @@ const readCachedProjectsAction = async (
     .offset(offset)
     .limit(PAGE_SIZE);
 
-  console.log(projects);
-
   const [totalProjects] = await db
     .select({ count: count() })
     .from(ProjectTable)
@@ -90,6 +89,31 @@ export const readProjectsAction = async (filterOptions: {
 export type ReadProjectsActionReturnType = UnwrapAsync<
   typeof readProjectsAction
 >;
+
+export const readCachedProjectAction = async (
+  userId: string,
+  projectId: string,
+) => {
+  "use cache";
+  cacheTag(getProjectIdTag(projectId));
+
+  const existingProject = await db.query.ProjectTable.findFirst({
+    where: and(eq(ProjectTable.id, projectId), eq(ProjectTable.userId, userId)),
+    with: {
+      tasks: true,
+      area: true,
+    },
+  });
+
+  return existingProject ?? null;
+};
+export const readProjectAction = cache(async (projectId: string) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  return readCachedProjectAction(userId, projectId);
+});
+export type ReadProjectActionReturnType = UnwrapAsync<typeof readProjectAction>;
 
 export const createProjectAction = async (unsafeData: ProjectSchemaType) => {
   const { userId } = await getCurrentUser();
