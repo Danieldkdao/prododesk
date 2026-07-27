@@ -19,16 +19,18 @@ export const ProjectIdHeaderTabs = ({
     {
       value: "overview",
       children: "Overview",
-      href: ``,
+      href: "",
     },
     {
       value: "tasks",
       children: (
         <div className="flex items-center gap-2">
           <span>Tasks</span>
-          <span className={cn("text-white size-4 text-center", bg)}>
-            {project.tasks.length}
-          </span>
+          <div className={cn(bg, "size-4 flex items-center justify-center")}>
+            <span className="text-white font-medium text-sm">
+              {project.tasks.length}
+            </span>
+          </div>
         </div>
       ),
       href: "/tasks",
@@ -63,7 +65,12 @@ export const ProjectIdHeaderTabs = ({
               key={tab.value}
               nativeButton={false}
               value={tab.value}
-              className={cn(dataActiveText, hoverText, afterBg)}
+              className={cn(
+                dataActiveText,
+                hoverText,
+                afterBg,
+                "text-base font-bold",
+              )}
               render={
                 <Link href={`/dashboard/projects/${project.id}${tab.href}`}>
                   {tab.children}

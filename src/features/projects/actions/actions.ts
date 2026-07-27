@@ -100,6 +100,7 @@ export const readCachedProjectAction = async (
   const existingProject = await db.query.ProjectTable.findFirst({
     where: and(eq(ProjectTable.id, projectId), eq(ProjectTable.userId, userId)),
     with: {
+      user: true,
       tasks: true,
       area: true,
     },
