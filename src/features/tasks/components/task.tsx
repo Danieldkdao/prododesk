@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/select";
 import { TaskStatus, taskStatuses } from "@/db/shared";
 import { useConfetti } from "@/hooks/use-confetti";
+import { formatTaskDates } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
 import {
   CheckIcon,
   ClockIcon,
@@ -45,9 +45,11 @@ import { TaskDialog } from "./task-dialog";
 export const Task = ({
   task,
   disabled = false,
+  includeDay = false,
   index,
 }: {
   task: GetDayTasksActionReturnType["selectedDayTasks"][number];
+  includeDay?: boolean;
   disabled?: boolean;
   index: number;
 }) => {
@@ -173,16 +175,12 @@ export const Task = ({
               <span>Completed </span>
             </div>
           ) : (
-            task.scheduledAt && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <ClockIcon className="size-3.5" />
-
-                <span>
-                  {format(task.scheduledAt, "h:mm a")}
-                  {task.dueAt && ` – ${format(task.dueAt, "h:mm a")}`}
-                </span>
-              </div>
-            )
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <ClockIcon className="size-3.5" />
+              <span>
+                {formatTaskDates(task.scheduledAt, task.dueAt, includeDay)}
+              </span>
+            </div>
           )}
         </div>
         <DropdownMenu>

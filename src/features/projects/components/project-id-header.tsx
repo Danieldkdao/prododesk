@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, parse } from "date-fns";
 import { EllipsisIcon, FolderKanbanIcon, ShapesIcon } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -12,6 +12,7 @@ import { formatProjectStatus } from "../lib/formatters";
 import { ProjectIdHeaderTabs } from "./project-id-header-tabs";
 import { ProjectOptions } from "./project-options";
 import { ParamsId } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ProjectIdParams = ParamsId<"projectId">;
 
@@ -24,7 +25,40 @@ export const ProjectIdHeader = (props: ProjectIdParams) => {
 };
 
 const ProjectIdHeaderLoading = () => {
-  return <div>loading</div>;
+  return (
+    <Card className="w-full min-w-0 border border-t-4 border-t-muted pb-0 shadow-lg">
+      <CardContent className="w-full min-w-0">
+        <div className="flex items-start gap-8">
+          <Skeleton className="size-18 shrink-0" />
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-10 w-72 max-w-[55%]" />
+              <Skeleton className="h-9 w-28" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-full max-w-4xl" />
+              <Skeleton className="h-6 w-2/3 max-w-2xl" />
+            </div>
+            <div className="flex flex-wrap items-center gap-6">
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-6 w-52" />
+              <Skeleton className="h-6 w-40" />
+            </div>
+          </div>
+          <Skeleton className="size-10 shrink-0" />
+        </div>
+      </CardContent>
+      <CardFooter>
+        <div className="flex items-center gap-6 overflow-hidden">
+          <Skeleton className="h-6 w-20 shrink-0" />
+          <Skeleton className="h-6 w-20 shrink-0" />
+          <Skeleton className="h-6 w-24 shrink-0" />
+          <Skeleton className="h-6 w-24 shrink-0" />
+          <Skeleton className="h-6 w-20 shrink-0" />
+        </div>
+      </CardFooter>
+    </Card>
+  );
 };
 
 const ProjectIdHeaderSuspense = async ({ params }: ProjectIdParams) => {
@@ -56,7 +90,7 @@ const ProjectIdHeaderSuspense = async ({ params }: ProjectIdParams) => {
       )}
     >
       <CardContent className="w-full min-w-0">
-        <div className="flex gap-8">
+        <div className="flex items-start gap-8">
           <div
             className={cn(
               "size-18 flex items-center justify-center shrink-0",
@@ -109,7 +143,7 @@ const ProjectIdHeaderSuspense = async ({ params }: ProjectIdParams) => {
               <span className="text-lg font-medium text-muted-foreground">
                 {project.startAt
                   ? project.endAt
-                    ? `${format(project.startAt, "PP")} - ${format(project.endAt, "PP")}`
+                    ? `${format(parse(project.startAt, "yyyy-MM-dd", new Date()), "PP")} - ${format(parse(project.endAt, "yyyy-MM-dd", new Date()), "PP")}`
                     : `${format(project.startAt, "PP")} - Unknown`
                   : "No dates selected"}
               </span>

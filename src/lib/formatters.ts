@@ -1,5 +1,5 @@
 import { Color } from "@/db/shared";
-import { format } from "date-fns";
+import { format, isSameDay, isToday } from "date-fns";
 import { ArchiveIcon, CircleCheckIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
@@ -177,6 +177,26 @@ export const formatCalendarValue = (
   }
 
   return withTime ? format(value, "PPpp") : format(value, "PP");
+};
+
+export const formatTaskDates = (
+  scheduledAt: Date | null | undefined,
+  dueAt: Date | null | undefined,
+  includeDay = false,
+) => {
+  if (!scheduledAt) return "No scheduled date";
+
+  if (dueAt) {
+    return isSameDay(dueAt, scheduledAt)
+      ? `${format(scheduledAt, "h:mm a")} - ${format(dueAt, "h:mm a")}`
+      : `${format(scheduledAt, "PP 'at' h:mm a")} - ${format(dueAt, "PP 'at' h:mm a")}`;
+  }
+
+  return isToday(scheduledAt)
+    ? "Today"
+    : includeDay
+      ? format(scheduledAt, "PP 'at' h:mm a")
+      : format(scheduledAt, "h:mm a");
 };
 
 export const formatArchivedStatus = (isArchived: boolean) => {
