@@ -1,11 +1,11 @@
 import { relations } from "drizzle-orm";
 import {
-  boolean,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  varchar,
+    boolean,
+    integer,
+    pgTable,
+    text,
+    timestamp,
+    varchar,
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { colorEnum } from "../shared";

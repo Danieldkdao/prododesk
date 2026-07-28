@@ -1,7 +1,6 @@
 "use client";
 
-import { CheckIcon, ChevronsUpDownIcon, XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -17,6 +16,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { CheckIcon, ChevronsUpDownIcon, XIcon } from "lucide-react";
 import {
   createContext,
   useCallback,
@@ -27,7 +28,6 @@ import {
   type ComponentPropsWithoutRef,
   type ReactNode,
 } from "react";
-import { Badge } from "@/components/ui/badge";
 
 type MultiSelectContextType = {
   open: boolean;
@@ -235,7 +235,7 @@ export function MultiSelectValue({
           <Badge
             variant="outline"
             data-selected-item
-            className="group flex items-center gap-1"
+            className="group flex items-center gap-1 tracking-wide bg-primary/20 w-auto! px-2 py-1"
             key={value}
             onClick={
               clickToRemove

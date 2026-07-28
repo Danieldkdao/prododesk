@@ -2,22 +2,16 @@
 
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { EmojiPickerPopover } from "@/components/ui/emoji-picker-popover";
 import {
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { LoadingSwap } from "@/components/ui/loading-swap";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { PopoverCalendar } from "@/components/ui/popover-calendar";
 import {
   Select,
   SelectContent,
@@ -26,24 +20,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { taskPriorities, TaskTableSelectType } from "@/db/schema";
-import { mergeDateTime } from "@/lib/utils";
+import { taskPriorities, taskStatuses, TaskTableSelectType } from "@/db/schema";
+import { ProjectCommandSelect } from "@/features/projects/components/project-command-select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, parse, startOfDay } from "date-fns";
-import { CalendarIcon, ClockIcon, SmilePlusIcon } from "lucide-react";
+import { addDays, subDays } from "date-fns";
+import { SmilePlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { DateRange } from "react-day-picker";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { createTaskAction, updateTaskAction } from "../actions/actions";
 import { taskSchema, TaskSchemaType } from "../actions/schemas";
-import { formatTaskPriority } from "../lib/formatters";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
-import { ProjectCommandSelect } from "@/features/projects/components/project-command-select";
+import { formatTaskPriority, formatTaskStatus } from "../lib/formatters";
 
 export const TaskForm = ({
   defaultDay,
@@ -56,43 +43,24 @@ export const TaskForm = ({
   };
   afterAction?: () => void;
 }) => {
-  const today = startOfDay(new Date());
-  const dayToUse = defaultDay ?? today;
   const router = useRouter();
   const form = useForm<TaskSchemaType>({
     resolver: zodResolver(taskSchema),
-    defaultValues: existingTask
-      ? {
-          name: existingTask.name,
-          description: existingTask.description,
-          emoji: existingTask.emoji,
-          priority: existingTask.priority,
-          startAt: existingTask.startAt
-            ? format(existingTask.startAt, "HH:mm:ss")
-            : null,
-          projectId: existingTask.projectId,
-          endAt: existingTask.endAt
-            ? format(existingTask.endAt, "HH:mm:ss")
-            : null,
-          range: {
-            from: parse(existingTask.day, "yyyy-MM-dd", new Date()),
-            to: undefined,
-          },
-        }
-      : {
-          name: "",
-          priority: "low",
-          description: "",
-          emoji: "",
-          projectId: null,
-          startAt: null,
-          endAt: null,
-          range: {
-            from: dayToUse,
-            to: undefined,
-          },
-        },
+    defaultValues: existingTask ?? {
+      name: "",
+      priority: "low",
+      status: "not_started",
+      description: "",
+      emoji: "",
+      projectId: null,
+      scheduledAt: defaultDay ?? null,
+      dueAt: null,
+    },
   });
+
+  const today = new Date();
+  const scheduledAtValue = form.watch("scheduledAt");
+  const dueAtValue = form.watch("dueAt");
 
   const handleSubmission = async (data: TaskSchemaType) => {
     const action = existingTask
@@ -109,83 +77,11 @@ export const TaskForm = ({
     }
   };
 
-  const dayValue = form.watch("range.from");
-
   return (
     <form
       onSubmit={form.handleSubmit(handleSubmission)}
       className="w-full flex flex-col gap-4"
     >
-      <Controller
-        control={form.control}
-        name="range"
-        render={({ field, fieldState }) => (
-          <Field data-invalid={!!fieldState.error}>
-            <FieldLabel
-              htmlFor={fieldState.error && "invalid-recurring-range-input"}
-            >
-              Date
-            </FieldLabel>
-            <FieldContent>
-              <Popover>
-                <PopoverTrigger
-                  id={fieldState.error && "invalid-recurring-range-input"}
-                  aria-invalid={!!fieldState.error}
-                  className="flex items-start gap-2 cursor-pointer border-b py-2"
-                >
-                  <CalendarIcon className="size-4 mt-0.4" />
-                  {format(field.value.from, "PP")}
-                  {field.value.to && `  -  ${format(field.value.to, "PP")}`}
-                </PopoverTrigger>
-                <PopoverContent>
-                  {existingTask ? (
-                    <Calendar
-                      mode="single"
-                      selected={field.value.from}
-                      onSelect={(date) =>
-                        field.onChange({ from: date, to: undefined })
-                      }
-                      disabled={{
-                        before: today,
-                      }}
-                      className="bg-card! border shadow-sm"
-                    />
-                  ) : (
-                    <Calendar
-                      mode="range"
-                      defaultMonth={dayToUse}
-                      selected={field.value ?? undefined}
-                      onSelect={(range) => {
-                        const newValue: DateRange | undefined = !range
-                          ? undefined
-                          : !range.to || !range.from
-                            ? range
-                            : format(range.from, "yyyy-MM-dd") ===
-                                format(range.to, "yyyy-MM-dd")
-                              ? { from: range.from, to: undefined }
-                              : range;
-                        field.onChange(newValue);
-                      }}
-                      numberOfMonths={existingTask ? 1 : 2}
-                      disabled={{
-                        before: dayToUse,
-                      }}
-                      className="bg-card! border shadow-sm"
-                    />
-                  )}
-                </PopoverContent>
-              </Popover>
-            </FieldContent>
-            {!existingTask && (
-              <FieldDescription>
-                You can select either one day or multiple days to make the task
-                recurring.
-              </FieldDescription>
-            )}
-            {fieldState.error && <FieldError errors={[fieldState.error]} />}
-          </Field>
-        )}
-      />
       <Controller
         control={form.control}
         name="name"
@@ -236,36 +132,51 @@ export const TaskForm = ({
       <Controller
         control={form.control}
         name="priority"
-        render={({ field: { value, onChange, ...props }, fieldState }) => (
-          <Field data-invalid={!!fieldState.error}>
-            <FieldLabel
-              htmlFor={fieldState.error && "task-priority-input-invalid"}
-            >
-              Priority
-            </FieldLabel>
-            <FieldContent>
-              <Select value={value} onValueChange={onChange} {...props}>
-                <SelectTrigger
-                  id={fieldState.error && "task-priority-input-invalid"}
-                  aria-invalid={!!fieldState.error}
-                  className="w-full"
-                >
-                  <SelectValue placeholder="Select task priority">
-                    <span>{formatTaskPriority(value)}</span>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {taskPriorities.map((priority) => (
-                    <SelectItem key={priority} value={priority}>
-                      {formatTaskPriority(priority)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FieldContent>
-            {fieldState.error && <FieldError errors={[fieldState.error]} />}
-          </Field>
-        )}
+        render={({ field: { value, onChange, ...props }, fieldState }) => {
+          const { label, icon: Icon } = formatTaskPriority(value);
+
+          return (
+            <Field data-invalid={!!fieldState.error}>
+              <FieldLabel
+                htmlFor={fieldState.error && "task-priority-input-invalid"}
+              >
+                Priority
+              </FieldLabel>
+              <FieldContent>
+                <Select value={value} onValueChange={onChange} {...props}>
+                  <SelectTrigger
+                    id={fieldState.error && "task-priority-input-invalid"}
+                    aria-invalid={!!fieldState.error}
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="Select task priority">
+                      <div className="flex items-center gap-2">
+                        <Icon />
+                        <span>{label}</span>
+                      </div>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {taskPriorities.map((priority) => {
+                      const { label, icon: Icon } =
+                        formatTaskPriority(priority);
+
+                      return (
+                        <SelectItem key={priority} value={priority}>
+                          <div className="flex items-center gap-2">
+                            <Icon />
+                            <span>{label}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+              {fieldState.error && <FieldError errors={[fieldState.error]} />}
+            </Field>
+          );
+        }}
       />
       <Controller
         control={form.control}
@@ -292,6 +203,48 @@ export const TaskForm = ({
       />
       <Controller
         control={form.control}
+        name="status"
+        render={({ field: { value, onChange, ...props }, fieldState }) => {
+          const { label, icon: Icon } = formatTaskStatus(value);
+
+          return (
+            <Field data-invalid={!!fieldState.error}>
+              <FieldLabel>Status</FieldLabel>
+              <FieldContent>
+                <Select value={value} onValueChange={onChange} {...props}>
+                  <SelectTrigger
+                    aria-invalid={!!fieldState.error}
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="Select a status">
+                      <div className="flex items-center gap-2">
+                        <Icon />
+                        {label}
+                      </div>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {taskStatuses.map((status) => {
+                      const { label, icon: Icon } = formatTaskStatus(status);
+
+                      return (
+                        <SelectItem key={status} value={status}>
+                          <div className="flex items-center gap-2">
+                            <Icon />
+                            <span>{label}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+          );
+        }}
+      />
+      <Controller
+        control={form.control}
         name="projectId"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
@@ -310,93 +263,50 @@ export const TaskForm = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Controller
           control={form.control}
-          name="startAt"
-          render={({ field: { value, onChange, ...props }, fieldState }) => {
-            const mergedDateTime = value
-              ? mergeDateTime(dayValue, value)
-              : null;
-
-            return (
-              <Field data-invalid={!!fieldState.error}>
-                <FieldLabel
-                  htmlFor={fieldState.error && "start-at-input-invalid"}
-                >
-                  Start at
-                </FieldLabel>
-                <FieldContent>
-                  <InputGroup>
-                    <InputGroupInput
-                      type="time"
-                      placeholder="Select a time"
-                      id={fieldState.error && "start-at-input-invalid"}
-                      aria-invalid={!!fieldState.error}
-                      value={value ?? ""}
-                      onChange={(e) => {
-                        onChange(e.target.value || null);
-                      }}
-                      step="1"
-                      className="w-full appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                      {...props}
-                    />
-                    <InputGroupAddon>
-                      <ClockIcon />
-                    </InputGroupAddon>
-                  </InputGroup>
-                </FieldContent>
-                <FieldDescription>
-                  {mergedDateTime
-                    ? format(mergedDateTime, "PPpp")
-                    : "No time selected"}
-                </FieldDescription>
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            );
-          }}
+          name="scheduledAt"
+          render={({ field: { value, onChange, ...props }, fieldState }) => (
+            <Field data-invalid={!!fieldState.error}>
+              <FieldLabel>Scheduled at</FieldLabel>
+              <FieldContent>
+                <PopoverCalendar
+                  mode="single"
+                  value={value}
+                  onValueChange={onChange}
+                  withTime
+                  disabled={{
+                    before: today,
+                    after: dueAtValue ? subDays(dueAtValue, 1) : undefined,
+                  }}
+                  {...props}
+                />
+              </FieldContent>
+              {fieldState.error && <FieldError errors={[fieldState.error]} />}
+            </Field>
+          )}
         />
         <Controller
           control={form.control}
-          name="endAt"
-          render={({ field: { value, onChange, ...props }, fieldState }) => {
-            const mergedDateTime = value
-              ? mergeDateTime(dayValue, value)
-              : null;
-
-            return (
-              <Field data-invalid={!!fieldState.error}>
-                <FieldLabel
-                  htmlFor={fieldState.error && "end-at-input-invalid"}
-                >
-                  End at
-                </FieldLabel>
-                <FieldContent>
-                  <InputGroup>
-                    <InputGroupInput
-                      type="time"
-                      placeholder="Select a time"
-                      id={fieldState.error && "end-at-input-invalid"}
-                      aria-invalid={!!fieldState.error}
-                      value={value ?? ""}
-                      onChange={(e) => {
-                        onChange(e.target.value || null);
-                      }}
-                      step="1"
-                      className="w-full appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                      {...props}
-                    />
-                    <InputGroupAddon>
-                      <ClockIcon />
-                    </InputGroupAddon>
-                  </InputGroup>
-                </FieldContent>
-                <FieldDescription>
-                  {mergedDateTime
-                    ? format(mergedDateTime, "PPpp")
-                    : "No time selected"}
-                </FieldDescription>
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            );
-          }}
+          name="dueAt"
+          render={({ field: { value, onChange, ...props }, fieldState }) => (
+            <Field data-invalid={!!fieldState.error}>
+              <FieldLabel>Due at</FieldLabel>
+              <FieldContent>
+                <PopoverCalendar
+                  mode="single"
+                  value={value}
+                  onValueChange={onChange}
+                  disabled={{
+                    before: scheduledAtValue
+                      ? addDays(scheduledAtValue, 1)
+                      : today,
+                  }}
+                  withTime
+                  {...props}
+                />
+              </FieldContent>
+              {fieldState.error && <FieldError errors={[fieldState.error]} />}
+            </Field>
+          )}
         />
       </div>
       <Button

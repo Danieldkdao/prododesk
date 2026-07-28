@@ -1,9 +1,15 @@
 import { db, DbTransaction } from "@/db/db";
-import { AreaInsertType, AreaSelectType, AreaTable } from "@/db/schema";
+import {
+  AreaInsertType,
+  AreaSelectType,
+  AreaTable,
+  ProjectTable,
+} from "@/db/schema";
 import { revalidateAreaCache } from "./cache/areas";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { and, eq } from "drizzle-orm";
 import { SQLMap } from "@/lib/types";
+import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 
 export const confirmUserAreaOwnership = async (areaId: string) => {
   const { userId } = await getCurrentUser();
@@ -15,6 +21,24 @@ export const confirmUserAreaOwnership = async (areaId: string) => {
     .where(and(eq(AreaTable.id, areaId), eq(AreaTable.userId, userId)));
 
   return existingArea ?? null;
+};
+
+const revalidateAreaProjectsCache = async (areaId: string) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return;
+
+  const existingAreaProjects = await db.query.ProjectTable.findMany({
+    where: and(
+      eq(ProjectTable.userId, userId),
+      eq(ProjectTable.areaId, areaId),
+    ),
+  });
+
+  if (existingAreaProjects.length) {
+    existingAreaProjects.forEach((project) => {
+      revalidateProjectCache(project.userId, project.id);
+    });
+  }
 };
 
 export const insertAreaDb = async (
@@ -52,6 +76,7 @@ export const updateAreaDb = async (
     )
     .returning();
 
+  revalidateAreaProjectsCache(updatedArea.id);
   revalidateAreaCache(updatedArea.userId, updatedArea.id);
 
   return updatedArea;
@@ -71,6 +96,7 @@ export const deleteAreaDb = async (areaId: string, tx?: DbTransaction) => {
     )
     .returning();
 
+  revalidateAreaProjectsCache(deletedArea.id);
   revalidateAreaCache(deletedArea.userId, deletedArea.id);
 
   return deletedArea;

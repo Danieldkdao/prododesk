@@ -1,8 +1,8 @@
+import { MessagePart } from "@/services/ai/tool-contracts";
 import { relations } from "drizzle-orm";
 import { integer, jsonb, pgTable, unique, uuid } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { ChatMessageTable } from "./chat-message";
-import { MessagePart } from "@/services/ai/tool-contracts";
 
 export const MessagePartTable = pgTable(
   "message_parts",

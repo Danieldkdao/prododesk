@@ -1,6 +1,15 @@
 import { modelIds } from "@/services/ai/model-ids";
 import { pgEnum } from "drizzle-orm/pg-core";
 
+export const taskStatuses = [
+  "backlog",
+  "not_started",
+  "in_progress",
+  "completed",
+] as const;
+export type TaskStatus = (typeof taskStatuses)[number];
+export const taskStatusEnum = pgEnum("task_statuses", taskStatuses);
+
 export const taskPriorities = ["low", "medium", "high", "urgent"] as const;
 export type TaskPriority = (typeof taskPriorities)[number];
 export const taskPriorityEnum = pgEnum("task_priorities", taskPriorities);

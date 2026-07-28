@@ -1,6 +1,4 @@
-import { taskPriorities } from "@/db/shared";
-import { aiTimeSchema, timeSchema } from "@/lib/schemas";
-import { parse } from "date-fns";
+import { taskPriorities, taskStatuses } from "@/db/shared";
 import z from "zod";
 
 export const approvalReasonSchema = z
@@ -57,6 +55,9 @@ export const scrapeWebpageToolValidationSchema = z.object({
   }),
 });
 
+const isoDatetimeFormatInstructions =
+  "Strict ISO 8601 string format: YYYY-MM-DDTHH:mm:ssZ (e.g., '2026-07-27T21:44:00Z'). Must include a capital 'T' separator and a trailing 'Z' for UTC timezone.";
+
 export const createTasksToolSchema = z.object({
   tasks: z
     .array(
@@ -69,20 +70,21 @@ export const createTasksToolSchema = z.object({
           })
           .describe("The task name."),
         priority: z.enum(taskPriorities).describe("The task priority level."),
+        status: z.enum(taskStatuses).describe("The task status."),
         description: z.string().nullish().describe("The task description."),
         emoji: z.string().nullish().describe("The task emoji."),
-        startAt: aiTimeSchema
-          .transform((val) => (val === "" ? null : val))
+        scheduledAt: z.iso
+          .datetime()
           .nullish()
-          .describe("Start time in HH:mm:ss format, for example 09:30:00."),
-        endAt: aiTimeSchema
-          .transform((val) => (val === "" ? null : val))
+          .describe(
+            `When this task is scheduled at. Optional. ${isoDatetimeFormatInstructions}`,
+          ),
+        dueAt: z.iso
+          .datetime()
           .nullish()
-          .describe("End time in HH:mm:ss format, for example 09:30:00."),
-        range: z.object({
-          from: z.iso.date(),
-          to: z.iso.date().optional(),
-        }),
+          .describe(
+            `When this task is due. Optional. ${isoDatetimeFormatInstructions}`,
+          ),
       }),
     )
     .min(1, { error: "Please enter at least one task in the array." })
@@ -92,13 +94,24 @@ export const createTasksToolSchema = z.object({
 
 export const readTasksToolSchema = z
   .object({
-    day: z.iso
-      .date()
+    before: z.iso
+      .datetime()
       .optional()
       .describe(
-        "An optional day filter that allows you to filter down and get the tasks on a specific day.",
+        `An optional before filter that allows you get tasks BEFORE or AT a provided datetime. ${isoDatetimeFormatInstructions}`,
+      ),
+    after: z.iso
+      .datetime()
+      .optional()
+      .describe(
+        `An optional after filter that allows you get tasks AFTER or AT a provided datetime. ${isoDatetimeFormatInstructions}`,
       ),
     search: z.string().nullish(),
+    statuses: z
+      .array(z.enum(taskStatuses))
+      .describe(
+        "An array of task statuses you can pass in to filter the tasks by status. Can be empty.",
+      ),
     priorities: z
       .array(z.enum(taskPriorities))
       .describe(
@@ -106,16 +119,11 @@ export const readTasksToolSchema = z
       ),
   })
   .superRefine((data, ctx) => {
-    try {
-      if (data.day) {
-        void parse(data.day, "yyyy-MM-dd", new Date());
-      }
-    } catch (error) {
-      console.error(error);
+    if (data.after && data.before && data.after <= data.before) {
       ctx.addIssue({
         code: "custom",
-        path: ["date"],
-        message: "Invalid date. Please enter a date in the format yyyy-MM-dd.",
+        path: ["after", "before"],
+        message: "Before date cannot come AFTER the after date.",
       });
     }
   });
@@ -133,16 +141,20 @@ export const updateTaskToolSchema = z.object({
         .describe("The task name."),
       priority: z.enum(taskPriorities).describe("The task priority level."),
       description: z.string().nullish().describe("The task description."),
+      status: z.enum(taskStatuses).describe("The task status."),
       emoji: z.string().nullish().describe("The task emoji."),
-      startAt: timeSchema
-        .transform((val) => (val === "" ? null : val))
+      scheduledAt: z.iso
+        .datetime()
         .nullish()
-        .describe("The task start time."),
-      endAt: timeSchema
-        .transform((val) => (val === "" ? null : val))
+        .describe(
+          `When this task is scheduled at. Optional. ${isoDatetimeFormatInstructions}`,
+        ),
+      dueAt: z.iso
+        .datetime()
         .nullish()
-        .describe("The task end time."),
-      rangeFrom: z.iso.date().describe("The day the task is set on."),
+        .describe(
+          `When this task is due. Optional. ${isoDatetimeFormatInstructions}`,
+        ),
     })
     .describe(
       "The updated version of the task that will replace the old task values.",
@@ -150,10 +162,15 @@ export const updateTaskToolSchema = z.object({
   approvalReason: approvalReasonSchema,
 });
 
-export const toggleTasksCompletionStatusToolSchema = z.object({
+export const updateTasksStatusToolSchema = z.object({
   ids: z
     .array(z.uuid())
     .min(1, { error: "Please enter at least one task to update." }),
+  newStatus: z
+    .enum(taskStatuses)
+    .describe(
+      "The status ALL of the passed tasks will be updated to. Required.",
+    ),
   approvalReason: approvalReasonSchema,
 });
 

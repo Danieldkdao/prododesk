@@ -3,6 +3,7 @@ import {
   ProjectInsertType,
   ProjectSelectType,
   ProjectTable,
+  TaskTable,
 } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { SQLMap } from "@/lib/types";
@@ -10,6 +11,7 @@ import { and, eq } from "drizzle-orm";
 import { ProjectSchemaType } from "../actions/schemas";
 import { revalidateProjectCache } from "./cache/projects";
 import { format } from "date-fns";
+import { revalidateTaskCache } from "@/features/tasks/server/cache/tasks";
 
 export const confirmUserProjectOwnership = async (projectId: string) => {
   const { userId } = await getCurrentUser();
@@ -37,6 +39,23 @@ export const parseProjectData = (
     endAt: endAt ? format(endAt, "yyyy-MM-dd") : null,
     userId,
   };
+};
+
+const revalidateProjectTasksCache = async (projectId: string) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return;
+
+  const existingProjectTasks = await db.query.TaskTable.findMany({
+    where: and(
+      eq(TaskTable.userId, userId),
+      eq(TaskTable.projectId, projectId),
+    ),
+  });
+  if (existingProjectTasks.length) {
+    existingProjectTasks.forEach((task) => {
+      revalidateTaskCache(task.userId, task.id);
+    });
+  }
 };
 
 export const insertProjectDb = async (
@@ -76,6 +95,7 @@ export const updateProjectDb = async (
     )
     .returning();
 
+  revalidateProjectTasksCache(updatedProject.id);
   revalidateProjectCache(updatedProject.userId, updatedProject.id);
 
   return updatedProject;
@@ -95,6 +115,7 @@ export const deleteProjectDb = async (projectId: string) => {
     )
     .returning();
 
+  revalidateProjectTasksCache(deletedProject.id);
   revalidateProjectCache(deletedProject.userId, deletedProject.id);
 
   return deletedProject;

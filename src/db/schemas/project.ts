@@ -1,18 +1,18 @@
+import { relations } from "drizzle-orm";
 import {
-  boolean,
-  date,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-  varchar,
+    boolean,
+    date,
+    pgTable,
+    text,
+    timestamp,
+    uuid,
+    varchar,
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
-import { user } from "./user";
-import { AreaTable } from "./area";
 import { colorEnum, projectStatusEnum } from "../shared";
-import { relations } from "drizzle-orm";
+import { AreaTable } from "./area";
 import { TaskTable } from "./task";
+import { user } from "./user";
 
 export const ProjectTable = pgTable("projects", {
   id,

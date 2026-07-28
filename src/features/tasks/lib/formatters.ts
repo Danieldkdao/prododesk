@@ -1,22 +1,67 @@
-import { TaskPriority } from "@/db/shared";
+import { TaskPriority, TaskStatus } from "@/db/shared";
 import {
-  DayTasksSchedule,
-  DayTasksSortByOption,
-  DayTasksStatus,
-} from "./day-tasks-params";
+  ChevronDownCircleIcon,
+  ChevronUpCircleIcon,
+  CircleAlertIcon,
+  CircleCheckBigIcon,
+  CircleDashed,
+  CircleDotIcon,
+  InboxIcon,
+  MinusCircleIcon,
+} from "lucide-react";
+import { DayTasksSortByOption } from "./day-tasks-params";
 
 export const formatTaskPriority = (priority: TaskPriority) => {
   switch (priority) {
     case "low":
-      return "Low";
+      return {
+        label: "Low",
+        icon: ChevronDownCircleIcon,
+      };
     case "medium":
-      return "Medium";
+      return {
+        label: "Medium",
+        icon: MinusCircleIcon,
+      };
     case "high":
-      return "High";
+      return {
+        label: "High",
+        icon: ChevronUpCircleIcon,
+      };
     case "urgent":
-      return "Urgent";
+      return {
+        label: "Urgent",
+        icon: CircleAlertIcon,
+      };
     default:
       throw new Error(`Unknown task priority: ${priority satisfies never}`);
+  }
+};
+
+export const formatTaskStatus = (status: TaskStatus) => {
+  switch (status) {
+    case "backlog":
+      return {
+        label: "Backlog",
+        icon: InboxIcon,
+      };
+    case "completed":
+      return {
+        label: "Completed",
+        icon: CircleCheckBigIcon,
+      };
+    case "in_progress":
+      return {
+        label: "In progress",
+        icon: CircleDotIcon,
+      };
+    case "not_started":
+      return {
+        label: "Not started",
+        icon: CircleDashed,
+      };
+    default:
+      throw new Error(`Unknown task status: ${status satisfies never}`);
   }
 };
 
@@ -45,41 +90,11 @@ export const formatDayTasksSortByOption = (option: DayTasksSortByOption) => {
       return "Oldest";
     case "priority":
       return "Priority";
-    case "recently_completed":
-      return "Recently completed";
     case "recently_created":
       return "Recently created";
     default:
       throw new Error(
         `Unknown day tasks sort by option: ${option satisfies never}`,
-      );
-  }
-};
-
-export const formatDayTasksStatus = (status: DayTasksStatus) => {
-  switch (status) {
-    case "active":
-      return "Active";
-    case "all":
-      return "All";
-    case "complete":
-      return "Complete";
-    default:
-      throw new Error(`Unknown day tasks status: ${status satisfies never}`);
-  }
-};
-
-export const formatDayTasksSchedule = (schedule: DayTasksSchedule) => {
-  switch (schedule) {
-    case "any":
-      return "Any";
-    case "scheduled":
-      return "Scheduled";
-    case "unscheduled":
-      return "Unscheduled";
-    default:
-      throw new Error(
-        `Unknown day tasks schedule: ${schedule satisfies never}`,
       );
   }
 };

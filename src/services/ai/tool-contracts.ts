@@ -1,3 +1,4 @@
+import { TaskPriority, TaskStatus } from "@/db/shared";
 import type { Tool, UIMessagePart } from "ai";
 
 export type ChatTools = {
@@ -11,9 +12,11 @@ export type ChatTools = {
   };
   readTasks: {
     input: {
-      day?: string;
+      before?: string;
+      after?: string;
       search?: string | null;
-      priorities: Array<"low" | "medium" | "high" | "urgent">;
+      statuses: TaskStatus[];
+      priorities: TaskPriority[];
     };
     output: string;
   };
@@ -21,15 +24,12 @@ export type ChatTools = {
     input: {
       tasks: Array<{
         name: string;
-        priority: "low" | "medium" | "high" | "urgent";
+        priority: TaskPriority;
+        status: TaskStatus;
         description?: string | null;
         emoji?: string | null;
-        startAt?: string | null;
-        endAt?: string | null;
-        range: {
-          from: string;
-          to?: string;
-        };
+        scheduledAt?: string | null;
+        dueAt?: string | null;
       }>;
       approvalReason: string;
     };
@@ -40,12 +40,12 @@ export type ChatTools = {
       id: string;
       updateFields: {
         name: string;
-        priority: "low" | "medium" | "high" | "urgent";
+        priority: TaskPriority;
+        status: TaskStatus;
         description?: string | null;
         emoji?: string | null;
-        startAt?: string | null;
-        endAt?: string | null;
-        rangeFrom: string;
+        scheduledAt?: string | null;
+        dueAt?: string | null;
       };
       approvalReason: string;
     };
@@ -62,9 +62,10 @@ export type ChatTools = {
     input: Record<string, never>;
     output: string;
   };
-  toggleTasksCompletionStatus: {
+  updateTasksStatus: {
     input: {
       ids: string[];
+      newStatus: TaskStatus;
       approvalReason: string;
     };
     output: string;

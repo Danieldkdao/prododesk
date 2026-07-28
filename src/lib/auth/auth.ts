@@ -6,6 +6,15 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins/email-otp";
 
 export const auth = betterAuth({
+  user: {
+    additionalFields: {
+      timeZone: {
+        type: "string",
+        required: true,
+        input: true,
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

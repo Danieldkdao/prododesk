@@ -1,6 +1,4 @@
-import { taskPriorities } from "@/db/shared";
-import { dateRangeSchema, timeSchema } from "@/lib/schemas";
-import { startOfDay } from "date-fns";
+import { taskPriorities, taskStatuses } from "@/db/shared";
 import z from "zod";
 
 export const taskSchema = z
@@ -13,40 +11,34 @@ export const taskSchema = z
     description: z.string().nullish(),
     emoji: z.string().nullish(),
     projectId: z.uuid().nullish(),
-    startAt: timeSchema.transform((val) => (val === "" ? null : val)).nullish(),
-    endAt: timeSchema.transform((val) => (val === "" ? null : val)).nullish(),
-    range: dateRangeSchema,
+    status: z.enum(taskStatuses),
+    scheduledAt: z.date().nullish(),
+    dueAt: z.date().nullish(),
   })
   .superRefine((data, ctx) => {
-    if (data.endAt && !data.startAt) {
+    if (data.scheduledAt && data.dueAt && data.scheduledAt >= data.dueAt) {
       ctx.addIssue({
         code: "custom",
-        path: ["startAt"],
-        message: "Start time is required when end time is provided.",
+        path: ["dueAt"],
+        message: "Task cannot be due before it is scheduled.",
       });
     }
 
-    if (data.startAt && data.endAt && data.startAt >= data.endAt) {
+    const today = new Date();
+
+    if (data.scheduledAt && data.scheduledAt < today) {
       ctx.addIssue({
         code: "custom",
-        path: ["endAt"],
-        message: "End time cannot be before start time.",
+        path: ["scheduledAt"],
+        message: "You cannot schedule a task in the past.",
       });
     }
 
-    if (data.range && data.range.to && data.range.from > data.range.to) {
+    if (data.dueAt && data.dueAt < today) {
       ctx.addIssue({
         code: "custom",
-        path: ["range"],
-        message: "Please select a valid range.",
-      });
-    }
-
-    if (data.range.from < startOfDay(new Date())) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["range"],
-        message: "Invalid from date.",
+        path: ["dueAt"],
+        message: "Due date cannot be in the past.",
       });
     }
   });

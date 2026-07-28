@@ -1,4 +1,4 @@
-import { taskPriorities } from "@/db/shared";
+import { taskPriorities, taskStatuses } from "@/db/shared";
 import {
   parseAsArrayOf,
   parseAsIsoDateTime,
@@ -6,11 +6,7 @@ import {
   parseAsStringEnum,
   useQueryStates,
 } from "nuqs";
-import {
-  dayTasksSchedules,
-  dayTasksSortByOptions,
-  dayTasksStatuses,
-} from "../lib/day-tasks-params";
+import { dayTasksSortByOptions } from "../lib/day-tasks-params";
 
 export const useDayTasksParams = () => {
   return useQueryStates(
@@ -24,11 +20,8 @@ export const useDayTasksParams = () => {
       priorities: parseAsArrayOf(parseAsStringEnum([...taskPriorities]))
         .withDefault([])
         .withOptions({ clearOnDefault: true }),
-      status: parseAsStringEnum([...dayTasksStatuses])
-        .withDefault("all")
-        .withOptions({ clearOnDefault: true }),
-      schedule: parseAsStringEnum([...dayTasksSchedules])
-        .withDefault("any")
+      statuses: parseAsArrayOf(parseAsStringEnum([...taskStatuses]))
+        .withDefault([])
         .withOptions({ clearOnDefault: true }),
       timeStartRange: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
       timeEndRange: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),

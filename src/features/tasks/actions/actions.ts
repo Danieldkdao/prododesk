@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db/db";
-import { ProjectTable, TaskPriority, TaskTable } from "@/db/schema";
+import { ProjectTable, TaskPriority, TaskStatus, TaskTable } from "@/db/schema";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -13,8 +13,8 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
-import { mergeDateTime } from "@/lib/utils";
-import { eachDayOfInterval, format, isValid } from "date-fns";
+import { getLocalDayBounds, getLocalMonthBounds } from "@/lib/utils";
+import { format, isValid } from "date-fns";
 import {
   and,
   asc,
@@ -25,18 +25,15 @@ import {
   gte,
   ilike,
   inArray,
-  isNotNull,
-  isNull,
   lte,
+  ne,
   or,
   sql,
   SQL,
 } from "drizzle-orm";
-import {
-  DayTasksSchedule,
-  DayTasksSortByOption,
-  DayTasksStatus,
-} from "../lib/day-tasks-params";
+import { cacheTag } from "next/cache";
+import { DayTasksSortByOption } from "../lib/day-tasks-params";
+import { getUserTaskTag } from "../server/cache/tasks";
 import {
   confirmUserTaskOwnership,
   deleteTaskDb,
@@ -44,8 +41,6 @@ import {
   updateTaskDb,
 } from "../server/tasks";
 import { taskSchema, TaskSchemaType } from "./schemas";
-import { cacheTag } from "next/cache";
-import { getUserTaskTag } from "../server/cache/tasks";
 
 export const createTaskAction = async (unsafeData: TaskSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -64,30 +59,9 @@ export const createTaskAction = async (unsafeData: TaskSchemaType) => {
     };
   }
 
-  const { startAt, endAt, range, ...rest } = data;
-
-  let recurringDates: Date[] = [range.from];
-  if (range.from && range.to) {
-    recurringDates = eachDayOfInterval({
-      start: range.from,
-      end: range.to,
-    });
-  }
-
   try {
-    const createdTasks = await Promise.all(
-      recurringDates.map((date) =>
-        insertTaskDb({
-          userId,
-          startAt: startAt ? mergeDateTime(date, startAt) : null,
-          endAt: endAt ? mergeDateTime(date, endAt) : null,
-          day: format(date, "yyyy-MM-dd"),
-          ...rest,
-        }),
-      ),
-    );
-    if (createdTasks.length !== recurringDates.length)
-      throw new Error("Failed to create task.");
+    const createdTask = await insertTaskDb({ ...data, userId });
+    if (!createdTask) throw new Error("Failed to create task.");
 
     return {
       error: false,
@@ -130,15 +104,8 @@ export const updateTaskAction = async (
     };
   }
 
-  const { range, startAt, endAt, ...rest } = data;
-
   try {
-    const updatedTask = await updateTaskDb(existingTask.id, {
-      startAt: startAt ? mergeDateTime(range.from, startAt) : null,
-      endAt: endAt ? mergeDateTime(range.from, endAt) : null,
-      day: format(range.from, "yyyy-MM-dd"),
-      ...rest,
-    });
+    const updatedTask = await updateTaskDb(existingTask.id, data);
     if (!updatedTask) throw new Error("Failed to update task.");
 
     return {
@@ -189,14 +156,19 @@ export const deleteTaskAction = async (taskId: string) => {
   }
 };
 
-const getCachedCalendarTasks = async (userId: string, dateToUse: Date) => {
+const getCachedCalendarTasks = async (
+  userId: string,
+  timeZone: string,
+  dateToUse: Date,
+) => {
   "use cache";
   cacheTag(getUserTaskTag(userId));
 
   if (!isValid(dateToUse)) return null;
 
-  const { startOfMonth, endOfMonth, monthDays } =
-    calculateCalendarValues(dateToUse);
+  const { monthDays } = calculateCalendarValues(dateToUse);
+
+  const { startUtc, endUtc } = getLocalMonthBounds(dateToUse, timeZone);
 
   const tasks = await db
     .select()
@@ -204,16 +176,20 @@ const getCachedCalendarTasks = async (userId: string, dateToUse: Date) => {
     .where(
       and(
         eq(TaskTable.userId, userId),
-        gte(TaskTable.day, format(startOfMonth, "yyyy-MM-dd")),
-        lte(TaskTable.day, format(endOfMonth, "yyyy-MM-dd")),
+        gte(TaskTable.scheduledAt, startUtc),
+        lte(TaskTable.scheduledAt, endUtc),
       ),
     )
     .orderBy(asc(TaskTable.id));
 
   const monthDaysWithTasks = monthDays.map((day) => {
     const dayTasks = tasks.filter((task) => {
-      const dayString = format(day, "yyyy-MM-dd");
-      return task.day === dayString;
+      const { startUtc, endUtc } = getLocalDayBounds(day, timeZone);
+      return (
+        task.scheduledAt &&
+        task.scheduledAt >= startUtc &&
+        task.scheduledAt <= endUtc
+      );
     });
 
     return {
@@ -228,10 +204,10 @@ const getCachedCalendarTasks = async (userId: string, dateToUse: Date) => {
   };
 };
 export const getCalendarTasksAction = async (dateToUse: Date) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) return null;
 
-  return getCachedCalendarTasks(userId, dateToUse);
+  return getCachedCalendarTasks(userId, user.timeZone, dateToUse);
 };
 export type GetCalendarTasksActionReturnType = UnwrapAsync<
   typeof getCalendarTasksAction
@@ -240,12 +216,12 @@ export type GetCalendarTasksActionReturnType = UnwrapAsync<
 const getCachedDayTasks = async (
   userId: string,
   selectedDay: Date | null,
+  timeZone: string,
   filterOptions: {
     search: string;
     sortBy: DayTasksSortByOption;
     priorities: TaskPriority[];
-    status: DayTasksStatus;
-    schedule: DayTasksSchedule;
+    statuses: TaskStatus[];
     timeStartRange: Date | null;
     timeEndRange: Date | null;
     page: number;
@@ -262,8 +238,7 @@ const getCachedDayTasks = async (
     search,
     sortBy,
     priorities,
-    status,
-    schedule,
+    statuses,
     timeStartRange,
     timeEndRange,
     page,
@@ -280,13 +255,6 @@ const getCachedDayTasks = async (
       WHEN 'medium' THEN 2
       WHEN 'low' THEN 1
       ELSE 0
-    END
-  `;
-
-  const completedAtRank = sql`
-    CASE
-      WHEN ${TaskTable.completedAt} IS NULL THEN 0
-      ELSE 1
     END
   `;
 
@@ -307,40 +275,27 @@ const getCachedDayTasks = async (
     name_z_a: desc(sql`lower(${TaskTable.name})`),
     oldest: asc(TaskTable.createdAt),
     priority: desc(priorityRank),
-    recently_completed: desc(completedAtRank),
     recently_created: desc(TaskTable.createdAt),
   };
 
-  const statusMap: Record<DayTasksStatus, SQL<unknown> | undefined> = {
-    all: undefined,
-    active: and(
-      eq(TaskTable.isCompleted, false),
-      isNull(TaskTable.completedAt),
-    ),
-    complete: and(
-      eq(TaskTable.isCompleted, true),
-      isNotNull(TaskTable.completedAt),
-    ),
-  };
-
-  const scheduleMap: Record<DayTasksSchedule, SQL<unknown> | undefined> = {
-    any: undefined,
-    scheduled: isNotNull(TaskTable.startAt),
-    unscheduled: and(isNull(TaskTable.startAt), isNull(TaskTable.endAt)),
-  };
+  const statusFilter = statuses.length
+    ? inArray(TaskTable.status, statuses)
+    : undefined;
 
   const timeRangeFilter = and(
-    timeStartRange ? gte(TaskTable.startAt, timeStartRange) : undefined,
-    timeEndRange ? lte(TaskTable.endAt, timeEndRange) : undefined,
+    timeStartRange ? gte(TaskTable.scheduledAt, timeStartRange) : undefined,
+    timeEndRange ? lte(TaskTable.scheduledAt, timeEndRange) : undefined,
   );
+
+  const { startUtc, endUtc } = getLocalDayBounds(selectedDay, timeZone);
 
   const whereQuery = and(
     eq(TaskTable.userId, userId),
-    eq(TaskTable.day, formattedDay),
+    gte(TaskTable.scheduledAt, startUtc),
+    lte(TaskTable.scheduledAt, endUtc),
     searchFilter,
     priorityFilter,
-    statusMap[status],
-    scheduleMap[schedule],
+    statusFilter,
     timeRangeFilter,
   );
 
@@ -363,15 +318,26 @@ const getCachedDayTasks = async (
     .from(TaskTable)
     .where(whereQuery);
 
+  const [totalTasks] = await db
+    .select({ count: count() })
+    .from(TaskTable)
+    .where(
+      and(
+        eq(TaskTable.userId, userId),
+        gte(TaskTable.scheduledAt, startUtc),
+        lte(TaskTable.scheduledAt, endUtc),
+      ),
+    );
+
   const [totalCompletedTasks] = await db
     .select({ count: count() })
     .from(TaskTable)
     .where(
       and(
         eq(TaskTable.userId, userId),
-        eq(TaskTable.day, formattedDay),
-        eq(TaskTable.isCompleted, true),
-        isNotNull(TaskTable.completedAt),
+        gte(TaskTable.scheduledAt, startUtc),
+        lte(TaskTable.scheduledAt, endUtc),
+        eq(TaskTable.status, "completed"),
       ),
     );
 
@@ -384,7 +350,7 @@ const getCachedDayTasks = async (
     metadata: {
       hasPrevPage,
       hasNextPage,
-      allTasksCompleted: totalCompletedTasks.count === totalSelectedTasks.count,
+      allTasksCompleted: totalCompletedTasks.count === totalTasks.count,
     },
   };
 };
@@ -394,23 +360,25 @@ export const getDayTasksAction = async (
     search: string;
     sortBy: DayTasksSortByOption;
     priorities: TaskPriority[];
-    status: DayTasksStatus;
-    schedule: DayTasksSchedule;
+    statuses: TaskStatus[];
     timeStartRange: Date | null;
     timeEndRange: Date | null;
     page: number;
   },
 ) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) return null;
 
-  return getCachedDayTasks(userId, selectedDay, filterOptions);
+  return getCachedDayTasks(userId, selectedDay, user.timeZone, filterOptions);
 };
 export type GetDayTasksActionReturnType = UnwrapAsync<typeof getDayTasksAction>;
 
-export const toggleTaskCompletionAction = async (taskId: string) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) {
+export const updateTaskStatusAction = async (
+  taskId: string,
+  newStatus: TaskStatus,
+) => {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) {
     return {
       error: true,
       message: UNAUTHED_ERROR_MESSAGE,
@@ -427,30 +395,40 @@ export const toggleTaskCompletionAction = async (taskId: string) => {
 
   try {
     const updatedTask = await updateTaskDb(taskId, {
-      isCompleted: !existingTask.isCompleted,
-      completedAt: !existingTask.isCompleted ? new Date() : null,
+      status: newStatus,
     });
     if (!updatedTask)
       throw new Error("Failed to update task completion status.");
 
-    const [incompleteTasks] = await db
-      .select({
-        count: count(),
-      })
-      .from(TaskTable)
-      .where(
-        and(
-          eq(TaskTable.userId, userId),
-          isNull(TaskTable.completedAt),
-          eq(TaskTable.isCompleted, false),
-          eq(TaskTable.day, updatedTask.day),
-        ),
+    let allComplete = false;
+
+    if (updatedTask.scheduledAt) {
+      const { startUtc, endUtc } = getLocalDayBounds(
+        updatedTask.scheduledAt,
+        user.timeZone,
       );
+
+      const [incompleteTasks] = await db
+        .select({
+          count: count(),
+        })
+        .from(TaskTable)
+        .where(
+          and(
+            eq(TaskTable.userId, userId),
+            ne(TaskTable.status, "completed"),
+            gte(TaskTable.scheduledAt, startUtc),
+            lte(TaskTable.scheduledAt, endUtc),
+          ),
+        );
+
+      allComplete = incompleteTasks.count === 0;
+    }
 
     return {
       error: false,
       message: "Task updated successfully!",
-      allComplete: incompleteTasks.count === 0,
+      allComplete,
     };
   } catch (error) {
     console.error(error);

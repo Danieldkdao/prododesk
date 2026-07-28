@@ -162,6 +162,7 @@ export const formatColor = (color: Color) => {
 
 export const formatCalendarValue = (
   value: Date | Date[] | DateRange | null | undefined,
+  withTime?: boolean | undefined,
 ) => {
   if (!value) return "No dates selected";
 
@@ -175,7 +176,7 @@ export const formatCalendarValue = (
     return `${format(value.from, "PP")}${value.to ? `  -  ${format(value.to, "PP")}` : ""}`;
   }
 
-  return format(value, "PP");
+  return withTime ? format(value, "PPpp") : format(value, "PP");
 };
 
 export const formatArchivedStatus = (isArchived: boolean) => {

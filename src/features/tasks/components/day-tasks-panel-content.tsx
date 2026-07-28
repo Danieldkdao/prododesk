@@ -31,7 +31,7 @@ export const DayTasksPanelContent = ({
     // todo: maybe make this key more efficient in the future?
     .map(
       (task) =>
-        `${task.id}${task.name}${task.description}${task.emoji}${task.startAt && task.startAt instanceof Date ? task.startAt.toISOString() : "no start at"}${task.endAt && task.endAt instanceof Date ? task.endAt.toISOString() : "no end at"}`,
+        `${task.id}${task.name}${task.description}${task.emoji}${task.scheduledAt && task.scheduledAt instanceof Date ? task.scheduledAt.toISOString() : "no start at"}${task.dueAt && task.dueAt instanceof Date ? task.dueAt.toISOString() : "no end at"}`,
     )
     .join("")} ${metadata.hasNextPage ? "yes" : "no"}`;
 

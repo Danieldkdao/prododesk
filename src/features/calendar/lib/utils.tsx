@@ -16,7 +16,7 @@ import {
   startOfDay,
   subDays,
 } from "date-fns";
-import { CheckCircle2Icon, ListXIcon } from "lucide-react";
+import { CheckCircle2Icon } from "lucide-react";
 import { ReactElement } from "react";
 
 type CalendarDayTasksStatus =
@@ -65,10 +65,10 @@ export const calculateCalendarDayTasksValues = (
   const isSameMonth = checkIsSameMonth(date, dateToUse);
 
   const hasNoTasks = !tasks.length;
-  const allTasksCompleted = tasks.every(
-    (task) => task.isCompleted && task.completedAt,
-  );
-  const incompleteTaskCount = tasks.filter((task) => !task.isCompleted).length;
+  const allTasksCompleted = tasks.every((task) => task.status === "completed");
+  const incompleteTaskCount = tasks.filter(
+    (task) => task.status !== "completed",
+  ).length;
   const taskCount = tasks.length;
 
   return {

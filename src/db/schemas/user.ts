@@ -1,8 +1,7 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
-import { createdAt } from "../helpers";
-import { TaskTable } from "./task";
+import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { AreaTable } from "./area";
+import { TaskTable } from "./task";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -10,11 +9,12 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
-  createdAt,
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  timeZone: text("time_zone").notNull(),
 });
 
 export const session = pgTable(

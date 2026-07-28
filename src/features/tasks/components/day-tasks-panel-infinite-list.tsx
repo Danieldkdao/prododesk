@@ -97,8 +97,7 @@ export const DayTasksPanelInfiniteCardList = ({
   const noFiltersApplied =
     !dayTasksFilters.search.trim() &&
     !dayTasksFilters.priorities.length &&
-    dayTasksFilters.schedule === "any" &&
-    dayTasksFilters.status === "all" &&
+    !dayTasksFilters.statuses.length &&
     !dayTasksFilters.timeEndRange &&
     !dayTasksFilters.timeStartRange;
 

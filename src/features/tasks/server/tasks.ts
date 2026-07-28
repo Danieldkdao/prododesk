@@ -7,6 +7,7 @@ import {
 import { revalidateTaskCache } from "./cache/tasks";
 import { and, eq, SQL } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 
 export const confirmUserTaskOwnership = async (
   userId: string,
@@ -33,6 +34,9 @@ export const insertTaskDb = async (taskData: TaskTableInsertType) => {
     .returning();
 
   revalidateTaskCache(insertedTask.userId, insertedTask.id);
+  if (insertedTask?.projectId) {
+    revalidateProjectCache(insertedTask.userId, insertedTask.projectId);
+  }
 
   return insertedTask;
 };
@@ -41,7 +45,7 @@ export const updateTaskDb = async (
   taskId: string,
   taskData: Omit<
     Partial<TaskTableSelectType>,
-    "id" | "name" | "createdAt" | "updatedAt" | "userId"
+    "id" | "createdAt" | "updatedAt" | "userId"
   >,
 ) => {
   const { userId } = await getCurrentUser();
@@ -57,6 +61,9 @@ export const updateTaskDb = async (
     .returning();
 
   revalidateTaskCache(updatedTask.userId, updatedTask.id);
+  if (updatedTask?.projectId) {
+    revalidateProjectCache(updatedTask.userId, updatedTask.projectId);
+  }
 
   return updatedTask;
 };
@@ -74,6 +81,9 @@ export const deleteTaskDb = async (taskId: string) => {
     .returning();
 
   revalidateTaskCache(deletedTask.userId, deletedTask.id);
+  if (deletedTask?.projectId) {
+    revalidateProjectCache(deletedTask.userId, deletedTask.projectId);
+  }
 
   return deletedTask;
 };

@@ -210,7 +210,7 @@ export const POST = async (req: Request) => {
         deleteTask: {
           runId,
         },
-        toggleTasksCompletionStatus: {
+        updateTasksStatus: {
           runId,
         },
       },
@@ -218,7 +218,7 @@ export const POST = async (req: Request) => {
         createTasks: "user-approval",
         deleteTask: "user-approval",
         updateTask: "user-approval",
-        toggleTasksCompletionStatus: "user-approval",
+        updateTasksStatus: "user-approval",
       },
       timeout: {
         totalMs: 120_000,
@@ -232,7 +232,7 @@ export const POST = async (req: Request) => {
           createTasksMs: 30_000,
           updateTaskMs: 20_000,
           deleteTaskMs: 15_000,
-          toggleTasksCompletionStatusMs: 30_000,
+          updateTasksStatusMs: 30_000,
           getCurrentTimeMs: 2_000,
         },
       },

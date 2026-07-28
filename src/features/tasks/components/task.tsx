@@ -2,7 +2,6 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,9 +9,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TaskStatus, taskStatuses } from "@/db/shared";
 import { useConfetti } from "@/hooks/use-confetti";
 import { cn } from "@/lib/utils";
-import { format, isSameDay, parse } from "date-fns";
+import { format } from "date-fns";
 import {
   CheckIcon,
   ClockIcon,
@@ -25,10 +32,11 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   GetDayTasksActionReturnType,
-  toggleTaskCompletionAction,
+  updateTaskStatusAction,
 } from "../actions/actions";
 import {
   formatTaskPriority,
+  formatTaskStatus,
   getTaskPriorityBadgeClasses,
 } from "../lib/formatters";
 import { DeleteTaskButton } from "./delete-task-button";
@@ -45,23 +53,22 @@ export const Task = ({
 }) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [isComplete, setIsComplete] = useState(task.isCompleted);
-  const [completedAt, setCompletedAt] = useState(task.completedAt);
+  const [taskStatus, setTaskStatus] = useState(task.status);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [statusSelectOpen, setStatusSelectOpen] = useState(false);
   const { triggerConfetti } = useConfetti();
 
-  const toggleTaskCompletion = () => {
+  const updateTaskStatus = (newStatus: TaskStatus) => {
     if (disabled) return;
 
-    setIsComplete((prev) => !prev);
-    setCompletedAt(!isComplete ? new Date() : null);
+    const prevStatus = taskStatus;
+    setTaskStatus(newStatus);
 
     startTransition(async () => {
-      const response = await toggleTaskCompletionAction(task.id);
+      const response = await updateTaskStatusAction(task.id, newStatus);
       if (response.error) {
         toast.error(response.message);
-        setIsComplete((prev) => !prev);
-        setCompletedAt(!isComplete ? new Date() : null);
+        setTaskStatus(prevStatus);
       } else {
         if (response.allComplete) {
           triggerConfetti();
@@ -72,7 +79,8 @@ export const Task = ({
   };
 
   const priorityBadgeClasses = getTaskPriorityBadgeClasses(task.priority);
-  const taskDay = parse(task.day, "yyyy-MM-dd", new Date());
+  const isTaskComplete = taskStatus === "completed";
+  const TaskStatusIcon = formatTaskStatus(taskStatus).icon;
 
   return (
     <>
@@ -90,107 +98,123 @@ export const Task = ({
           animationDuration: `${200 * (index + 1)}ms`,
         }}
       >
-        <Checkbox
-          id={`task-${task.id}`}
-          checked={isComplete}
-          onCheckedChange={toggleTaskCompletion}
-          disabled={disabled || isPending}
-          className="mt-0.5"
-        />
-
-        <div className="min-w-0 flex-1 flex flex-col gap-1.5">
-          <div className="flex items-start gap-3 justify-between min-w-0">
-            <div className="flex items-center gap-2">
-              <Label
-                htmlFor={`task-${task.id}`}
-                className={cn(
-                  "min-w-0 cursor-pointer text-lg font-medium leading-5 normal-case!",
-                  isComplete && "line-through text-emerald-600",
-                )}
-              >
-                {task.emoji && <span>{task.emoji}</span>}
-                {task.name}
-              </Label>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "shrink-0 px-1.5 py-0 text-[12px] font-medium normal-case",
-                  priorityBadgeClasses,
-                )}
-              >
-                {formatTaskPriority(task.priority)}
-              </Badge>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="size-5 [&_svg:not([class*='size-'])]:size-4"
-                  >
-                    <EllipsisVerticalIcon />
-                  </Button>
-                }
+        <Select
+          value={taskStatus}
+          onValueChange={(value) => updateTaskStatus(value as TaskStatus)}
+          open={statusSelectOpen}
+          onOpenChange={setStatusSelectOpen}
+        >
+          <SelectTrigger
+            disabled={disabled || isPending}
+            className="cursor-pointer h-5! border-none"
+            showIcon={false}
+          >
+            <SelectValue>
+              <TaskStatusIcon
+                className={cn("size-5", isTaskComplete && "text-emerald-600")}
               />
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setUpdateDialogOpen(true)}>
-                  <EditIcon />
-                  Update task
-                </DropdownMenuItem>
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {taskStatuses.map((status) => {
+              const { label, icon: Icon } = formatTaskStatus(status);
 
-                <DropdownMenuItem
-                  nativeButton
-                  variant="destructive"
-                  render={
-                    <DeleteTaskButton
-                      taskId={task.id}
-                      variant="destructive"
-                      className="w-full h-auto py-2 px-3.5 justify-start bg-transparent focus:bg-destructive/10 dark:focus:bg-destructive/20"
-                    />
-                  }
-                >
-                  <Trash2Icon />
-                  Delete task
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              return (
+                <SelectItem key={status} value={status}>
+                  <div className="flex items-center gap-2">
+                    <Icon />
+                    <span>{label}</span>
+                  </div>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+
+        <div
+          className="min-w-0 flex-1 flex flex-col gap-1.5 cursor-pointer"
+          onClick={() => setStatusSelectOpen((prev) => !prev)}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <Label
+              htmlFor={`task-${task.id}`}
+              className={cn(
+                "min-w-0 cursor-pointer text-lg font-medium leading-5 normal-case!",
+                isTaskComplete && "line-through text-emerald-600",
+              )}
+            >
+              {task.emoji && <span>{task.emoji}</span>}
+              {task.name}
+            </Label>
+            <Badge
+              variant="outline"
+              className={cn(
+                "shrink-0 px-1.5 py-0 text-sm font-medium normal-case tracking-normal",
+                priorityBadgeClasses,
+              )}
+            >
+              {formatTaskPriority(task.priority).label}
+            </Badge>
           </div>
+
           {task.description && (
             <p
               className={cn(
                 "text-base leading-5",
-                isComplete && completedAt
-                  ? "text-emerald-600"
-                  : "text-muted-foreground",
+                isTaskComplete ? "text-emerald-600" : "text-muted-foreground",
               )}
             >
               {task.description}
             </p>
           )}
-          {isComplete && completedAt ? (
+          {isTaskComplete ? (
             <div className="flex items-center gap-1 text-sm text-emerald-600">
               <CheckIcon className="size-3.5" />
-              <span>
-                Completed{" "}
-                {isSameDay(taskDay, completedAt)
-                  ? `at ${format(completedAt, "h:mm a")}`
-                  : `${format(completedAt, "LLL d")} at ${format(completedAt, "h:mm a")}`}
-              </span>
+              <span>Completed </span>
             </div>
           ) : (
-            task.startAt && (
+            task.scheduledAt && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <ClockIcon className="size-3.5" />
 
                 <span>
-                  {format(task.startAt, "h:mm a")}
-                  {task.endAt && ` – ${format(task.endAt, "h:mm a")}`}
+                  {format(task.scheduledAt, "h:mm a")}
+                  {task.dueAt && ` – ${format(task.dueAt, "h:mm a")}`}
                 </span>
               </div>
             )
           )}
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="ghost" size="icon-xs">
+                <EllipsisVerticalIcon />
+              </Button>
+            }
+          />
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => setUpdateDialogOpen(true)}>
+              <EditIcon />
+              Update task
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              nativeButton
+              variant="destructive"
+              render={
+                <DeleteTaskButton
+                  taskId={task.id}
+                  variant="destructive"
+                  className="w-full h-auto py-2 px-3.5 justify-start bg-transparent focus:bg-destructive/10 dark:focus:bg-destructive/20"
+                />
+              }
+            >
+              <Trash2Icon />
+              Delete task
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </>
   );

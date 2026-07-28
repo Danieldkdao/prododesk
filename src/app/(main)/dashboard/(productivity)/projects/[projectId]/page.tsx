@@ -1,10 +1,6 @@
 import { ErrorState } from "@/components/error-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Progress,
-  ProgressLabel,
-  ProgressValue,
-} from "@/components/ui/progress";
+import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { readProjectAction } from "@/features/projects/actions/actions";
 import { formatProjectStatus } from "@/features/projects/lib/formatters";
@@ -43,7 +39,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
   const area = project.area;
   const tasks = project.tasks;
 
-  const completedTasks = tasks.filter((task) => task.isCompleted);
+  const completedTasks = tasks.filter((task) => task.status === "completed");
   const progressValue = Math.round(
     (completedTasks.length / (tasks.length || 1)) * 100,
   );

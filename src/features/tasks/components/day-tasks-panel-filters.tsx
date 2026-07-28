@@ -20,23 +20,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { taskPriorities, TaskPriority } from "@/db/shared";
+import {
+  taskPriorities,
+  TaskPriority,
+  TaskStatus,
+  taskStatuses,
+} from "@/db/shared";
 import { FilterIcon, PlusIcon } from "lucide-react";
 import { useDayTasksParams } from "../hooks/use-day-tasks-params";
 import {
-  DayTasksSchedule,
-  dayTasksSchedules,
   DayTasksSortByOption,
   dayTasksSortByOptions,
-  DayTasksStatus,
-  dayTasksStatuses,
   defaultDayTasksParamsOptions,
 } from "../lib/day-tasks-params";
 import {
-  formatDayTasksSchedule,
   formatDayTasksSortByOption,
-  formatDayTasksStatus,
   formatTaskPriority,
+  formatTaskStatus,
 } from "../lib/formatters";
 import { SearchInput } from "./search-input";
 import { Input } from "@/components/ui/input";
@@ -78,7 +78,7 @@ export const DayTasksPanelFilters = () => {
         />
         <PopoverContent align="end" className="border flex flex-col gap-4">
           <div className="w-full grid grid-cols-2 gap-4">
-            <div className="flex flex-col w-full gap-0.5">
+            <div className="flex flex-col w-full gap-0.5 col-span-2">
               <Label htmlFor="day-tasks-sort-by-filter">Sort by</Label>
               <Select
                 value={filters.sortBy}
@@ -102,50 +102,26 @@ export const DayTasksPanelFilters = () => {
             </div>
             <div className="flex flex-col w-full gap-0.5">
               <Label htmlFor="day-tasks-status-filter">Status</Label>
-              <Select
-                value={filters.status}
-                onValueChange={(value) =>
-                  setFilters({ status: value as DayTasksStatus })
+              <MultiSelect
+                values={filters.statuses}
+                onValuesChange={(values) =>
+                  setFilters({ statuses: values as TaskStatus[] })
                 }
               >
-                <SelectTrigger id="day-tasks-status-filter" className="w-full">
-                  <SelectValue placeholder="Filter by status">
-                    <span>{formatDayTasksStatus(filters.status)}</span>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="w-auto!">
-                  {dayTasksStatuses.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {formatDayTasksStatus(status)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col w-full gap-0.5">
-              <Label htmlFor="day-tasks-schedule-filter">Schedule</Label>
-              <Select
-                value={filters.schedule}
-                onValueChange={(value) =>
-                  setFilters({ schedule: value as DayTasksSchedule })
-                }
-              >
-                <SelectTrigger
-                  id="day-tasks-schedule-filter"
+                <MultiSelectTrigger
+                  id="day-tasks-status-filter"
                   className="w-full"
                 >
-                  <SelectValue placeholder="Filter by schedule">
-                    <span>{formatDayTasksSchedule(filters.schedule)}</span>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="w-auto!">
-                  {dayTasksSchedules.map((schedule) => (
-                    <SelectItem key={schedule} value={schedule}>
-                      {formatDayTasksSchedule(schedule)}
-                    </SelectItem>
+                  <MultiSelectValue placeholder="Filter by status" />
+                </MultiSelectTrigger>
+                <MultiSelectContent className="w-auto!">
+                  {taskStatuses.map((status) => (
+                    <MultiSelectItem key={status} value={status}>
+                      {formatTaskStatus(status).label}
+                    </MultiSelectItem>
                   ))}
-                </SelectContent>
-              </Select>
+                </MultiSelectContent>
+              </MultiSelect>
             </div>
             <div className="flex flex-col w-full gap-0.5">
               <Label htmlFor="day-tasks-priority-filter">Priority</Label>
@@ -164,7 +140,7 @@ export const DayTasksPanelFilters = () => {
                 <MultiSelectContent className="w-auto!">
                   {taskPriorities.map((priority) => (
                     <MultiSelectItem key={priority} value={priority}>
-                      {formatTaskPriority(priority)}
+                      {formatTaskPriority(priority).label}
                     </MultiSelectItem>
                   ))}
                 </MultiSelectContent>

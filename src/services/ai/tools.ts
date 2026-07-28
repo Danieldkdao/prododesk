@@ -9,13 +9,13 @@ import {
 import {
   createTaskAction,
   deleteTaskAction,
-  toggleTaskCompletionAction,
+  updateTaskStatusAction,
   updateTaskAction,
 } from "@/features/tasks/actions/actions";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { tool } from "ai";
-import { format, parse } from "date-fns";
-import { and, eq, ilike, inArray } from "drizzle-orm";
+import { format, parseISO } from "date-fns";
+import { and, eq, gte, ilike, inArray, lte } from "drizzle-orm";
 import z from "zod";
 import {
   runIdContextSchema,
@@ -26,11 +26,12 @@ import {
   scrapeWebpageToolValidationSchema,
   searchWebToolSchema,
   searchWebToolValidationSchema,
-  toggleTasksCompletionStatusToolSchema,
+  updateTasksStatusToolSchema,
   updateTaskToolSchema,
 } from "./schemas";
 import { ChatToolSet, ToolName } from "./tool-contracts";
 import removeMd from "remove-markdown";
+import { formatTaskStatus } from "@/features/tasks/lib/formatters";
 
 const searchWebTool = tool({
   description: "Searches the web and returns search results.",
@@ -121,7 +122,10 @@ const scrapeWebpageTool = tool({
 const readTasksTool = tool({
   description: "Allows you to read the user's tasks.",
   inputSchema: readTasksToolSchema,
-  execute: async ({ day, priorities, search }, { abortSignal }) => {
+  execute: async (
+    { before, after, statuses, priorities, search },
+    { abortSignal },
+  ) => {
     abortSignal?.throwIfAborted();
 
     const { userId } = await getCurrentUser();
@@ -136,7 +140,9 @@ const readTasksTool = tool({
       .where(
         and(
           eq(TaskTable.userId, userId),
-          day ? eq(TaskTable.day, day) : undefined,
+          before ? lte(TaskTable.scheduledAt, parseISO(before)) : undefined,
+          after ? gte(TaskTable.scheduledAt, parseISO(after)) : undefined,
+          statuses.length ? inArray(TaskTable.status, statuses) : undefined,
           priorities.length
             ? inArray(TaskTable.priority, priorities)
             : undefined,
@@ -149,7 +155,15 @@ const readTasksTool = tool({
     return tasks
       .map(
         (task) =>
-          `ID: ${task.id}\nDAY: ${task.day}\nNAME: ${task.name}\nDESCRIPTION: ${task.description}\nEMOJI: ${task.emoji}\nPRIORITY: ${task.priority}\nSTART AT: ${task.startAt ? format(task.startAt, "p") : "NO SPECIFIED"}\nEND AT: ${task.endAt ? format(task.endAt, "p") : "NOT SPECIFIED"}\nIS COMPLETED: ${task.isCompleted ? "YES" : "NO"}\nCOMPLETED AT: ${task.completedAt ? format(task.completedAt, "PPpp") : "NOT COMPLETED"}\nCREATED AT: ${format(task.createdAt, "PPpp")}`,
+          `ID: ${task.id}\n
+           NAME: ${task.name}\n
+           DESCRIPTION: ${task.description}\n
+           EMOJI: ${task.emoji}\n
+           PRIORITY: ${task.priority}\n
+           STATUS: ${formatTaskStatus(task.status)}\n
+           SCHEDULED AT: ${task.scheduledAt ? format(task.scheduledAt, "PPpp") : "NONE"}\n
+           DUE AT: ${task.dueAt ? format(task.dueAt, "PPpp") : "NONE"}\n
+           CREATED AT: ${format(task.createdAt, "PPpp")}`,
       )
       .join("\n\n");
   },
@@ -190,12 +204,8 @@ const createTasksTool = tool({
           abortSignal?.throwIfAborted();
           return createTaskAction({
             ...task,
-            range: {
-              from: parse(task.range.from, "yyyy-MM-dd", new Date()),
-              to: task.range.to
-                ? parse(task.range.to, "yyyy-MM-dd", new Date())
-                : undefined,
-            },
+            scheduledAt: task.scheduledAt ? parseISO(task.scheduledAt) : null,
+            dueAt: task.dueAt ? parseISO(task.dueAt) : null,
           });
         }),
       );
@@ -262,10 +272,10 @@ const updateTaskTool = tool({
       abortSignal?.throwIfAborted();
       const response = await updateTaskAction(id, {
         ...updateFields,
-        range: {
-          from: parse(updateFields.rangeFrom, "yyyy-MM-dd", new Date()),
-          to: undefined,
-        },
+        scheduledAt: updateFields.scheduledAt
+          ? parseISO(updateFields.scheduledAt)
+          : null,
+        dueAt: updateFields.dueAt ? parseISO(updateFields.dueAt) : null,
       });
 
       const output = response.message;
@@ -298,12 +308,12 @@ const updateTaskTool = tool({
   },
 });
 
-const toggleTasksCompletionStatusTool = tool({
+const updateTasksStatusTool = tool({
   description: "Allows you to mark tasks as complete/uncomplete.",
-  inputSchema: toggleTasksCompletionStatusToolSchema,
+  inputSchema: updateTasksStatusToolSchema,
   contextSchema: runIdContextSchema,
   execute: async (
-    { ids },
+    { ids, newStatus },
     { context, toolCallId, abortSignal },
   ): Promise<string> => {
     try {
@@ -327,7 +337,7 @@ const toggleTasksCompletionStatusTool = tool({
       const responses = await Promise.all(
         ids.map((id) => {
           abortSignal?.throwIfAborted();
-          return toggleTaskCompletionAction(id);
+          return updateTaskStatusAction(id, newStatus);
         }),
       );
 
@@ -438,6 +448,6 @@ export const tools = {
   updateTask: updateTaskTool,
   deleteTask: deleteTaskTool,
   getCurrentTime: getCurrentTimeTool,
-  toggleTasksCompletionStatus: toggleTasksCompletionStatusTool,
+  updateTasksStatus: updateTasksStatusTool,
 } satisfies ChatToolSet;
 export const toolNames = Object.keys(tools) as ToolName[];

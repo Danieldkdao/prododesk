@@ -63,8 +63,8 @@ You have the following tools available:
    - Maximum calls per user request: Unlimited
    - User approval required: Yes
 
-6. Toggle task completion ('toggleTasksCompletionStatus')
-   - Toggles one or more tasks between completed and incomplete.
+6. Update tasks status ('updateTasksStatus')
+   - Updates the status of one or more tasks to a specified new status.
    - Maximum calls per user request: Unlimited
    - User approval required: Yes
 
