@@ -15,16 +15,16 @@ import { SetterType } from "@/lib/types";
 
 export const TaskDialog = ({
   defaultDay,
+  defaultProject,
   children,
   existingTask,
   open,
   onOpenChange,
 }: {
-  defaultDay?: Date;
+  defaultDay?: Date | null;
+  defaultProject?: { id: string; name: string; icon?: string | null } | null;
   children?: ReactElement;
-  existingTask?: TaskTableSelectType & {
-    project?: { name: string; icon?: string | null } | null;
-  };
+  existingTask?: TaskTableSelectType;
   open?: boolean;
   onOpenChange?: SetterType<boolean>;
 }) => {
@@ -47,6 +47,7 @@ export const TaskDialog = ({
         </DialogHeader>
         <TaskForm
           defaultDay={defaultDay}
+          defaultProject={defaultProject}
           existingTask={existingTask}
           afterAction={() => handleOpenChange(false)}
         />

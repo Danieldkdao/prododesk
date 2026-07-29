@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
 import { calculateCalendarDayTasksValues } from "@/features/calendar/lib/utils";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import {
   CheckCircle2Icon,
@@ -12,79 +13,50 @@ import {
   Loader2Icon,
   PlusIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
-import {
-  getDayTasksAction,
-  GetDayTasksActionReturnType,
-} from "../actions/actions";
-import { useDayTasksParams } from "../hooks/use-day-tasks-params";
-import { defaultDayTasksParamsOptions } from "../lib/day-tasks-params";
-import { DayTasksPanelFilters } from "./day-tasks-panel-filters";
+import { GetTasksActionReturnType, getTasksAction } from "../actions/actions";
+import { useTasksParams } from "../hooks/use-tasks-params";
+import { defaultDayTasksParamsOptions } from "../lib/tasks-params";
+import { TasksFilters } from "./tasks-filters";
 import { Task } from "./task";
 import { TaskDialog } from "./task-dialog";
+import { useCallback } from "react";
 
-export const DayTasksPanelInfiniteCardList = ({
+export const DayTasksPanelInfiniteList = ({
   initialDayTasks,
   initialHasNextPage,
   allTasksCompleted,
 }: {
-  initialDayTasks: GetDayTasksActionReturnType["selectedDayTasks"];
+  initialDayTasks: GetTasksActionReturnType["tasks"];
   initialHasNextPage: boolean;
   allTasksCompleted: boolean;
 }) => {
   const [calendarFilters] = useCalendarParams();
-  const [dayTasksFilters, setDayTasksFilters] = useDayTasksParams();
+  const [dayTasksFilters, setDayTasksFilters] = useTasksParams();
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const fetchTasks = useCallback(
+    (nextPage: number) => {
+      return getTasksAction(calendarFilters.day, [], {
+        ...dayTasksFilters,
+        page: nextPage,
+      });
+    },
+    [calendarFilters.day, dayTasksFilters],
+  );
 
-  const [dayTasks, setDayTasks] = useState(initialDayTasks);
-  const [hasNextPage, setHasNextPage] = useState(initialHasNextPage);
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel || isPending || !hasNextPage || !calendarFilters.day) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry) return;
-
-        startTransition(async () => {
-          const nextPage = page + 1;
-
-          const response = await getDayTasksAction(calendarFilters.day, {
-            ...dayTasksFilters,
-            page: nextPage,
-          });
-          if (!response) return;
-
-          const { selectedDayTasks, metadata } = response;
-
-          setDayTasks((prev) => [...prev, ...selectedDayTasks]);
-          setPage(nextPage);
-          setHasNextPage(metadata.hasNextPage);
-        });
-      },
-      {
-        root: containerRef.current,
-        rootMargin: "400px",
-      },
-    );
-
-    observer.observe(sentinel);
-
-    return () => observer.disconnect();
-  }, [
-    dayTasksFilters,
-    calendarFilters,
+  const {
+    items: dayTasks,
     page,
-    hasNextPage,
+    setContainerEl,
+    setSentinelEl,
     isPending,
-    dayTasks,
-    setDayTasks,
-  ]);
+  } = useInfiniteScroll<GetTasksActionReturnType["tasks"][number], "tasks">(
+    initialDayTasks,
+    initialHasNextPage,
+    fetchTasks,
+    {
+      additionalScrollDeps: [dayTasksFilters, calendarFilters],
+    },
+  );
 
   if (!calendarFilters.day) return null;
 
@@ -98,8 +70,8 @@ export const DayTasksPanelInfiniteCardList = ({
     !dayTasksFilters.search.trim() &&
     !dayTasksFilters.priorities.length &&
     !dayTasksFilters.statuses.length &&
-    !dayTasksFilters.timeEndRange &&
-    !dayTasksFilters.timeStartRange;
+    !dayTasksFilters.dateTimeEndRange &&
+    !dayTasksFilters.dateTimeStartRange;
 
   return page === DEFAULT_PAGE && !dayTasks.length && noFiltersApplied ? (
     <NotFound
@@ -122,10 +94,10 @@ export const DayTasksPanelInfiniteCardList = ({
     </NotFound>
   ) : (
     <div className="flex flex-col gap-2 flex-1 min-h-0 w-full p-2">
-      <DayTasksPanelFilters />
+      <TasksFilters />
       {dayTasks.length ? (
         <div
-          ref={containerRef}
+          ref={setContainerEl}
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain flex flex-col gap-2"
         >
           {allTasksCompleted && (
@@ -150,7 +122,7 @@ export const DayTasksPanelInfiniteCardList = ({
               <Loader2Icon className="text-primary animate-spin" />
             </div>
           )}
-          <div ref={sentinelRef} className="w-full h-1 bg-transparent" />
+          <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
         </div>
       ) : (
         <NotFound

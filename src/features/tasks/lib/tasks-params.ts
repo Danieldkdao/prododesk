@@ -13,8 +13,8 @@ export const defaultDayTasksParamsOptions = {
   search: "",
   sortBy: "recently_created" as const,
   status: "all" as const,
-  timeStartRange: null,
-  timeEndRange: null,
+  dateTimeStartRange: null,
+  dateTimeEndRange: null,
 };
 
 export const dayTasksSortByOptions = [
@@ -37,7 +37,7 @@ export const filterSearchParams = {
   statuses: parseAsArrayOf(parseAsStringEnum([...taskStatuses]))
     .withDefault([])
     .withOptions({ clearOnDefault: true }),
-  timeStartRange: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
-  timeEndRange: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+  dateTimeStartRange: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+  dateTimeEndRange: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
 };
-export const loadDayTasksSearchParams = createLoader(filterSearchParams);
+export const loadTasksSearchParams = createLoader(filterSearchParams);

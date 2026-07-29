@@ -1,16 +1,10 @@
 "use client";
 
 import { ChatSelectType } from "@/db/schema";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { useDialogStateStore } from "@/store/use-dialog-state-store";
-import {
-  JSX,
-  ReactNode,
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { JSX, ReactNode, useCallback, useEffect } from "react";
 import { getChatsAction } from "./actions/actions";
 
 export const InfiniteChatList = ({
@@ -28,47 +22,35 @@ export const InfiniteChatList = ({
   ChatItem: (chat: ChatSelectType) => JSX.Element;
   skeleton: ReactNode;
 }) => {
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const [chats, setChats] = useState(initialChats);
-  const [hasNextPage, setHasNextPage] = useState(initialHasNextPage);
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [isPending, startTransition] = useTransition();
-
   const search = useDialogStateStore((state) => state.search);
 
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel || isPending || !hasNextPage) return;
+  const fetchChats = useCallback(
+    (nextPage: number) => {
+      return getChatsAction(userId, {
+        search: useSearch ? search : undefined,
+        page: nextPage,
+      });
+    },
+    [userId, useSearch, search],
+  );
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
-
-        startTransition(async () => {
-          const nextPage = page + 1;
-
-          const { chats, metadata } = await getChatsAction(userId, {
-            search: useSearch ? search : undefined,
-            page: nextPage,
-          });
-
-          setChats((prev) => [...prev, ...chats]);
-          setHasNextPage(metadata.hasNextPage);
-          setPage(nextPage);
-        });
-      },
-      {
-        root: containerRef.current,
-        rootMargin: "400px",
-      },
-    );
-
-    observer.observe(sentinel);
-
-    return () => observer.disconnect();
-  }, [hasNextPage, isPending, page, search, useSearch, userId]);
+  const {
+    items: chats,
+    setItems: setChats,
+    setHasNextPage,
+    setSentinelEl,
+    setContainerEl,
+    isPending,
+    setPage,
+    startTransition,
+  } = useInfiniteScroll<ChatSelectType, "chats">(
+    initialChats,
+    initialHasNextPage,
+    fetchChats,
+    {
+      additionalScrollDeps: [search, useSearch, userId],
+    },
+  );
 
   useEffect(() => {
     if (!useSearch) return;
@@ -92,11 +74,19 @@ export const InfiniteChatList = ({
     return () => {
       cancelled = true;
     };
-  }, [search, useSearch, userId]);
+  }, [
+    search,
+    useSearch,
+    userId,
+    setChats,
+    setHasNextPage,
+    setPage,
+    startTransition,
+  ]);
 
   return chats.length ? (
     <div
-      ref={containerRef}
+      ref={setContainerEl}
       className="flex flex-col w-full min-w-0 min-h-0 h-full flex-1 gap-2"
     >
       {chats.map((chat) => (
@@ -110,7 +100,7 @@ export const InfiniteChatList = ({
             {skeleton}
           </div>
         ))}
-      <div ref={sentinelRef} className="w-full h-1 bg-transparent" />
+      <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (
     <div className="w-full h-full min-h-0 flex-1 min-w-0 flex items-center justify-center">

@@ -10,12 +10,14 @@ export const SearchInput = ({
   initialSearch,
   onValueChange,
   placeholder,
-  className,
+  inputClassName,
+  parentClassName,
 }: {
   initialSearch: string;
   onValueChange: (search: string) => void;
   placeholder?: string;
-  className?: string;
+  inputClassName?: string;
+  parentClassName?: string;
 }) => {
   const [search, setSearch] = useState(initialSearch);
 
@@ -27,7 +29,12 @@ export const SearchInput = ({
   });
 
   return (
-    <div className="flex items-center gap-2 w-full border pl-1.5 has-focus-visible:border-primary transition-all duration-300">
+    <div
+      className={cn(
+        "flex items-center gap-2 w-full border pl-1.5 has-focus-visible:border-primary transition-all duration-300 h-10",
+        parentClassName,
+      )}
+    >
       <SearchIcon className="text-muted-foreground size-6 shrink-0" />
       <Input
         value={search}
@@ -39,7 +46,7 @@ export const SearchInput = ({
         placeholder={placeholder}
         className={cn(
           "border-none ring-0 focus-visible:ring-0 focus-visible:outline-0 focus-visible:border-none shadow-none text-lg md:text-lg",
-          className,
+          inputClassName,
         )}
       />
     </div>

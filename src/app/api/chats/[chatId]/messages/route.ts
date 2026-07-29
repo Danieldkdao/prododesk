@@ -16,8 +16,6 @@ export const GET = async (
 ) => {
   const { chatId } = await ctx.params;
 
-  console.log();
-
   const { userId } = await getCurrentUser();
   if (!userId)
     return NextResponse.json(

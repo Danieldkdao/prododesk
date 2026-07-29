@@ -4,24 +4,24 @@ import { Button } from "@/components/ui/button";
 import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
 import { format } from "date-fns";
 import { XIcon } from "lucide-react";
-import { GetDayTasksActionReturnType } from "../actions/actions";
+import { GetTasksActionReturnType } from "../actions/actions";
 import { DayTasksPanelContentSkeleton } from "./day-tasks-panel-content-skeleton";
-import { DayTasksPanelInfiniteCardList } from "./day-tasks-panel-infinite-list";
+import { DayTasksPanelInfiniteList } from "./day-tasks-panel-infinite-list";
 
 export const DayTasksPanelContent = ({
   dayTasks,
 }: {
-  dayTasks: GetDayTasksActionReturnType | null;
+  dayTasks: GetTasksActionReturnType | null;
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
 
   if (!dayTasks) return <DayTasksPanelContentSkeleton />;
 
-  const { selectedDayTasks, metadata, day } = dayTasks;
+  const { tasks: selectedDayTasks, metadata } = dayTasks;
 
   if (
     !calendarFilters.day ||
-    format(calendarFilters.day, "yyyy-MM-dd") !== day
+    format(calendarFilters.day, "yyyy-MM-dd") !== metadata.day
   ) {
     return <DayTasksPanelContentSkeleton />;
   }
@@ -49,7 +49,7 @@ export const DayTasksPanelContent = ({
           <XIcon />
         </Button>
       </div>
-      <DayTasksPanelInfiniteCardList
+      <DayTasksPanelInfiniteList
         initialDayTasks={selectedDayTasks}
         initialHasNextPage={metadata.hasNextPage}
         allTasksCompleted={metadata.allTasksCompleted}

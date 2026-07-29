@@ -2,7 +2,7 @@
 
 import { ResizableHandle, ResizablePanel } from "@/components/ui/resizable";
 import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
-import { GetDayTasksActionReturnType } from "../actions/actions";
+import { GetTasksActionReturnType } from "../actions/actions";
 import { DayTasksPanelContent } from "./day-tasks-panel-content";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -15,7 +15,7 @@ import {
 import { format } from "date-fns";
 
 export const DayTasksPanel = (props: {
-  dayTasks: GetDayTasksActionReturnType | null;
+  dayTasks: GetTasksActionReturnType | null;
 }) => {
   const isMobile = useIsMobile();
   const [filters, setFilters] = useCalendarParams();

@@ -34,13 +34,13 @@ import { formatTaskPriority, formatTaskStatus } from "../lib/formatters";
 
 export const TaskForm = ({
   defaultDay,
+  defaultProject,
   existingTask,
   afterAction,
 }: {
-  defaultDay?: Date;
-  existingTask?: TaskTableSelectType & {
-    project?: { name: string; icon?: string | null } | null;
-  };
+  defaultDay?: Date | null;
+  defaultProject?: { id: string; name: string; icon?: string | null } | null;
+  existingTask?: TaskTableSelectType;
   afterAction?: () => void;
 }) => {
   const router = useRouter();
@@ -52,7 +52,7 @@ export const TaskForm = ({
       status: "not_started",
       description: "",
       emoji: "",
-      projectId: null,
+      projectId: defaultProject?.id ?? null,
       scheduledAt: defaultDay ?? null,
       dueAt: null,
     },
@@ -251,7 +251,7 @@ export const TaskForm = ({
             <FieldLabel>Project</FieldLabel>
             <FieldContent>
               <ProjectCommandSelect
-                initialProject={existingTask?.project}
+                initialProject={defaultProject}
                 projectId={field.value}
                 onProjectIdChange={field.onChange}
               />

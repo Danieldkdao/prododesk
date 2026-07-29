@@ -9,7 +9,7 @@ import {
   InboxIcon,
   MinusCircleIcon,
 } from "lucide-react";
-import { DayTasksSortByOption } from "./day-tasks-params";
+import { DayTasksSortByOption } from "./tasks-params";
 
 export const formatTaskPriority = (priority: TaskPriority) => {
   switch (priority) {

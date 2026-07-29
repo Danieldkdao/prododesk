@@ -1,7 +1,13 @@
 "use server";
 
 import { db } from "@/db/db";
-import { ProjectTable, TaskPriority, TaskStatus, TaskTable } from "@/db/schema";
+import {
+  ProjectSelectType,
+  ProjectTable,
+  TaskPriority,
+  TaskStatus,
+  TaskTable,
+} from "@/db/schema";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -13,7 +19,11 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
-import { getLocalDayBounds, getLocalMonthBounds } from "@/lib/utils";
+import {
+  areValidIds,
+  getLocalDayBounds,
+  getLocalMonthBounds,
+} from "@/lib/utils";
 import { format, isValid } from "date-fns";
 import {
   and,
@@ -32,7 +42,7 @@ import {
   SQL,
 } from "drizzle-orm";
 import { cacheTag } from "next/cache";
-import { DayTasksSortByOption } from "../lib/day-tasks-params";
+import { DayTasksSortByOption } from "../lib/tasks-params";
 import { getUserTaskTag } from "../server/cache/tasks";
 import {
   confirmUserTaskOwnership,
@@ -41,6 +51,7 @@ import {
   updateTaskDb,
 } from "../server/tasks";
 import { taskSchema, TaskSchemaType } from "./schemas";
+import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 
 export const createTaskAction = async (unsafeData: TaskSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -213,36 +224,53 @@ export type GetCalendarTasksActionReturnType = UnwrapAsync<
   typeof getCalendarTasksAction
 >;
 
-const getCachedDayTasks = async (
+const getCachedTasksAction = async (
   userId: string,
   selectedDay: Date | null,
+  projectIds: string[],
   timeZone: string,
   filterOptions: {
     search: string;
     sortBy: DayTasksSortByOption;
     priorities: TaskPriority[];
     statuses: TaskStatus[];
-    timeStartRange: Date | null;
-    timeEndRange: Date | null;
+    dateTimeStartRange: Date | null;
+    dateTimeEndRange: Date | null;
     page: number;
   },
 ) => {
   "use cache";
   cacheTag(getUserTaskTag(userId));
 
-  if (!selectedDay) return null;
-
-  const formattedDay = format(selectedDay, "yyyy-MM-dd");
+  if (!projectIds.length && !selectedDay) return null;
 
   const {
     search,
     sortBy,
     priorities,
     statuses,
-    timeStartRange,
-    timeEndRange,
+    dateTimeStartRange,
+    dateTimeEndRange,
     page,
   } = filterOptions;
+
+  let existingProjects;
+
+  if (projectIds.length) {
+    if (!areValidIds(projectIds)) return null;
+
+    existingProjects = await Promise.all(
+      projectIds.map((projectId) =>
+        confirmUserProjectOwnership(projectId, userId),
+      ),
+    );
+    if (
+      !existingProjects.every((project): project is ProjectSelectType =>
+        Boolean(project),
+      )
+    )
+      return null;
+  }
 
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -282,24 +310,39 @@ const getCachedDayTasks = async (
     ? inArray(TaskTable.status, statuses)
     : undefined;
 
+  const projectsFilter = projectIds.length
+    ? inArray(TaskTable.projectId, projectIds)
+    : undefined;
+
   const timeRangeFilter = and(
-    timeStartRange ? gte(TaskTable.scheduledAt, timeStartRange) : undefined,
-    timeEndRange ? lte(TaskTable.scheduledAt, timeEndRange) : undefined,
+    dateTimeStartRange
+      ? gte(TaskTable.scheduledAt, dateTimeStartRange)
+      : undefined,
+    dateTimeEndRange ? lte(TaskTable.scheduledAt, dateTimeEndRange) : undefined,
   );
 
-  const { startUtc, endUtc } = getLocalDayBounds(selectedDay, timeZone);
+  let dayFilter;
+
+  if (selectedDay) {
+    const { startUtc, endUtc } = getLocalDayBounds(selectedDay, timeZone);
+
+    dayFilter = and(
+      gte(TaskTable.scheduledAt, startUtc),
+      lte(TaskTable.scheduledAt, endUtc),
+    );
+  }
 
   const whereQuery = and(
     eq(TaskTable.userId, userId),
-    gte(TaskTable.scheduledAt, startUtc),
-    lte(TaskTable.scheduledAt, endUtc),
+    dayFilter,
     searchFilter,
     priorityFilter,
+    projectsFilter,
     statusFilter,
     timeRangeFilter,
   );
 
-  const selectedDayTasks = await db
+  const tasks = await db
     .select({
       ...getTableColumns(TaskTable),
       project: getTableColumns(ProjectTable),
@@ -316,18 +359,13 @@ const getCachedDayTasks = async (
       count: count(),
     })
     .from(TaskTable)
+    .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
     .where(whereQuery);
 
   const [totalTasks] = await db
     .select({ count: count() })
     .from(TaskTable)
-    .where(
-      and(
-        eq(TaskTable.userId, userId),
-        gte(TaskTable.scheduledAt, startUtc),
-        lte(TaskTable.scheduledAt, endUtc),
-      ),
-    );
+    .where(and(eq(TaskTable.userId, userId), dayFilter));
 
   const [totalCompletedTasks] = await db
     .select({ count: count() })
@@ -335,8 +373,7 @@ const getCachedDayTasks = async (
     .where(
       and(
         eq(TaskTable.userId, userId),
-        gte(TaskTable.scheduledAt, startUtc),
-        lte(TaskTable.scheduledAt, endUtc),
+        dayFilter,
         eq(TaskTable.status, "completed"),
       ),
     );
@@ -345,33 +382,41 @@ const getCachedDayTasks = async (
   const hasNextPage = page * PAGE_SIZE < totalSelectedTasks.count;
 
   return {
-    day: formattedDay,
-    selectedDayTasks,
+    tasks,
     metadata: {
       hasPrevPage,
       hasNextPage,
       allTasksCompleted: totalCompletedTasks.count === totalTasks.count,
+      day: selectedDay ? format(selectedDay, "yyyy-MM-dd") : null,
+      projects: existingProjects ?? null,
     },
   };
 };
-export const getDayTasksAction = async (
+export const getTasksAction = async (
   selectedDay: Date | null,
+  projectIds: string[],
   filterOptions: {
     search: string;
     sortBy: DayTasksSortByOption;
     priorities: TaskPriority[];
     statuses: TaskStatus[];
-    timeStartRange: Date | null;
-    timeEndRange: Date | null;
+    dateTimeStartRange: Date | null;
+    dateTimeEndRange: Date | null;
     page: number;
   },
 ) => {
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) return null;
 
-  return getCachedDayTasks(userId, selectedDay, user.timeZone, filterOptions);
+  return getCachedTasksAction(
+    userId,
+    selectedDay,
+    projectIds,
+    user.timeZone,
+    filterOptions,
+  );
 };
-export type GetDayTasksActionReturnType = UnwrapAsync<typeof getDayTasksAction>;
+export type GetTasksActionReturnType = UnwrapAsync<typeof getTasksAction>;
 
 export const updateTaskStatusAction = async (
   taskId: string,

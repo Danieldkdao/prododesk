@@ -31,7 +31,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
-  GetDayTasksActionReturnType,
+  GetTasksActionReturnType,
   updateTaskStatusAction,
 } from "../actions/actions";
 import {
@@ -48,7 +48,7 @@ export const Task = ({
   includeDay = false,
   index,
 }: {
-  task: GetDayTasksActionReturnType["selectedDayTasks"][number];
+  task: GetTasksActionReturnType["tasks"][number];
   includeDay?: boolean;
   disabled?: boolean;
   index: number;
@@ -88,6 +88,7 @@ export const Task = ({
     <>
       <TaskDialog
         existingTask={task}
+        defaultProject={task.project}
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
       />

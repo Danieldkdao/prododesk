@@ -6,9 +6,9 @@ import {
   parseAsStringEnum,
   useQueryStates,
 } from "nuqs";
-import { dayTasksSortByOptions } from "../lib/day-tasks-params";
+import { dayTasksSortByOptions } from "../lib/tasks-params";
 
-export const useDayTasksParams = () => {
+export const useTasksParams = () => {
   return useQueryStates(
     {
       search: parseAsString
@@ -23,8 +23,12 @@ export const useDayTasksParams = () => {
       statuses: parseAsArrayOf(parseAsStringEnum([...taskStatuses]))
         .withDefault([])
         .withOptions({ clearOnDefault: true }),
-      timeStartRange: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
-      timeEndRange: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+      dateTimeStartRange: parseAsIsoDateTime.withOptions({
+        clearOnDefault: true,
+      }),
+      dateTimeEndRange: parseAsIsoDateTime.withOptions({
+        clearOnDefault: true,
+      }),
     },
     { shallow: false },
   );

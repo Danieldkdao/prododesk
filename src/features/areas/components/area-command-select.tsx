@@ -16,12 +16,13 @@ import {
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AreaSelectType } from "@/db/schema";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { formatArchivedStatus, formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { useDebouncedCallback } from "@tanstack/react-pacer";
 import { ChevronDownIcon, ShapesIcon } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { readUserAreasAction } from "../actions/actions";
 
 export const AreaCommandSelect = ({
@@ -34,14 +35,31 @@ export const AreaCommandSelect = ({
   onValueChange: (value: unknown) => void;
 }) => {
   const [commandOpen, setCommandOpen] = useState(false);
-  const [areas, setAreas] = useState<AreaSelectType[]>([]);
-  const [page, setPage] = useState(DEFAULT_PAGE - 1);
-  const [hasNextPage, setHasNextPage] = useState(true);
   const [search, setSearch] = useState("");
-  const [isInfinitePending, startInfiniteTransition] = useTransition();
-  const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
-  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [isSearchPending, startSearchTransition] = useTransition();
+
+  const fetchAreas = useCallback(
+    (nextPage: number) => {
+      return readUserAreasAction({
+        search,
+        page: nextPage,
+      });
+    },
+    [search],
+  );
+
+  const {
+    items: areas,
+    setItems: setAreas,
+    setPage,
+    setHasNextPage,
+    isPending: isInfinitePending,
+    setContainerEl,
+    setSentinelEl,
+  } = useInfiniteScroll<AreaSelectType, "areas">([], true, fetchAreas, {
+    additionalScrollDeps: [commandOpen, search],
+    defaultPage: DEFAULT_PAGE - 1,
+  });
 
   const handleSearch = () => {
     startSearchTransition(async () => {
@@ -62,48 +80,6 @@ export const AreaCommandSelect = ({
   const handleDebouncedSearch = useDebouncedCallback(handleSearch, {
     wait: 250,
   });
-
-  useEffect(() => {
-    if (!sentinelEl || isInfinitePending || !hasNextPage || !commandOpen)
-      return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
-
-        startInfiniteTransition(async () => {
-          const nextPage = page + 1;
-
-          const response = await readUserAreasAction({
-            search,
-            page: nextPage,
-          });
-          if (!response) return;
-
-          const { areas, metadata } = response;
-
-          setAreas((prev) => [...prev, ...areas]);
-          setPage(nextPage);
-          setHasNextPage(metadata.hasNextPage);
-        });
-      },
-      {
-        root: containerEl,
-        rootMargin: "400px",
-      },
-    );
-
-    observer.observe(sentinelEl);
-
-    return () => observer.disconnect();
-  }, [
-    hasNextPage,
-    isInfinitePending,
-    page,
-    sentinelEl,
-    containerEl,
-    commandOpen,
-  ]);
 
   const selectedArea = areas.find((area) => area.id === value);
 

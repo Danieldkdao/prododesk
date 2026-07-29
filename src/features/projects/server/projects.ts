@@ -13,15 +13,26 @@ import { revalidateProjectCache } from "./cache/projects";
 import { format } from "date-fns";
 import { revalidateTaskCache } from "@/features/tasks/server/cache/tasks";
 
-export const confirmUserProjectOwnership = async (projectId: string) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
+export const confirmUserProjectOwnership = async (
+  projectId: string,
+  existingUserId?: string,
+) => {
+  let userIdToUse;
+  if (existingUserId) {
+    userIdToUse = existingUserId;
+  } else {
+    const { userId } = await getCurrentUser();
+
+    userIdToUse = userId;
+  }
+
+  if (!userIdToUse) return null;
 
   const [existingProject] = await db
     .select()
     .from(ProjectTable)
     .where(
-      and(eq(ProjectTable.userId, userId), eq(ProjectTable.id, projectId)),
+      and(eq(ProjectTable.userId, userIdToUse), eq(ProjectTable.id, projectId)),
     );
 
   return existingProject ?? null;

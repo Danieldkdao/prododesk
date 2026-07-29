@@ -1,7 +1,7 @@
 import { TaskTableSelectType } from "@/db/schema";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
-import { useDayTasksParams } from "@/features/tasks/hooks/use-day-tasks-params";
-import { defaultDayTasksParamsOptions } from "@/features/tasks/lib/day-tasks-params";
+import { useTasksParams } from "@/features/tasks/hooks/use-tasks-params";
+import { defaultDayTasksParamsOptions } from "@/features/tasks/lib/tasks-params";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
@@ -21,7 +21,7 @@ export const MainCalendarDay = ({
   tasks: TaskTableSelectType[];
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
-  const [, setDayTasksFilters] = useDayTasksParams();
+  const [, setDayTasksFilters] = useTasksParams();
 
   const { isToday, isPastDay, isSameMonth } = calculateCalendarDayTasksValues(
     calendarFilters.month,

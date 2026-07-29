@@ -1,16 +1,5 @@
 "use client";
 
-import { ProjectSelectType } from "@/db/schema";
-import { DEFAULT_PAGE } from "@/lib/constants";
-import { useEffect, useState, useTransition } from "react";
-import { readProjectsAction } from "../actions/actions";
-import { useDebouncedCallback } from "@tanstack/react-pacer";
-import { ChevronDownIcon, FolderKanbanIcon } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -19,9 +8,21 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ProjectSelectType } from "@/db/schema";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { DEFAULT_PAGE } from "@/lib/constants";
 import { formatArchivedStatus, formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useDebouncedCallback } from "@tanstack/react-pacer";
+import { ChevronDownIcon, FolderKanbanIcon } from "lucide-react";
+import { useCallback, useState, useTransition } from "react";
+import { readProjectsAction } from "../actions/actions";
 
 export const ProjectCommandSelect = ({
   initialProject,
@@ -32,16 +33,34 @@ export const ProjectCommandSelect = ({
   projectId?: string | null | undefined;
   onProjectIdChange: (value: unknown) => void;
 }) => {
-  const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
-  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
-
   const [commandOpen, setCommandOpen] = useState(false);
-  const [isInfinitePending, startInfiniteTransition] = useTransition();
   const [isSearchPending, startSearchTransition] = useTransition();
-  const [projects, setProjects] = useState<ProjectSelectType[]>([]);
-  const [page, setPage] = useState(DEFAULT_PAGE - 1);
-  const [hasNextPage, setHasNextPage] = useState(true);
   const [search, setSearch] = useState("");
+
+  const fetchProjects = useCallback(
+    (nextPage: number) => {
+      return readProjectsAction({ search, page: nextPage });
+    },
+    [search],
+  );
+
+  const {
+    items: projects,
+    setItems: setProjects,
+    isPending: isInfinitePending,
+    setPage,
+    setHasNextPage,
+    setSentinelEl,
+    setContainerEl,
+  } = useInfiniteScroll<ProjectSelectType, "projects">(
+    [],
+    true,
+    fetchProjects,
+    {
+      additionalScrollDeps: [search, commandOpen],
+      defaultPage: DEFAULT_PAGE - 1,
+    },
+  );
 
   const handleSearch = () => {
     startSearchTransition(async () => {
@@ -59,46 +78,6 @@ export const ProjectCommandSelect = ({
   const handleDebouncedSearch = useDebouncedCallback(handleSearch, {
     wait: 250,
   });
-
-  useEffect(() => {
-    if (!sentinelEl || isInfinitePending || !hasNextPage || !commandOpen)
-      return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
-
-        startInfiniteTransition(async () => {
-          const nextPage = page + 1;
-
-          const response = await readProjectsAction({ search, page: nextPage });
-          if (!response) return;
-
-          const { projects, metadata } = response;
-
-          setProjects((prev) => [...prev, ...projects]);
-          setPage(nextPage);
-          setHasNextPage(metadata.hasNextPage);
-        });
-      },
-      {
-        root: containerEl,
-        rootMargin: "400px",
-      },
-    );
-
-    observer.observe(sentinelEl);
-
-    return () => observer.disconnect();
-  }, [
-    containerEl,
-    hasNextPage,
-    isInfinitePending,
-    page,
-    search,
-    sentinelEl,
-    commandOpen,
-  ]);
 
   const selectedProject = projects.find((project) => project.id === projectId);
 

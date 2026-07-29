@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   MultiSelect,
   MultiSelectContent,
@@ -13,6 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { PopoverCalendar } from "@/components/ui/popover-calendar";
 import {
   Select,
   SelectContent,
@@ -26,33 +28,32 @@ import {
   TaskStatus,
   taskStatuses,
 } from "@/db/shared";
+import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
+import { addDays, startOfDay, subDays } from "date-fns";
 import { FilterIcon, PlusIcon } from "lucide-react";
-import { useDayTasksParams } from "../hooks/use-day-tasks-params";
-import {
-  DayTasksSortByOption,
-  dayTasksSortByOptions,
-  defaultDayTasksParamsOptions,
-} from "../lib/day-tasks-params";
+import { useTasksParams } from "../hooks/use-tasks-params";
 import {
   formatDayTasksSortByOption,
   formatTaskPriority,
   formatTaskStatus,
 } from "../lib/formatters";
+import {
+  DayTasksSortByOption,
+  dayTasksSortByOptions,
+  defaultDayTasksParamsOptions,
+} from "../lib/tasks-params";
 import { SearchInput } from "./search-input";
-import { Input } from "@/components/ui/input";
-import { format, startOfDay } from "date-fns";
-import { Label } from "@/components/ui/label";
-import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
-import { mergeDateTime } from "@/lib/utils";
 import { TaskDialog } from "./task-dialog";
 
-export const DayTasksPanelFilters = () => {
+export const TasksFilters = ({
+  defaultProject,
+}: {
+  defaultProject?: { id: string; name: string; icon?: string | null } | null;
+}) => {
   const [calendarFilters] = useCalendarParams();
-  const [filters, setFilters] = useDayTasksParams();
+  const [filters, setFilters] = useTasksParams();
 
-  if (!calendarFilters.day) return null;
-
-  const isPastDay = startOfDay(new Date()) > calendarFilters.day;
+  const today = new Date();
 
   return (
     <div className="flex items-center gap-2 w-full">
@@ -61,8 +62,13 @@ export const DayTasksPanelFilters = () => {
         onValueChange={(search) => setFilters({ search })}
         placeholder="Search tasks by name or description"
       />
-      {!isPastDay && (
-        <TaskDialog defaultDay={calendarFilters.day}>
+      {((calendarFilters.day &&
+        !(startOfDay(new Date()) > calendarFilters.day)) ||
+        !calendarFilters.day) && (
+        <TaskDialog
+          defaultDay={calendarFilters.day}
+          defaultProject={defaultProject}
+        >
           <Button variant="outline" size="icon">
             <PlusIcon />
           </Button>
@@ -148,48 +154,33 @@ export const DayTasksPanelFilters = () => {
             </div>
             <div className="flex flex-col w-full gap-0.5">
               <Label htmlFor="day-tasks-start-range-filter">Start range</Label>
-              <Input
-                type="time"
-                id="day-tasks-start-range-filter"
-                placeholder="Select a start range"
-                value={
-                  filters.timeStartRange
-                    ? format(filters.timeStartRange, "HH:mm:ss")
-                    : ""
+              <PopoverCalendar
+                mode="single"
+                value={filters.dateTimeStartRange}
+                onValueChange={(date) =>
+                  setFilters({ dateTimeStartRange: date })
                 }
-                onChange={(e) => {
-                  if (!calendarFilters.day) return;
-                  const mergedDateTime = mergeDateTime(
-                    calendarFilters.day,
-                    e.target.value,
-                  );
-                  setFilters({ timeStartRange: mergedDateTime });
+                withTime
+                disabled={{
+                  before: today,
+                  after: filters.dateTimeEndRange
+                    ? subDays(filters.dateTimeEndRange, 1)
+                    : undefined,
                 }}
-                step="1"
-                className="appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
               />
             </div>
             <div className="flex flex-col w-full gap-0.5">
               <Label htmlFor="day-tasks-end-range-filter">End range</Label>
-              <Input
-                type="time"
-                id="day-tasks-end-range-filter"
-                placeholder="Select an end range"
-                value={
-                  filters.timeEndRange
-                    ? format(filters.timeEndRange, "HH:mm:ss")
-                    : ""
-                }
-                onChange={(e) => {
-                  if (!calendarFilters.day) return;
-                  const mergedDateTime = mergeDateTime(
-                    calendarFilters.day,
-                    e.target.value,
-                  );
-                  setFilters({ timeEndRange: mergedDateTime });
+              <PopoverCalendar
+                mode="single"
+                value={filters.dateTimeEndRange}
+                onValueChange={(date) => setFilters({ dateTimeEndRange: date })}
+                disabled={{
+                  before: filters.dateTimeStartRange
+                    ? addDays(filters.dateTimeStartRange, 1)
+                    : today,
                 }}
-                step="1"
-                className="appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                withTime
               />
             </div>
           </div>

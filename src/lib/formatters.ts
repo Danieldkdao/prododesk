@@ -192,11 +192,11 @@ export const formatTaskDates = (
       : `${format(scheduledAt, "PP 'at' h:mm a")} - ${format(dueAt, "PP 'at' h:mm a")}`;
   }
 
-  return isToday(scheduledAt)
-    ? "Today"
-    : includeDay
-      ? format(scheduledAt, "PP 'at' h:mm a")
-      : format(scheduledAt, "h:mm a");
+  return includeDay
+    ? isToday(scheduledAt)
+      ? `Today at ${format(scheduledAt, "h:mm a")}`
+      : format(scheduledAt, "PP 'at' h:mm a")
+    : format(scheduledAt, "h:mm a");
 };
 
 export const formatArchivedStatus = (isArchived: boolean) => {

@@ -135,8 +135,6 @@ export const createProjectAction = async (unsafeData: ProjectSchemaType) => {
 
   const parsedData = parseProjectData(userId, data);
 
-  console.log(parsedData);
-
   try {
     const createdProject = await insertProjectDb(parsedData);
     if (!createdProject) throw new Error("Failed to create project.");
