@@ -1,23 +1,22 @@
 "use client";
 
 import { NotFound } from "@/components/not-found";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { DEFAULT_PAGE } from "@/lib/constants";
 import {
   CheckCircle2Icon,
   ListXIcon,
   Loader2Icon,
   PlusIcon,
 } from "lucide-react";
-import { TaskDialog } from "./task-dialog";
-import { Button } from "@/components/ui/button";
-import { TasksFilters } from "./tasks-filters";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { defaultDayTasksParamsOptions } from "../lib/tasks-params";
-import { useTasksParams } from "../hooks/use-tasks-params";
-import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
-import { GetTasksActionReturnType, getTasksAction } from "../actions/actions";
-import { DEFAULT_PAGE } from "@/lib/constants";
-import { Task } from "./task";
 import { useCallback } from "react";
+import { GetTasksActionReturnType, getTasksAction } from "../actions/actions";
+import { useTasksParams } from "../hooks/use-tasks-params";
+import { defaultDayTasksParamsOptions } from "../lib/tasks-params";
+import { Task } from "./task";
+import { TaskDialog } from "./task-dialog";
 import { ProjectSelectType } from "@/db/schema";
 
 export const ProjectTasksInfiniteList = ({
@@ -79,8 +78,7 @@ export const ProjectTasksInfiniteList = ({
       </TaskDialog>
     </NotFound>
   ) : (
-    <div className="flex flex-col gap-2 flex-1 min-h-0 w-full">
-      <TasksFilters defaultProject={project} />
+    <div className="flex flex-col gap-2">
       {tasks.length ? (
         <div
           ref={setContainerEl}

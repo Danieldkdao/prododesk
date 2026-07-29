@@ -1,6 +1,9 @@
 import { ErrorState } from "@/components/error-state";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getTasksAction } from "@/features/tasks/actions/actions";
+import { ProjectTaskBoard } from "@/features/tasks/components/project-task-board";
 import { ProjectTasksInfiniteList } from "@/features/tasks/components/project-tasks-infinite-list";
+import { TasksFilters } from "@/features/tasks/components/tasks-filters";
 import { loadTasksSearchParams } from "@/features/tasks/lib/tasks-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { ParamsId, SearchParamsType } from "@/lib/types";
@@ -71,13 +74,29 @@ const ProjectIdTasksSuspense = async ({
     `${metadata.hasNextPage ? "has next page" : "no next page"}${metadata.allTasksCompleted ? "all tasks complete" : "some tasks remain"}`;
 
   return (
-    <ProjectTasksInfiniteList
-      key={tasksClientKey}
-      project={currentProject}
-      initialTasks={tasks}
-      initialHasNextPage={metadata.hasNextPage}
-      allTasksCompleted={metadata.allTasksCompleted}
-    />
+    <Tabs defaultValue="board">
+      <div className="flex flex-col gap-2 w-full">
+        <div className="flex items-center gap-2 w-full">
+          <TasksFilters defaultProject={currentProject} />
+          <TabsList>
+            <TabsTrigger value="list">List</TabsTrigger>
+            <TabsTrigger value="board">Board</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="list">
+          <ProjectTasksInfiniteList
+            key={tasksClientKey}
+            project={currentProject}
+            initialTasks={tasks}
+            initialHasNextPage={metadata.hasNextPage}
+            allTasksCompleted={metadata.allTasksCompleted}
+          />
+        </TabsContent>
+        <TabsContent value="board">
+          <ProjectTaskBoard />
+        </TabsContent>
+      </div>
+    </Tabs>
   );
 };
 
