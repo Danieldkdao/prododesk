@@ -93,7 +93,7 @@ const ProjectIdTasksSuspense = async ({
           />
         </TabsContent>
         <TabsContent value="board">
-          <ProjectTaskBoard />
+          <ProjectTaskBoard initialTasks={tasks} />
         </TabsContent>
       </div>
     </Tabs>

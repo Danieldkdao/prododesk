@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { taskPriorities, taskStatuses, TaskTableSelectType } from "@/db/schema";
+import { taskPriorities, taskStatuses, TaskSelectType } from "@/db/schema";
 import { ProjectCommandSelect } from "@/features/projects/components/project-command-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addDays, subDays } from "date-fns";
@@ -40,7 +40,7 @@ export const TaskForm = ({
 }: {
   defaultDay?: Date | null;
   defaultProject?: { id: string; name: string; icon?: string | null } | null;
-  existingTask?: TaskTableSelectType;
+  existingTask?: TaskSelectType;
   afterAction?: () => void;
 }) => {
   const router = useRouter();

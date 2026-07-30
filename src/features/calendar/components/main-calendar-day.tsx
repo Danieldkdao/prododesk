@@ -1,4 +1,4 @@
-import { TaskTableSelectType } from "@/db/schema";
+import { TaskSelectType } from "@/db/schema";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
 import { useTasksParams } from "@/features/tasks/hooks/use-tasks-params";
 import { defaultDayTasksParamsOptions } from "@/features/tasks/lib/tasks-params";
@@ -18,7 +18,7 @@ export const MainCalendarDay = ({
   tasks,
 }: {
   date: Date;
-  tasks: TaskTableSelectType[];
+  tasks: TaskSelectType[];
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
   const [, setDayTasksFilters] = useTasksParams();

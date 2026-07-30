@@ -1,10 +1,11 @@
 "use client";
 
+import { TaskSelectType } from "@/db/schema";
 import { useDraggable } from "@dnd-kit/react";
 
-export const TaskBoardItem = ({ id }: { id: string }) => {
+export const TaskBoardItem = ({ task }: { task: TaskSelectType }) => {
   const { ref } = useDraggable({
-    id,
+    id: task.id,
   });
 
   return (
@@ -12,7 +13,7 @@ export const TaskBoardItem = ({ id }: { id: string }) => {
       ref={ref}
       className="w-full h-20 border bg-muted flex items-center justify-center text-2xl font-semibold text-center"
     >
-      {id}
+      {task.name}
     </div>
   );
 };

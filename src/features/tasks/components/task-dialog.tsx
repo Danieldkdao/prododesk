@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { TaskTableSelectType } from "@/db/schema";
+import { TaskSelectType } from "@/db/schema";
 import { ReactElement, useState } from "react";
 import { TaskForm } from "./task-form";
 import { SetterType } from "@/lib/types";
@@ -24,7 +24,7 @@ export const TaskDialog = ({
   defaultDay?: Date | null;
   defaultProject?: { id: string; name: string; icon?: string | null } | null;
   children?: ReactElement;
-  existingTask?: TaskTableSelectType;
+  existingTask?: TaskSelectType;
   open?: boolean;
   onOpenChange?: SetterType<boolean>;
 }) => {

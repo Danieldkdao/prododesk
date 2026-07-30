@@ -1,6 +1,6 @@
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import { CircularProgressIndicator } from "@/components/ui/circular-progress-indicator";
-import { TaskTableSelectType } from "@/db/schema";
+import { TaskSelectType } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import {
   addDays,
@@ -56,7 +56,7 @@ export const calculateCalendarValues = (dateToUse: Date) => {
 export const calculateCalendarDayTasksValues = (
   dateToUse: Date,
   date: Date,
-  tasks: TaskTableSelectType[],
+  tasks: TaskSelectType[],
 ) => {
   const today = new Date();
   const isToday = checkIsSameDay(today, date);
@@ -86,7 +86,7 @@ export const calculateCalendarDayTasksValues = (
 const getCalendarDayTasksStatus = (
   dateToUse: Date,
   date: Date,
-  tasks: TaskTableSelectType[],
+  tasks: TaskSelectType[],
 ) => {
   const { isToday, isSameMonth, hasNoTasks, allTasksCompleted } =
     calculateCalendarDayTasksValues(dateToUse, date, tasks);
@@ -107,7 +107,7 @@ const getCalendarDayTasksStatus = (
 export const getCalendarDayTasksData = (
   dateToUse: Date,
   date: Date,
-  tasks: TaskTableSelectType[],
+  tasks: TaskSelectType[],
 ): CalendarDayTasksStatusData => {
   const { incompleteTaskCount, taskCount, isPastDay } =
     calculateCalendarDayTasksValues(dateToUse, date, tasks);

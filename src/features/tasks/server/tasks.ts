@@ -1,9 +1,5 @@
 import { db } from "@/db/db";
-import {
-  TaskTable,
-  TaskTableInsertType,
-  TaskTableSelectType,
-} from "@/db/schema";
+import { TaskTable, TaskInsertType, TaskSelectType } from "@/db/schema";
 import { revalidateTaskCache } from "./cache/tasks";
 import { and, eq, SQL } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth/helpers";
@@ -27,7 +23,7 @@ export const confirmUserTaskOwnership = async (
   return existingTask;
 };
 
-export const insertTaskDb = async (taskData: TaskTableInsertType) => {
+export const insertTaskDb = async (taskData: TaskInsertType) => {
   const [insertedTask] = await db
     .insert(TaskTable)
     .values(taskData)
@@ -44,7 +40,7 @@ export const insertTaskDb = async (taskData: TaskTableInsertType) => {
 export const updateTaskDb = async (
   taskId: string,
   taskData: Omit<
-    Partial<TaskTableSelectType>,
+    Partial<TaskSelectType>,
     "id" | "createdAt" | "updatedAt" | "userId"
   >,
 ) => {

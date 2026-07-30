@@ -24,8 +24,8 @@ export const TaskTable = pgTable("tasks", {
   updatedAt,
 });
 
-export type TaskTableInsertType = typeof TaskTable.$inferInsert;
-export type TaskTableSelectType = typeof TaskTable.$inferSelect;
+export type TaskInsertType = typeof TaskTable.$inferInsert;
+export type TaskSelectType = typeof TaskTable.$inferSelect;
 
 export const taskRelations = relations(TaskTable, ({ one }) => ({
   user: one(user, {
