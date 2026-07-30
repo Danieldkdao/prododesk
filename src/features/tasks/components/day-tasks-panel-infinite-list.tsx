@@ -84,7 +84,7 @@ export const DayTasksPanelInfiniteList = ({
       icon={<ListXIcon className="size-10" />}
     >
       {!isPastDay && (
-        <TaskDialog defaultDay={calendarFilters.day}>
+        <TaskDialog defaultValues={{ day: calendarFilters.day }}>
           <Button>
             <PlusIcon />
             Create new task

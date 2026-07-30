@@ -6,10 +6,12 @@ import { getCurrentUser } from "@/lib/auth/helpers";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 
 export const confirmUserTaskOwnership = async (
-  userId: string,
   taskId: string,
   additionalFilters: SQL<unknown>[] = [],
 ) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return;
+
   const [existingTask] = await db
     .select()
     .from(TaskTable)
@@ -20,7 +22,7 @@ export const confirmUserTaskOwnership = async (
         ...additionalFilters,
       ),
     );
-  return existingTask;
+  return existingTask ?? null;
 };
 
 export const insertTaskDb = async (taskData: TaskInsertType) => {
@@ -47,7 +49,7 @@ export const updateTaskDb = async (
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  const existingTask = await confirmUserTaskOwnership(userId, taskId);
+  const existingTask = await confirmUserTaskOwnership(taskId);
   if (!existingTask) return null;
 
   const [updatedTask] = await db
@@ -68,7 +70,7 @@ export const deleteTaskDb = async (taskId: string) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  const existingTask = await confirmUserTaskOwnership(userId, taskId);
+  const existingTask = await confirmUserTaskOwnership(taskId);
   if (!existingTask) return null;
 
   const [deletedTask] = await db

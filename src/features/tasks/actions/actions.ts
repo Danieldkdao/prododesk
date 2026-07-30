@@ -9,11 +9,11 @@ import {
   TaskTable,
 } from "@/db/schema";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
+import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
-  NO_PERMISSION_DATA_MESSAGE,
   NOT_FOUND_ERROR_MESSAGE,
   PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
@@ -51,7 +51,6 @@ import {
   updateTaskDb,
 } from "../server/tasks";
 import { taskSchema, TaskSchemaType } from "./schemas";
-import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 
 export const createTaskAction = async (unsafeData: TaskSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -107,7 +106,7 @@ export const updateTaskAction = async (
     };
   }
 
-  const existingTask = await confirmUserTaskOwnership(userId, taskId);
+  const existingTask = await confirmUserTaskOwnership(taskId);
   if (!existingTask) {
     return {
       error: true,
@@ -141,7 +140,7 @@ export const deleteTaskAction = async (taskId: string) => {
     };
   }
 
-  const existingTask = await confirmUserTaskOwnership(userId, taskId);
+  const existingTask = await confirmUserTaskOwnership(taskId);
   if (!existingTask) {
     return {
       error: true,
@@ -419,7 +418,7 @@ export const getTasksAction = async (
 export type GetTasksActionReturnType = UnwrapAsync<typeof getTasksAction>;
 
 export const updateTaskStatusAction = async (
-  taskId: string,
+  taskId: string | string[],
   newStatus: TaskStatus,
 ) => {
   const { userId, user } = await getCurrentUser();
@@ -430,20 +429,24 @@ export const updateTaskStatusAction = async (
     };
   }
 
-  const existingTask = await confirmUserTaskOwnership(userId, taskId);
-  if (!existingTask) {
-    return {
-      error: true,
-      message: NO_PERMISSION_DATA_MESSAGE,
-    };
-  }
-
   try {
-    const updatedTask = await updateTaskDb(taskId, {
-      status: newStatus,
-    });
-    if (!updatedTask)
-      throw new Error("Failed to update task completion status.");
+    let updatedTask;
+    if (typeof taskId === "string") {
+      updatedTask = await updateTaskDb(taskId, {
+        status: newStatus,
+      });
+      if (!updatedTask)
+        throw new Error("Failed to update task completion status.");
+    } else {
+      const tasks = await Promise.all(
+        taskId.map((taskId) => updateTaskDb(taskId, { status: newStatus })),
+      );
+      if (!tasks.every(Boolean) || tasks.length !== taskId.length)
+        throw new Error("Failed to update tasks status.");
+
+      updatedTask = tasks[0];
+    }
+    if (!updatedTask) throw new Error("Failed to update tasks status.");
 
     let allComplete = false;
 

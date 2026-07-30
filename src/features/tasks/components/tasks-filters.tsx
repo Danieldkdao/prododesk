@@ -66,8 +66,7 @@ export const TasksFilters = ({
         !(startOfDay(new Date()) > calendarFilters.day)) ||
         !calendarFilters.day) && (
         <TaskDialog
-          defaultDay={calendarFilters.day}
-          defaultProject={defaultProject}
+          defaultValues={{ day: calendarFilters.day, project: defaultProject }}
         >
           <Button variant="outline" size="icon">
             <PlusIcon />
@@ -82,7 +81,7 @@ export const TasksFilters = ({
             </Button>
           }
         />
-        <PopoverContent align="end" className="border flex flex-col gap-4">
+        <PopoverContent align="end" className="border flex flex-col gap-4 w-90">
           <div className="w-full grid grid-cols-2 gap-4">
             <div className="flex flex-col w-full gap-0.5 col-span-2">
               <Label htmlFor="day-tasks-sort-by-filter">Sort by</Label>

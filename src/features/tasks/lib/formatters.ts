@@ -3,10 +3,10 @@ import {
   ChevronDownCircleIcon,
   ChevronUpCircleIcon,
   CircleAlertIcon,
-  CircleCheckBigIcon,
-  CircleDashed,
+  CircleCheckIcon,
+  CircleDashedIcon,
   CircleDotIcon,
-  InboxIcon,
+  CircleIcon,
   MinusCircleIcon,
 } from "lucide-react";
 import { DayTasksSortByOption } from "./tasks-params";
@@ -43,22 +43,34 @@ export const formatTaskStatus = (status: TaskStatus) => {
     case "backlog":
       return {
         label: "Backlog",
-        icon: InboxIcon,
+        icon: CircleDashedIcon,
+        textColor: "text-destructive",
+        borderColor: "border-destructive/75",
+        bgColor: "bg-destructive/15",
       };
     case "completed":
       return {
         label: "Completed",
-        icon: CircleCheckBigIcon,
+        icon: CircleCheckIcon,
+        textColor: "text-emerald-600",
+        borderColor: "border-emerald-400/75 dark:border-emerald-600/75",
+        bgColor: "bg-emerald-400/15 dark:bg-emerald-600/15",
       };
     case "in_progress":
       return {
         label: "In progress",
         icon: CircleDotIcon,
+        textColor: "text-amber-600",
+        borderColor: "border-amber-400/75 dark:border-amber-600/75",
+        bgColor: "bg-amber-400/15 dark:bg-amber-600/15",
       };
     case "not_started":
       return {
         label: "Not started",
-        icon: CircleDashed,
+        icon: CircleIcon,
+        textColor: "text-muted-foreground",
+        borderColor: "border-muted-foreground/75",
+        bgColor: "bg-muted-foreground/15",
       };
     default:
       throw new Error(`Unknown task status: ${status satisfies never}`);

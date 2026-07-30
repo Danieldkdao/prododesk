@@ -75,7 +75,7 @@ const ProjectIdTasksSuspense = async ({
 
   return (
     <Tabs defaultValue="board">
-      <div className="flex flex-col gap-2 w-full">
+      <div className="flex flex-col gap-4 w-full">
         <div className="flex items-center gap-2 w-full">
           <TasksFilters defaultProject={currentProject} />
           <TabsList>
@@ -93,7 +93,11 @@ const ProjectIdTasksSuspense = async ({
           />
         </TabsContent>
         <TabsContent value="board">
-          <ProjectTaskBoard initialTasks={tasks} />
+          <ProjectTaskBoard
+            key={currentProject.id}
+            project={currentProject}
+            initialTasks={tasks}
+          />
         </TabsContent>
       </div>
     </Tabs>

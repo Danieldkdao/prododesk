@@ -31,15 +31,14 @@ import { toast } from "sonner";
 import { createTaskAction, updateTaskAction } from "../actions/actions";
 import { taskSchema, TaskSchemaType } from "../actions/schemas";
 import { formatTaskPriority, formatTaskStatus } from "../lib/formatters";
+import { TaskFormDefaultValues } from "../lib/types";
 
 export const TaskForm = ({
-  defaultDay,
-  defaultProject,
+  defaultValues,
   existingTask,
   afterAction,
 }: {
-  defaultDay?: Date | null;
-  defaultProject?: { id: string; name: string; icon?: string | null } | null;
+  defaultValues?: TaskFormDefaultValues;
   existingTask?: TaskSelectType;
   afterAction?: () => void;
 }) => {
@@ -49,11 +48,11 @@ export const TaskForm = ({
     defaultValues: existingTask ?? {
       name: "",
       priority: "low",
-      status: "not_started",
+      status: defaultValues?.status ?? "not_started",
       description: "",
       emoji: "",
-      projectId: defaultProject?.id ?? null,
-      scheduledAt: defaultDay ?? null,
+      projectId: defaultValues?.project?.id ?? null,
+      scheduledAt: defaultValues?.day ?? null,
       dueAt: null,
     },
   });
@@ -251,7 +250,7 @@ export const TaskForm = ({
             <FieldLabel>Project</FieldLabel>
             <FieldContent>
               <ProjectCommandSelect
-                initialProject={defaultProject}
+                initialProject={defaultValues?.project}
                 projectId={field.value}
                 onProjectIdChange={field.onChange}
               />

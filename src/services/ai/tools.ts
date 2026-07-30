@@ -334,26 +334,21 @@ const updateTasksStatusTool = tool({
       if (!insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
 
-      const responses = await Promise.all(
-        ids.map((id) => {
-          abortSignal?.throwIfAborted();
-          return updateTaskStatusAction(id, newStatus);
-        }),
-      );
+      abortSignal?.throwIfAborted();
+      const response = await updateTaskStatusAction(ids, newStatus);
 
-      const isSuccess = responses.every((response) => !response.error);
+      const isSuccess = !response.error;
 
       const output = isSuccess
         ? "Tasks updated successfully!"
-        : (responses.at(0)?.message ??
-          "Something went wrong. Unable to update tasks.");
+        : (response.message ?? "Something went wrong. Unable to update tasks.");
 
       await updateToolExecutionDb(context.runId, toolCallId, {
         output,
         status: isSuccess ? "completed" : "failed",
       });
 
-      if (responses.every((response) => !response.error)) return output;
+      if (isSuccess) return output;
       else throw new Error(output);
     } catch (error) {
       console.error(error);

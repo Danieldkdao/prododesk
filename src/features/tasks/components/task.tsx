@@ -1,13 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -20,13 +13,7 @@ import { TaskStatus, taskStatuses } from "@/db/shared";
 import { useConfetti } from "@/hooks/use-confetti";
 import { formatTaskDates } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import {
-  CheckIcon,
-  ClockIcon,
-  EditIcon,
-  EllipsisVerticalIcon,
-  Trash2Icon,
-} from "lucide-react";
+import { CheckIcon, ClockIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -39,8 +26,8 @@ import {
   formatTaskStatus,
   getTaskPriorityBadgeClasses,
 } from "../lib/formatters";
-import { DeleteTaskButton } from "./delete-task-button";
 import { TaskDialog } from "./task-dialog";
+import { TaskOptions } from "./task-options";
 
 export const Task = ({
   task,
@@ -88,7 +75,7 @@ export const Task = ({
     <>
       <TaskDialog
         existingTask={task}
-        defaultProject={task.project}
+        defaultValues={{ project: task.project }}
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
       />
@@ -173,47 +160,18 @@ export const Task = ({
           {isTaskComplete ? (
             <div className="flex items-center gap-1 text-sm text-emerald-600">
               <CheckIcon className="size-3.5" />
-              <span>Completed </span>
+              <span>Completed</span>
             </div>
           ) : (
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <ClockIcon className="size-3.5" />
+              <ClockIcon className="size-3.5 shrink-0" />
               <span>
                 {formatTaskDates(task.scheduledAt, task.dueAt, includeDay)}
               </span>
             </div>
           )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="icon-xs">
-                <EllipsisVerticalIcon />
-              </Button>
-            }
-          />
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setUpdateDialogOpen(true)}>
-              <EditIcon />
-              Update task
-            </DropdownMenuItem>
-
-            <DropdownMenuItem
-              nativeButton
-              variant="destructive"
-              render={
-                <DeleteTaskButton
-                  taskId={task.id}
-                  variant="destructive"
-                  className="w-full h-auto py-2 px-3.5 justify-start bg-transparent focus:bg-destructive/10 dark:focus:bg-destructive/20"
-                />
-              }
-            >
-              <Trash2Icon />
-              Delete task
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <TaskOptions task={task} />
       </div>
     </>
   );

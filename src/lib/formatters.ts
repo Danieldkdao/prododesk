@@ -189,7 +189,7 @@ export const formatTaskDates = (
   if (dueAt) {
     return isSameDay(dueAt, scheduledAt)
       ? `${format(scheduledAt, "h:mm a")} - ${format(dueAt, "h:mm a")}`
-      : `${format(scheduledAt, "PP 'at' h:mm a")} - ${format(dueAt, "PP 'at' h:mm a")}`;
+      : `${format(scheduledAt, "PP")} - ${format(dueAt, "PP")}`;
   }
 
   return includeDay

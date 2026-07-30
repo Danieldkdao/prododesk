@@ -12,17 +12,16 @@ import { TaskSelectType } from "@/db/schema";
 import { ReactElement, useState } from "react";
 import { TaskForm } from "./task-form";
 import { SetterType } from "@/lib/types";
+import { TaskFormDefaultValues } from "../lib/types";
 
 export const TaskDialog = ({
-  defaultDay,
-  defaultProject,
+  defaultValues,
   children,
   existingTask,
   open,
   onOpenChange,
 }: {
-  defaultDay?: Date | null;
-  defaultProject?: { id: string; name: string; icon?: string | null } | null;
+  defaultValues?: TaskFormDefaultValues;
   children?: ReactElement;
   existingTask?: TaskSelectType;
   open?: boolean;
@@ -46,8 +45,7 @@ export const TaskDialog = ({
           </DialogDescription>
         </DialogHeader>
         <TaskForm
-          defaultDay={defaultDay}
-          defaultProject={defaultProject}
+          defaultValues={defaultValues}
           existingTask={existingTask}
           afterAction={() => handleOpenChange(false)}
         />

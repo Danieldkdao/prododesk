@@ -27,7 +27,7 @@ export const ProjectIdHeaderTabs = ({
         <div className="flex items-center gap-2">
           <span>Tasks</span>
           <div className={cn(bg, "size-5 flex items-center justify-center")}>
-            <span className="text-white font-medium text-base">
+            <span className="text-white font-medium text-sm">
               {project.tasks.length}
             </span>
           </div>

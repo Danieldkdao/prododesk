@@ -60,7 +60,7 @@ export const MainCalendarDay = ({
         )}
         <div onClick={(e) => e.stopPropagation()}>
           {isSameMonth && !isPastDay && (
-            <TaskDialog defaultDay={date}>
+            <TaskDialog defaultValues={{ day: date }}>
               <TooltipWrapper content="Add task">
                 <Button variant="ghost" size="icon-xs">
                   <PlusIcon />
