@@ -1,21 +1,39 @@
 "use client";
 
 import { ProjectSelectType, TaskSelectType } from "@/db/schema";
-import { TaskStatus, taskStatuses } from "@/db/shared";
+import { BoardProperty } from "@/features/projects/lib/types";
 import { DragDropProvider } from "@dnd-kit/react";
+import { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
-import { updateTaskStatusAction } from "../actions/actions";
 import { TaskBoardColumn } from "./task-board-column";
 import { TaskBoardItem } from "./task-board-item";
 
-export const ProjectTaskBoard = ({
+export const ProjectTaskBoard = <
+  Property extends BoardProperty,
+  PropertyOption extends TaskSelectType[Property],
+>({
   initialTasks,
   project,
+  property,
+  propertyOptions,
+  saveOnMoveEnd,
+  formatter,
 }: {
   initialTasks: TaskSelectType[];
   project: ProjectSelectType;
+  property: Property;
+  propertyOptions: readonly PropertyOption[];
+  saveOnMoveEnd: (
+    taskId: string,
+    property: PropertyOption,
+  ) => Promise<{ error: boolean; message: string }>;
+  formatter: (option: PropertyOption) => {
+    label: string;
+    icon: LucideIcon;
+    textColor: string;
+  };
 }) => {
   const savesQueuesRef = useRef(new Map<string, Promise<void>>());
   const [tasks, setTasks] = useState(initialTasks);
@@ -24,16 +42,17 @@ export const ProjectTaskBoard = ({
     setTasks(initialTasks);
   }, [initialTasks]);
 
-  const queueStatusSave = useCallback(
-    (taskId: string, newStatus: TaskStatus) => {
+  const queueTaskPropertySave = useCallback(
+    (taskId: string, newProperty: PropertyOption) => {
       const prevSave = savesQueuesRef.current.get(taskId) ?? Promise.resolve();
 
       const nextSave = prevSave
         .catch(() => {})
         .then(async () => {
-          const response = await updateTaskStatusAction(taskId, newStatus);
+          const response = await saveOnMoveEnd(taskId, newProperty);
 
-          if (response.error) throw new Error("Failed to update task status.");
+          if (response.error)
+            throw new Error("Failed to update task properties.");
         });
 
       savesQueuesRef.current.set(taskId, nextSave);
@@ -41,7 +60,7 @@ export const ProjectTaskBoard = ({
       void nextSave
         .catch((error) => {
           console.error(error);
-          toast.error("Unable to save task status.");
+          toast.error("Unable to save task properties.");
         })
         .finally(() => {
           if (savesQueuesRef.current.get(taskId) === nextSave) {
@@ -49,7 +68,7 @@ export const ProjectTaskBoard = ({
           }
         });
     },
-    [],
+    [saveOnMoveEnd],
   );
 
   return (
@@ -68,23 +87,35 @@ export const ProjectTaskBoard = ({
           setTasks((prev) =>
             prev.map((task) => {
               if (task.id === source.id && task.status !== target.id)
-                return { ...task, status: target.id as TaskStatus };
+                return { ...task, [property]: target.id as Property };
               return task;
             }),
           ),
         );
 
-        queueStatusSave(sourceTask.id, target.id as TaskStatus);
+        queueTaskPropertySave(sourceTask.id, target.id as PropertyOption);
       }}
     >
       <div className="w-full grid grid-cols-4 gap-4">
-        {taskStatuses.map((status) => {
-          const statusTasks = tasks.filter((task) => task.status === status);
+        {propertyOptions.map((propertyOption) => {
+          const statusTasks = tasks.filter(
+            (task) => task[property] === propertyOption,
+          );
 
           return (
-            <TaskBoardColumn key={status} project={project} status={status}>
+            <TaskBoardColumn
+              key={propertyOption}
+              property={property}
+              propertyValue={propertyOption}
+              project={project}
+              formatter={formatter}
+            >
               {statusTasks.map((task) => (
-                <TaskBoardItem key={task.id} task={{ ...task, project }} />
+                <TaskBoardItem
+                  key={task.id}
+                  task={{ ...task, project }}
+                  property={property}
+                />
               ))}
             </TaskBoardColumn>
           );

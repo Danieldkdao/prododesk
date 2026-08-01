@@ -417,10 +417,17 @@ export const getTasksAction = async (
 };
 export type GetTasksActionReturnType = UnwrapAsync<typeof getTasksAction>;
 
-export const updateTaskStatusAction = async (
+export const updateTasksStatusAction = async (
   taskId: string | string[],
   newStatus: TaskStatus,
 ) => {
+  if (!areValidIds(taskId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) {
     return {
@@ -483,6 +490,53 @@ export const updateTaskStatusAction = async (
     return {
       error: true,
       message: "Failed to update task completion status.",
+    };
+  }
+};
+
+export const updateTasksPriorityAction = async (
+  taskId: string | string[],
+  newPriority: TaskPriority,
+) => {
+  if (!areValidIds(taskId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  try {
+    let update;
+    if (Array.isArray(taskId)) {
+      const updates = await Promise.all(
+        taskId.map((taskId) => updateTaskDb(taskId, { priority: newPriority })),
+      );
+      if (!updates.every(Boolean))
+        throw new Error("Failed to update task priorities.");
+
+      update = updates[0];
+    } else {
+      update = await updateTaskDb(taskId, { priority: newPriority });
+    }
+    if (!update) throw new Error("Failed to update task priority.");
+
+    return {
+      error: false,
+      message: "Task priority updated successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
     };
   }
 };

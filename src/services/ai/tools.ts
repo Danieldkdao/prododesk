@@ -9,7 +9,7 @@ import {
 import {
   createTaskAction,
   deleteTaskAction,
-  updateTaskStatusAction,
+  updateTasksStatusAction,
   updateTaskAction,
 } from "@/features/tasks/actions/actions";
 import { getCurrentUser } from "@/lib/auth/helpers";
@@ -335,7 +335,7 @@ const updateTasksStatusTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateTaskStatusAction(ids, newStatus);
+      const response = await updateTasksStatusAction(ids, newStatus);
 
       const isSuccess = !response.error;
 

@@ -19,7 +19,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   GetTasksActionReturnType,
-  updateTaskStatusAction,
+  updateTasksStatusAction,
 } from "../actions/actions";
 import {
   formatTaskPriority,
@@ -54,7 +54,7 @@ export const Task = ({
     setTaskStatus(newStatus);
 
     startTransition(async () => {
-      const response = await updateTaskStatusAction(task.id, newStatus);
+      const response = await updateTasksStatusAction(task.id, newStatus);
       if (response.error) {
         toast.error(response.message);
         setTaskStatus(prevStatus);

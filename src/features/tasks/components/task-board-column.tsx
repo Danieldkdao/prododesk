@@ -1,29 +1,38 @@
 "use client";
 
-import { TaskStatus } from "@/db/shared";
+import { Button } from "@/components/ui/button";
+import { ProjectSelectType, TaskSelectType } from "@/db/schema";
+import { BoardProperty } from "@/features/projects/lib/types";
 import { cn } from "@/lib/utils";
 import { useDroppable } from "@dnd-kit/react";
+import { LucideIcon, PlusIcon } from "lucide-react";
 import { ReactNode } from "react";
-import { formatTaskStatus } from "../lib/formatters";
 import { TaskDialog } from "./task-dialog";
-import { Button } from "@/components/ui/button";
-import { PlusIcon } from "lucide-react";
-import { ProjectSelectType } from "@/db/schema";
 
-export const TaskBoardColumn = ({
-  status,
+export const TaskBoardColumn = <
+  PropertyOption extends TaskSelectType[BoardProperty],
+>({
+  property,
+  propertyValue,
   project,
   children,
+  formatter,
 }: {
-  status: TaskStatus;
+  property: BoardProperty;
+  propertyValue: PropertyOption;
   project: ProjectSelectType;
   children?: ReactNode;
+  formatter: (option: PropertyOption) => {
+    label: string;
+    icon: LucideIcon;
+    textColor: string;
+  };
 }) => {
   const { ref, isDropTarget } = useDroppable({
-    id: status,
+    id: propertyValue as string,
   });
 
-  const { label, icon: StatusIcon, textColor } = formatTaskStatus(status);
+  const { label, icon: StatusIcon, textColor } = formatter(propertyValue);
 
   return (
     <div
@@ -38,17 +47,13 @@ export const TaskBoardColumn = ({
           <StatusIcon className={cn("size-5", textColor)} />
           <span className="text-xl font-medium">{label}</span>
         </div>
-        <TaskDialog defaultValues={{ status, project }}>
+        <TaskDialog defaultValues={{ [property]: propertyValue, project }}>
           <Button variant="ghost" size="icon-sm">
             <PlusIcon />
           </Button>
         </TaskDialog>
       </div>
-      <div
-        className={cn("flex flex-col gap-2 transition-all duration-200 p-2")}
-      >
-        {children}
-      </div>
+      <div className="flex flex-col gap-2 p-2">{children}</div>
     </div>
   );
 };

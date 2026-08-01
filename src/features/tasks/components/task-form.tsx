@@ -47,7 +47,7 @@ export const TaskForm = ({
     resolver: zodResolver(taskSchema),
     defaultValues: existingTask ?? {
       name: "",
-      priority: "low",
+      priority: defaultValues?.priority ?? "low",
       status: defaultValues?.status ?? "not_started",
       description: "",
       emoji: "",
