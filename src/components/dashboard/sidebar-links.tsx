@@ -9,6 +9,7 @@ import {
   SparklesIcon,
   ShapesIcon,
   FolderKanbanIcon,
+  FileTextIcon,
 } from "lucide-react";
 
 export const SidebarLinks = () => {
@@ -29,6 +30,11 @@ export const SidebarLinks = () => {
       label: "Projects",
       icon: FolderKanbanIcon,
       href: "/dashboard/projects",
+    },
+    {
+      label: "Documents",
+      icon: FileTextIcon,
+      href: "/dashboard/documents",
     },
     {
       label: "Calendar",

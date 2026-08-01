@@ -15,6 +15,62 @@ import {
   updateDocumentDb,
 } from "../server/documents";
 import { areValidIds } from "@/lib/utils";
+import { cacheTag } from "next/cache";
+import { getUserDocumentTag } from "../server/cache/documents";
+import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
+import { DocumentTable, ProjectSelectType, ProjectTable } from "@/db/schema";
+import { and, desc, eq, getTableColumns, inArray } from "drizzle-orm";
+import { db } from "@/db/db";
+import { UnwrapAsync } from "@/lib/types";
+
+export const readCachedDocumentsAction = async (
+  userId: string,
+  projectIds?: string[],
+) => {
+  "use cache";
+  cacheTag(getUserDocumentTag(userId));
+
+  let existingProjectIds: string[] | undefined = undefined;
+  if (projectIds?.length) {
+    const existingProjects = await Promise.all(
+      projectIds.map((projectId) => confirmUserProjectOwnership(projectId)),
+    );
+    if (
+      !existingProjects.every((project): project is ProjectSelectType =>
+        Boolean(project),
+      )
+    )
+      return null;
+
+    existingProjectIds = existingProjects.map((project) => project.id);
+  }
+
+  const projectsFilter = existingProjectIds?.length
+    ? inArray(DocumentTable.projectId, existingProjectIds)
+    : undefined;
+  const whereQuery = and(eq(DocumentTable.userId, userId), projectsFilter);
+
+  const documents = await db
+    .select({
+      ...getTableColumns(DocumentTable),
+      project: getTableColumns(ProjectTable),
+    })
+    .from(DocumentTable)
+    .leftJoin(ProjectTable, eq(ProjectTable.id, DocumentTable.projectId))
+    .where(whereQuery)
+    .orderBy(desc(DocumentTable.createdAt));
+
+  return documents;
+};
+export const readDocumentsAction = async (projectIds?: string[]) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  return readCachedDocumentsAction(userId, projectIds);
+};
+export type ReadDocumentsActionReturnType = UnwrapAsync<
+  typeof readDocumentsAction
+>;
 
 export const createDocumentAction = async (unsafeData?: DocumentSchemaType) => {
   const { userId } = await getCurrentUser();
