@@ -8,3 +8,4 @@ export * from "./schemas/chat-run";
 export * from "./schemas/tool-execution";
 export * from "./schemas/area";
 export * from "./schemas/project";
+export * from "./schemas/document";
