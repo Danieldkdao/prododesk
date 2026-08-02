@@ -8,8 +8,8 @@ import {
 } from "@/components/animate-ui/primitives/base/collapsible";
 import {
   markdownAnimateOptions,
-  MarkdownRenderer,
-} from "@/components/markdown/markdown-renderer";
+  StreamMarkdownRenderer,
+} from "@/components/markdown/stream-markdown-renderer";
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Button } from "@/components/ui/button";
@@ -202,7 +202,7 @@ export const ChatViewListMessage = ({
                             const isLatestPart = index === msg.parts.length - 1;
                             if (part.type === "text") {
                               return (
-                                <MarkdownRenderer
+                                <StreamMarkdownRenderer
                                   key={`${msg.id}-text-${index}`}
                                   animated={markdownAnimateOptions}
                                   isAnimating={
@@ -212,7 +212,7 @@ export const ChatViewListMessage = ({
                                   }
                                 >
                                   {part.text}
-                                </MarkdownRenderer>
+                                </StreamMarkdownRenderer>
                               );
                             }
                             if (part.type === "reasoning") {
@@ -238,7 +238,7 @@ export const ChatViewListMessage = ({
                                     )}
                                   </CollapsibleTrigger>
                                   <CollapsiblePanel className="pl-4 border-l border-border">
-                                    <MarkdownRenderer
+                                    <StreamMarkdownRenderer
                                       animated={markdownAnimateOptions}
                                       isAnimating={
                                         status === "streaming" &&
@@ -248,7 +248,7 @@ export const ChatViewListMessage = ({
                                       className="text-muted-foreground"
                                     >
                                       {part.text}
-                                    </MarkdownRenderer>
+                                    </StreamMarkdownRenderer>
                                   </CollapsiblePanel>
                                 </Collapsible>
                               );
@@ -359,7 +359,7 @@ export const ChatViewListMessage = ({
                                                   "Unknown URL"
                                                 )}
                                               </span>
-                                              <MarkdownRenderer
+                                              <StreamMarkdownRenderer
                                                 animated={
                                                   markdownAnimateOptions
                                                 }
@@ -371,7 +371,7 @@ export const ChatViewListMessage = ({
                                                 className="text-muted-foreground"
                                               >
                                                 {part.output}
-                                              </MarkdownRenderer>
+                                              </StreamMarkdownRenderer>
                                             </div>
                                           ) : part.output.trim() ? (
                                             toolName === "searchWeb" ? (
@@ -470,14 +470,14 @@ export const ChatViewListMessage = ({
                         </div>
                       )}
                     {latestPart?.type === "text" && (
-                      <MarkdownRenderer
+                      <StreamMarkdownRenderer
                         animated={markdownAnimateOptions}
                         isAnimating={status === "streaming" && isLatestMsg}
                       >
                         {latestPart?.type === "text"
                           ? latestPart.text
                           : "No output"}
-                      </MarkdownRenderer>
+                      </StreamMarkdownRenderer>
                     )}
                   </div>
                 )}

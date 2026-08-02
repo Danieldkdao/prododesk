@@ -7,6 +7,7 @@ import Link from "next/link";
 import { EllipsisIcon, FileTextIcon, FolderKanbanIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { TiptapMarkdownRenderer } from "@/components/markdown/tiptap-markdown-renderer";
 
 export const DocumentCard = ({
   document,
@@ -17,11 +18,13 @@ export const DocumentCard = ({
     <Card className="group p-0 transition-colors hover:bg-muted/30 border relative h-full">
       <CardContent className="p-0">
         <div className="h-80 border-b p-4 overflow-hidden">
-          <div className="p-4 border bg-accent/30 min-h-full">
+          <div className="p-4 border bg-accent/30 h-full overflow-hidden">
             {document.content.trim() && (
-              <p className="text-sm text-muted-foreground">
-                {document.content}
-              </p>
+              <div className="zoom-50">
+                <TiptapMarkdownRenderer>
+                  {document.content}
+                </TiptapMarkdownRenderer>
+              </div>
             )}
           </div>
         </div>

@@ -16,7 +16,10 @@ import {
 } from "../server/documents";
 import { areValidIds } from "@/lib/utils";
 import { cacheTag } from "next/cache";
-import { getUserDocumentTag } from "../server/cache/documents";
+import {
+  getDocumentIdTag,
+  getUserDocumentTag,
+} from "../server/cache/documents";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { DocumentTable, ProjectSelectType, ProjectTable } from "@/db/schema";
 import { and, desc, eq, getTableColumns, inArray } from "drizzle-orm";
@@ -70,6 +73,37 @@ export const readDocumentsAction = async (projectIds?: string[]) => {
 };
 export type ReadDocumentsActionReturnType = UnwrapAsync<
   typeof readDocumentsAction
+>;
+
+export const readCachedDocumentAction = async (
+  userId: string,
+  documentId: string,
+) => {
+  "use cache";
+  cacheTag(getDocumentIdTag(documentId));
+
+  return (
+    db.query.DocumentTable.findFirst({
+      where: and(
+        eq(DocumentTable.id, documentId),
+        eq(DocumentTable.userId, userId),
+      ),
+      with: {
+        project: true,
+      },
+    }) ?? null
+  );
+};
+export const readDocumentAction = async (documentId: string) => {
+  if (!areValidIds(documentId)) return null;
+
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  return readCachedDocumentAction(userId, documentId);
+};
+export type ReadDocumentActionReturnType = UnwrapAsync<
+  typeof readDocumentAction
 >;
 
 export const createDocumentAction = async (unsafeData?: DocumentSchemaType) => {
