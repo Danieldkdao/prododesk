@@ -16,9 +16,9 @@ import {
 } from "@/components/tiptap/tiptap-ui/heading-button";
 
 // --- UI Primitives ---
+import { Badge } from "@/components/tiptap/tiptap-ui-primitive/badge";
 import type { ButtonProps } from "@/components/tiptap/tiptap-ui-primitive/button";
 import { Button } from "@/components/tiptap/tiptap-ui-primitive/button";
-import { Badge } from "@/components/tiptap/tiptap-ui-primitive/badge";
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor";
 
 export interface HeadingButtonProps

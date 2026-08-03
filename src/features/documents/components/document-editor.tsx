@@ -1,7 +1,6 @@
 "use client";
 
 import { SimpleEditor } from "@/components/tiptap/tiptap-templates/simple/simple-editor";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSaveStatus } from "@/hooks/use-save-status";
 import { useDebouncedValue } from "@tanstack/react-pacer";

@@ -9,18 +9,18 @@ import { parseShortcutKeys } from "@/lib/tiptap-utils";
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor";
 
 // --- UI Primitives ---
+import { Badge } from "@/components/tiptap/tiptap-ui-primitive/badge";
 import type { ButtonProps } from "@/components/tiptap/tiptap-ui-primitive/button";
 import { Button } from "@/components/tiptap/tiptap-ui-primitive/button";
-import { Badge } from "@/components/tiptap/tiptap-ui-primitive/badge";
 
 // --- Tiptap UI ---
 import type {
-  ListType,
-  UseListConfig,
+    ListType,
+    UseListConfig,
 } from "@/components/tiptap/tiptap-ui/list-button";
 import {
-  LIST_SHORTCUT_KEYS,
-  useList,
+    LIST_SHORTCUT_KEYS,
+    useList,
 } from "@/components/tiptap/tiptap-ui/list-button";
 
 export interface ListButtonProps

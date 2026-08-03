@@ -6,6 +6,7 @@ import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
   NOT_FOUND_ERROR_MESSAGE,
+  PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import {
@@ -22,16 +23,37 @@ import {
 } from "../server/cache/documents";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { DocumentTable, ProjectSelectType, ProjectTable } from "@/db/schema";
-import { and, desc, eq, getTableColumns, inArray } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  ilike,
+  inArray,
+  or,
+  SQL,
+} from "drizzle-orm";
 import { db } from "@/db/db";
 import { UnwrapAsync } from "@/lib/types";
+import { DocumentsSortByOption } from "../lib/documents-params";
 
 const readCachedDocumentsAction = async (
   userId: string,
+  filterOptions: {
+    search: string;
+    sortBy: DocumentsSortByOption;
+    page: number;
+  },
   projectIds?: string[],
 ) => {
   "use cache";
   cacheTag(getUserDocumentTag(userId));
+
+  const { search, sortBy, page } = filterOptions;
+
+  const offset = (page - 1) * PAGE_SIZE;
 
   let existingProjectIds: string[] | undefined = undefined;
   if (projectIds?.length) {
@@ -48,10 +70,27 @@ const readCachedDocumentsAction = async (
     existingProjectIds = existingProjects.map((project) => project.id);
   }
 
+  const sortByMap: Record<DocumentsSortByOption, SQL<unknown>> = {
+    oldest: asc(DocumentTable.createdAt),
+    recently_created: desc(DocumentTable.createdAt),
+    recently_updated: desc(DocumentTable.updatedAt),
+  };
+
+  const searchTerm = `%${search.trim()}%`;
+  const searchQuery = or(
+    ilike(DocumentTable.name, searchTerm),
+    ilike(DocumentTable.content, searchTerm),
+    ilike(ProjectTable.name, searchTerm),
+  );
+
   const projectsFilter = existingProjectIds?.length
     ? inArray(DocumentTable.projectId, existingProjectIds)
     : undefined;
-  const whereQuery = and(eq(DocumentTable.userId, userId), projectsFilter);
+  const whereQuery = and(
+    eq(DocumentTable.userId, userId),
+    projectsFilter,
+    searchQuery,
+  );
 
   const documents = await db
     .select({
@@ -61,15 +100,50 @@ const readCachedDocumentsAction = async (
     .from(DocumentTable)
     .leftJoin(ProjectTable, eq(ProjectTable.id, DocumentTable.projectId))
     .where(whereQuery)
-    .orderBy(desc(DocumentTable.createdAt));
+    .orderBy(sortByMap[sortBy])
+    .offset(offset)
+    .limit(PAGE_SIZE);
 
-  return documents;
+  const [totalDocuments] = await db
+    .select({ count: count() })
+    .from(DocumentTable)
+    .leftJoin(ProjectTable, eq(ProjectTable.id, DocumentTable.projectId))
+    .where(whereQuery);
+
+  const hasPrevPage = page > 1;
+  const hasNextPage = page * PAGE_SIZE < totalDocuments.count;
+  const clientKey = `${documents.map(
+    (document) => `
+    ${document.id}
+    ${document.name}
+    ${document.content}
+    ${document.projectId}
+    ${document.createdAt.toISOString()}
+    ${document.updatedAt.toISOString()}
+  `,
+  )}${hasNextPage ? "has next page" : "no next page"}`;
+
+  return {
+    metadata: {
+      hasPrevPage,
+      hasNextPage,
+      clientKey,
+    },
+    documents,
+  };
 };
-export const readDocumentsAction = async (projectIds?: string[]) => {
+export const readDocumentsAction = async (
+  filterOptions: {
+    search: string;
+    sortBy: DocumentsSortByOption;
+    page: number;
+  },
+  projectIds?: string[],
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  return readCachedDocumentsAction(userId, projectIds);
+  return readCachedDocumentsAction(userId, filterOptions, projectIds);
 };
 export type ReadDocumentsActionReturnType = UnwrapAsync<
   typeof readDocumentsAction

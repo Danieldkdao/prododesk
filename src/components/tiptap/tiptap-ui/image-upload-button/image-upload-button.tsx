@@ -16,9 +16,9 @@ import {
 } from "@/components/tiptap/tiptap-ui/image-upload-button";
 
 // --- UI Primitives ---
+import { Badge } from "@/components/tiptap/tiptap-ui-primitive/badge";
 import type { ButtonProps } from "@/components/tiptap/tiptap-ui-primitive/button";
 import { Button } from "@/components/tiptap/tiptap-ui-primitive/button";
-import { Badge } from "@/components/tiptap/tiptap-ui-primitive/badge";
 
 type IconProps = React.SVGProps<SVGSVGElement>;
 type IconComponent = ({ className, ...props }: IconProps) => React.ReactElement;

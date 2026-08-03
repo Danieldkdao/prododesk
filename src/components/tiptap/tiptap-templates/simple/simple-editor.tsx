@@ -82,8 +82,8 @@ import "@/components/tiptap/tiptap-templates/simple/simple-editor.scss";
 import { cn } from "@/lib/utils";
 
 // --- Extensions ---
-import { Plugin } from "@tiptap/pm/state";
 import { Markdown } from "@tiptap/markdown";
+import { Plugin } from "@tiptap/pm/state";
 
 const SEARCH_AND_REPLACE_SCROLL_OPTIONS: ScrollIntoViewOptions = {
   block: "center",

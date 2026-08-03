@@ -6,11 +6,13 @@ import { Card, CardContent } from "./ui/card";
 export const InfoCard = ({
   title,
   description,
+  icon,
   className,
   children,
 }: {
   title: string;
   description: string;
+  icon?: ReactNode;
   className?: string;
   children?: ReactNode;
 }) => {
@@ -21,8 +23,8 @@ export const InfoCard = ({
         className,
       )}
     >
-      <CardContent className="flex flex-col gap-2 items-center">
-        <InfoIcon className="text-primary size-10" />
+      <CardContent className="flex flex-col gap-2 items-center [&_svg]:text-primary [&_svg]:size-10">
+        {icon ?? <InfoIcon />}
         <h2 className="text-2xl font-semibold text-center text-primary">
           {title}
         </h2>

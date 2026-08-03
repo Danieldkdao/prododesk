@@ -1,7 +1,7 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
+import { forwardRef, useCallback, useEffect, useState } from "react";
 
 // --- Hooks ---
 import { useIsBreakpoint } from "@/hooks/use-is-breakpoint";
@@ -20,19 +20,19 @@ import { useLinkPopover } from "@/components/tiptap/tiptap-ui/link-popover";
 // --- UI Primitives ---
 import type { ButtonProps } from "@/components/tiptap/tiptap-ui-primitive/button";
 import { Button } from "@/components/tiptap/tiptap-ui-primitive/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/tiptap/tiptap-ui-primitive/popover";
-import { Separator } from "@/components/tiptap/tiptap-ui-primitive/separator";
+import { ButtonGroup } from "@/components/tiptap/tiptap-ui-primitive/button-group";
 import {
   Card,
   CardBody,
   CardItemGroup,
 } from "@/components/tiptap/tiptap-ui-primitive/card";
 import { Input } from "@/components/tiptap/tiptap-ui-primitive/input";
-import { ButtonGroup } from "@/components/tiptap/tiptap-ui-primitive/button-group";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/tiptap/tiptap-ui-primitive/popover";
+import { Separator } from "@/components/tiptap/tiptap-ui-primitive/separator";
 
 import "./link-popover.scss";
 

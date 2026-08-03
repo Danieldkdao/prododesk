@@ -16,9 +16,9 @@ import {
 } from "@/components/tiptap/tiptap-ui/color-highlight-button";
 
 // --- UI Primitives ---
+import { Badge } from "@/components/tiptap/tiptap-ui-primitive/badge";
 import type { ButtonProps } from "@/components/tiptap/tiptap-ui-primitive/button";
 import { Button } from "@/components/tiptap/tiptap-ui-primitive/button";
-import { Badge } from "@/components/tiptap/tiptap-ui-primitive/badge";
 
 // --- Styles ---
 import "@/components/tiptap/tiptap-ui/color-highlight-button/color-highlight-button.scss";

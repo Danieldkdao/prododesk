@@ -83,7 +83,7 @@ const DocumentIdSuspense = async ({ params }: DocumentIdParams) => {
         <ArrowLeftIcon />
         Back to documents
       </Link>
-      <DocumentEditor document={document} />;
+      <DocumentEditor document={document} />
     </div>
   );
 };

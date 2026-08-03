@@ -18,10 +18,10 @@ import type { ButtonProps } from "@/components/tiptap/tiptap-ui-primitive/button
 import { Button } from "@/components/tiptap/tiptap-ui-primitive/button";
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/tiptap/tiptap-ui-primitive/dropdown-menu";
 
 export interface HeadingDropdownMenuProps

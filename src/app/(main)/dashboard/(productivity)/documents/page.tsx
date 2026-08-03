@@ -1,15 +1,20 @@
 import { ErrorState } from "@/components/error-state";
-import { InfoCard } from "@/components/info-card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { readDocumentsAction } from "@/features/documents/actions/actions";
 import { CreateDocumentButton } from "@/features/documents/components/create-document-button";
-import { DocumentCard } from "@/features/documents/components/document-card";
+import { DocumentFilters } from "@/features/documents/components/document-filters";
+import { DocumentInfiniteList } from "@/features/documents/components/document-infinite-list";
+import { DocumentsSkeleton } from "@/features/documents/components/documents-skeleton";
+import { loadDocumentsSearchParams } from "@/features/documents/lib/documents-params";
+import { DEFAULT_PAGE } from "@/lib/constants";
 import { PlusIcon } from "lucide-react";
+import { SearchParams } from "nuqs";
 import { Suspense } from "react";
 
-const DocumentsPage = () => {
+type DocumentsProps = { searchParams: Promise<SearchParams> };
+
+const DocumentsPage = (props: DocumentsProps) => {
   return (
-    <div className="w-full h-full flex flex-col gap-8">
+    <div className="w-full h-full flex flex-col gap-4">
       <div className="flex items-center gap-2 flex-wrap justify-between">
         <h1 className="text-3xl font-semibold">My Documents</h1>
         <CreateDocumentButton projectId="1aab756f-ec90-407e-ae21-bbe0be7e0303">
@@ -18,50 +23,23 @@ const DocumentsPage = () => {
         </CreateDocumentButton>
       </div>
       <Suspense fallback={<DocumentsLoading />}>
-        <DocumentsSuspense />
+        <DocumentsSuspense {...props} />
       </Suspense>
     </div>
   );
 };
 
 const DocumentsLoading = () => {
-  return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div
-          key={index}
-          className="flex h-full flex-col overflow-hidden border bg-card shadow-sm"
-        >
-          <div className="h-80 border-b p-4">
-            <div className="h-full space-y-3 overflow-hidden border bg-accent/30 p-4">
-              <Skeleton className="h-6 w-2/3" />
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-11/12" />
-              <Skeleton className="h-3 w-4/5" />
-              <div className="pt-3">
-                <Skeleton className="mb-3 h-4 w-1/2" />
-                <Skeleton className="mb-2 h-3 w-full" />
-                <Skeleton className="h-3 w-3/4" />
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-1 items-center gap-3 p-4">
-            <Skeleton className="size-12 shrink-0" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-5 w-3/5" />
-              <Skeleton className="h-4 w-2/5" />
-            </div>
-            <Skeleton className="size-8 shrink-0" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return <DocumentsSkeleton />;
 };
 
-const DocumentsSuspense = async () => {
-  const documents = await readDocumentsAction();
-  if (!documents) {
+const DocumentsSuspense = async ({ searchParams }: DocumentsProps) => {
+  const filters = await loadDocumentsSearchParams(searchParams);
+  const response = await readDocumentsAction({
+    ...filters,
+    page: DEFAULT_PAGE,
+  });
+  if (!response) {
     return (
       <ErrorState
         title="An error occurred"
@@ -70,20 +48,16 @@ const DocumentsSuspense = async () => {
     );
   }
 
-  if (!documents.length) {
-    return (
-      <InfoCard
-        title="No documents found"
-        description="Looks like you haven't created any documents yet. Create one to get started."
-      />
-    );
-  }
+  const { documents, metadata } = response;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      {documents.map((document) => (
-        <DocumentCard key={document.id} document={document} />
-      ))}
+    <div className="w-full flex flex-col gap-8">
+      <DocumentFilters />
+      <DocumentInfiniteList
+        key={metadata.clientKey}
+        initialDocuments={documents}
+        initialHasNextPage={metadata.hasNextPage}
+      />
     </div>
   );
 };

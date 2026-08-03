@@ -33,7 +33,7 @@ import { DeleteDocumentButton } from "./delete-document-button";
 export const DocumentCard = ({
   document,
 }: {
-  document: ReadDocumentsActionReturnType[number];
+  document: ReadDocumentsActionReturnType["documents"][number];
 }) => {
   const updateInputRef = useRef<HTMLInputElement>(null);
   const [isEditMode, setIsEditMode] = useState(false);
