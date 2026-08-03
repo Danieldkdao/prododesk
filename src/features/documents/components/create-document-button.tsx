@@ -22,11 +22,11 @@ export const CreateDocumentButton = ({
   const handleCreation = () => {
     startTransition(async () => {
       const response = await createDocumentAction({ projectId });
-      if (response.error) {
+      if (response.error || !response.documentId) {
         toast.error(response.message);
       } else {
         toast.success(response.message);
-        router.refresh();
+        router.push(`/dashboard/documents/${response.documentId}`);
       }
     });
   };

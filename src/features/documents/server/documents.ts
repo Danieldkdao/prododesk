@@ -91,7 +91,7 @@ export const deleteDocumentDb = async (
     )
     .returning();
 
-  revalidateDocumentCache(deletedDocument.id, deletedDocument.userId);
+  revalidateDocumentCache(deletedDocument.userId, deletedDocument.id);
   if (deletedDocument.projectId) {
     revalidateDocumentCache(deletedDocument.id, deletedDocument.projectId);
   }

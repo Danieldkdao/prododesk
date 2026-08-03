@@ -26,7 +26,7 @@ import { and, desc, eq, getTableColumns, inArray } from "drizzle-orm";
 import { db } from "@/db/db";
 import { UnwrapAsync } from "@/lib/types";
 
-export const readCachedDocumentsAction = async (
+const readCachedDocumentsAction = async (
   userId: string,
   projectIds?: string[],
 ) => {
@@ -75,10 +75,7 @@ export type ReadDocumentsActionReturnType = UnwrapAsync<
   typeof readDocumentsAction
 >;
 
-export const readCachedDocumentAction = async (
-  userId: string,
-  documentId: string,
-) => {
+const readCachedDocumentAction = async (userId: string, documentId: string) => {
   "use cache";
   cacheTag(getDocumentIdTag(documentId));
 
@@ -143,6 +140,7 @@ export const createDocumentAction = async (unsafeData?: DocumentSchemaType) => {
     return {
       error: false,
       message: "Document created successfully!",
+      documentId: createdDocument.id,
     };
   } catch (error) {
     console.error(error);

@@ -20,6 +20,7 @@ import {
   ReadDocumentActionReturnType,
   updateDocumentAction,
 } from "../actions/actions";
+import { DeleteDocumentButton } from "./delete-document-button";
 
 const getDocumentSignature = (values: { name: string; content: string }) =>
   JSON.stringify(values);
@@ -45,8 +46,6 @@ export const DocumentEditor = ({
 
   useEffect(() => {
     const documentSignature = getDocumentSignature(debouncedDocumentValues);
-    console.log("DOCUMENT SIGNATURE: ", documentSignature);
-    console.log("LAST SUBMITTED: ", lastSubmittedRef.current);
     if (documentSignature === lastSubmittedRef.current) return;
 
     lastSubmittedRef.current = documentSignature;
@@ -61,7 +60,7 @@ export const DocumentEditor = ({
   }, [debouncedDocumentValues, document.id, startSave, setSaveStatus]);
 
   return (
-    <div className="border bg-card shadow-sm">
+    <div className="border bg-card shadow-sm w-full">
       <div className="flex flex-col gap-2 border-b p-4">
         <div className="flex items-center justify-between gap-4">
           <Input
@@ -72,13 +71,14 @@ export const DocumentEditor = ({
             placeholder="Untitled document"
             className="h-auto border-none bg-transparent p-0 text-2xl font-semibold shadow-none focus-visible:ring-0 md:text-2xl"
           />
-          <Button
+          <DeleteDocumentButton
+            documentId={document.id}
             variant="ghost"
             size="icon-sm"
             className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           >
             <Trash2Icon className="size-4" />
-          </Button>
+          </DeleteDocumentButton>
         </div>
         <div className="flex items-center gap-6 flex-wrap">
           <div className="flex items-center gap-2">
