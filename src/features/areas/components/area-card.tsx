@@ -25,16 +25,16 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
-import { ReadUserAreasActionReturnType } from "../actions/actions";
-import { AreaDialog } from "./area-dialog";
 import { useState } from "react";
+import { ReadAreasActionReturnType } from "../actions/actions";
+import { AreaDialog } from "./area-dialog";
 import { DeleteAreaButton } from "./delete-area-button";
 import { ToggleAreaArchiveStatusButton } from "./toggle-area-archive-status-button";
 
 export const AreaCard = ({
   area,
 }: {
-  area: ReadUserAreasActionReturnType["areas"][number];
+  area: ReadAreasActionReturnType["areas"][number];
 }) => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
 

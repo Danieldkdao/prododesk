@@ -41,27 +41,30 @@ export const DocumentsFilters = () => {
           }
         />
         <PopoverContent className="border" align="end">
-          <Select
-            value={filters.sortBy}
-            onValueChange={(value) =>
-              setFilters({
-                sortBy: value as DocumentsSortByOption,
-              })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Sort by">
-                {formatDocumentSortByOptions(filters.sortBy)}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {documentsSortByOptions.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {formatDocumentSortByOptions(option)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-2">
+            <span className="text-base font-medium">Sort by</span>
+            <Select
+              value={filters.sortBy}
+              onValueChange={(value) =>
+                setFilters({
+                  sortBy: value as DocumentsSortByOption,
+                })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Sort by">
+                  {formatDocumentSortByOptions(filters.sortBy)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {documentsSortByOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {formatDocumentSortByOptions(option)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </PopoverContent>
       </Popover>
     </div>

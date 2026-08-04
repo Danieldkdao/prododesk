@@ -52,15 +52,19 @@ const SignInPage = () => {
         })
         .finally(() => setVerifyEmail(session.user.email));
     }
-  }, []);
+  }, [session?.user]);
 
   const handleSignIn = async (data: FormType) => {
     await authClient.signIn.email({
       ...data,
       callbackURL: "/dashboard",
       fetchOptions: {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success("Authentication successful!");
+          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          await authClient.updateUser({
+            timeZone,
+          });
         },
         onError: async (error) => {
           console.error(error);
@@ -85,6 +89,12 @@ const SignInPage = () => {
       provider,
       callbackURL: "/dashboard",
       fetchOptions: {
+        onSuccess: async () => {
+          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          await authClient.updateUser({
+            timeZone,
+          });
+        },
         onError: (error) => {
           setIsSocialSignIn(false);
           toast.error(error.error.message || GENERAL_ERROR_MESSAGE);

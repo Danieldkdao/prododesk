@@ -116,16 +116,7 @@ const readCachedDocumentsAction = async (
 
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalDocuments.count;
-  const clientKey = `${documents.map(
-    (document) => `
-    ${document.id}
-    ${document.name}
-    ${document.content}
-    ${document.projectId}
-    ${document.createdAt.toISOString()}
-    ${document.updatedAt.toISOString()}
-  `,
-  )}${hasNextPage ? "has next page" : "no next page"}`;
+  const clientKey = `${JSON.stringify(documents)}${hasNextPage ? "has next page" : "no next page"}`;
 
   return {
     metadata: {

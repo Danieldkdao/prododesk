@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { useDebouncedCallback } from "@tanstack/react-pacer";
 import { ChevronDownIcon, ShapesIcon } from "lucide-react";
 import { useCallback, useState, useTransition } from "react";
-import { readUserAreasAction } from "../actions/actions";
+import { readAreasAction } from "../actions/actions";
 
 export const AreaCommandSelect = ({
   initialValue,
@@ -40,8 +40,10 @@ export const AreaCommandSelect = ({
 
   const fetchAreas = useCallback(
     (nextPage: number) => {
-      return readUserAreasAction({
+      return readAreasAction({
         search,
+        sortBy: "recently_created",
+        archiveStatus: "all",
         page: nextPage,
       });
     },
@@ -63,8 +65,10 @@ export const AreaCommandSelect = ({
 
   const handleSearch = () => {
     startSearchTransition(async () => {
-      const response = await readUserAreasAction({
+      const response = await readAreasAction({
         search,
+        sortBy: "recently_created",
+        archiveStatus: "all",
         page: DEFAULT_PAGE,
       });
 

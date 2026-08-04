@@ -39,21 +39,23 @@ export const DocumentsInfiniteList = ({
   );
 
   return documents.length ? (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      {documents.map((document) => (
-        <DocumentCard key={document.id} document={document} />
-      ))}
-
-      {isPending &&
-        Array.from({ length: 8 }).map((_, index) => (
-          <DocumentSkeleton key={index} />
+    <div className="w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {documents.map((document) => (
+          <DocumentCard key={document.id} document={document} />
         ))}
+
+        {isPending &&
+          Array.from({ length: 8 }).map((_, index) => (
+            <DocumentSkeleton key={index} />
+          ))}
+      </div>
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (
     <InfoCard
       title="No documents found"
-      description="Looks like you haven't created any documents yet. Create one to get started."
+      description="We were unable to find any documents. Create one to get started or change your search filters."
       icon={<SearchXIcon />}
     />
   );

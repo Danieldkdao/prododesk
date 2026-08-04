@@ -47,8 +47,10 @@ const SignUpPage = () => {
   });
 
   const handleSignUp = async (data: FormType) => {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     await authClient.signUp.email({
       ...data,
+      timeZone,
       callbackURL: "/dashboard",
       fetchOptions: {
         onSuccess: async () => {

@@ -1,73 +1,39 @@
 import { ErrorState } from "@/components/error-state";
-import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { readUserAreasAction } from "@/features/areas/actions/actions";
-import { AreaCard } from "@/features/areas/components/area-card";
+import { readAreasAction } from "@/features/areas/actions/actions";
 import { AreaDialog } from "@/features/areas/components/area-dialog";
+import { AreasFilters } from "@/features/areas/components/areas-filters";
+import { AreasInfiniteList } from "@/features/areas/components/areas-infinite-list";
+import { AreasSkeleton } from "@/features/areas/components/areas-skeleton";
+import { loadAreasSearchParams } from "@/features/areas/lib/areas-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
+import { SearchParamsType } from "@/lib/types";
 import { PlusIcon } from "lucide-react";
 import { Suspense } from "react";
 
-const AreasPage = () => {
+const AreasPage = (props: SearchParamsType) => {
   return (
-    <div className="w-full h-full flex flex-col gap-8">
+    <div className="w-full h-full flex flex-col gap-4">
       <div className="flex items-center gap-2 flex-wrap justify-between">
         <h1 className="text-3xl font-semibold">My Areas</h1>
         <AreaDialog>
-          <TooltipWrapper content="Create new area">
-            <Button size="icon-sm">
-              <PlusIcon />
-            </Button>
-          </TooltipWrapper>
+          <Button>
+            <PlusIcon />
+            Create new
+          </Button>
         </AreaDialog>
       </div>
-      <Suspense fallback={<AreasLoading />}>
-        <AreasSuspense />
+      <Suspense fallback={<AreasSkeleton />}>
+        <AreasSuspense {...props} />
       </Suspense>
     </div>
   );
 };
 
-const AreasLoading = () => {
-  return (
-    <div className="mx-auto flex w-full max-w-384 flex-col gap-4 p-10">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Skeleton className="h-9 w-36" />
-        <Skeleton className="size-9" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-        {Array.from({ length: 8 }, (_, index) => (
-          <div
-            key={index}
-            className="flex min-h-52 w-full flex-col border border-l-6 p-6"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <Skeleton className="size-10 shrink-0" />
-                <Skeleton className="h-7 w-28" />
-              </div>
-              <Skeleton className="size-8 shrink-0" />
-            </div>
-            <div className="mt-6 space-y-2">
-              <Skeleton className="h-5 w-full" />
-              <Skeleton className="h-5 w-4/5" />
-            </div>
-            <div className="mt-auto pt-6">
-              <Skeleton className="h-4 w-36" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const AreasSuspense = async () => {
-  // todo: add proper filters
-  const response = await readUserAreasAction({
-    search: "",
+const AreasSuspense = async ({ searchParams }: SearchParamsType) => {
+  const filters = await loadAreasSearchParams(searchParams);
+  const response = await readAreasAction({
+    ...filters,
     page: DEFAULT_PAGE,
   });
   if (!response) {
@@ -79,13 +45,16 @@ const AreasSuspense = async () => {
     );
   }
 
-  const { areas } = response;
+  const { areas, metadata } = response;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      {areas.map((area) => (
-        <AreaCard key={area.id} area={area} />
-      ))}
+    <div className="flex flex-col gap-8">
+      <AreasFilters />
+      <AreasInfiniteList
+        key={metadata.clientKey}
+        initialAreas={areas}
+        initialHasNextPage={metadata.hasNextPage}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { Color } from "@/db/shared";
 import { format, isSameDay, isToday } from "date-fns";
 import { ArchiveIcon, CircleCheckIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
+import { ArchiveStatusFilterOption } from "./params";
 
 export const formatColor = (color: Color) => {
   switch (color) {
@@ -211,4 +212,21 @@ export const formatArchivedStatus = (isArchived: boolean) => {
     text: "Active",
     icon: CircleCheckIcon,
   };
+};
+
+export const formatArchiveStatusFilterOptions = (
+  option: ArchiveStatusFilterOption,
+) => {
+  switch (option) {
+    case "active":
+      return "Active";
+    case "all":
+      return "All";
+    case "archived":
+      return "Archived";
+    default:
+      throw new Error(
+        `Unknown archive status filter option: ${option satisfies never}`,
+      );
+  }
 };

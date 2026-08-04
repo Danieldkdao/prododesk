@@ -1,5 +1,7 @@
 "use server";
 
+import { db } from "@/db/db";
+import { AreaTable, Color } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -8,47 +10,94 @@ import {
   PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
-import { areaSchema, AreaSchemaType } from "./schemas";
+import { ArchiveStatusFilterOption } from "@/lib/params";
+import { UnwrapAsync } from "@/lib/types";
+import { areValidIds } from "@/lib/utils";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  SQL,
+  sql,
+} from "drizzle-orm";
+import { cacheTag } from "next/cache";
+import { AreasSortByOption } from "../lib/areas-params";
 import {
   confirmUserAreaOwnership,
   deleteAreaDb,
   insertAreaDb,
   updateAreaDb,
 } from "../server/areas";
-import { and, asc, count, eq, ilike, or, sql } from "drizzle-orm";
-import { AreaTable } from "@/db/schema";
-import { areValidIds } from "@/lib/utils";
-import { cacheTag } from "next/cache";
 import { getUserAreaTag } from "../server/cache/areas";
-import { db } from "@/db/db";
-import { UnwrapAsync } from "@/lib/types";
+import { areaSchema, AreaSchemaType } from "./schemas";
 
-const readCachedUserAreas = async (
+const readCachedAreasAction = async (
   userId: string,
-  filterOptions: { search: string; page: number },
+  filterOptions: {
+    search: string;
+    sortBy: AreasSortByOption;
+    archiveStatus: ArchiveStatusFilterOption;
+    colors: Color[];
+    page: number;
+  },
 ) => {
   "use cache";
   cacheTag(getUserAreaTag(userId));
 
-  const { search, page } = filterOptions;
+  const { search, sortBy, archiveStatus, colors, page } = filterOptions;
 
   const offset = (page - 1) * PAGE_SIZE;
 
   const searchTerm = `%${search.trim()}%`;
-  const searchQuery = search.trim()
+  const searchFilter = search.trim()
     ? or(
         ilike(AreaTable.name, searchTerm),
         ilike(AreaTable.description, searchTerm),
       )
     : undefined;
 
-  const whereQuery = and(eq(AreaTable.userId, userId), searchQuery);
+  const sortByMap: Record<AreasSortByOption, SQL<unknown>> = {
+    recently_created: desc(AreaTable.createdAt),
+    oldest: asc(AreaTable.createdAt),
+    recently_updated: desc(AreaTable.updatedAt),
+    position: asc(AreaTable.position),
+  };
+
+  const archiveStatusMap: Record<
+    ArchiveStatusFilterOption,
+    SQL<unknown> | undefined
+  > = {
+    all: undefined,
+    active: and(eq(AreaTable.isArchived, false), isNull(AreaTable.archivedAt)),
+    archived: and(
+      eq(AreaTable.isArchived, true),
+      isNotNull(AreaTable.archivedAt),
+    ),
+  };
+
+  const colorsFilter = colors.length
+    ? inArray(AreaTable.color, colors)
+    : undefined;
+
+  const whereQuery = and(
+    eq(AreaTable.userId, userId),
+    searchFilter,
+    archiveStatusMap[archiveStatus],
+    colorsFilter,
+  );
 
   const areas = await db
     .select()
     .from(AreaTable)
     .where(whereQuery)
-    .orderBy(asc(AreaTable.position))
+    .orderBy(sortByMap[sortBy])
     .offset(offset)
     .limit(PAGE_SIZE);
 
@@ -61,27 +110,30 @@ const readCachedUserAreas = async (
 
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalAreas.count;
+  const clientKey = `${JSON.stringify(areas)}${hasNextPage ? "has next page" : "no next page"}`;
 
   return {
     areas,
     metadata: {
       hasPrevPage,
       hasNextPage,
+      clientKey,
     },
   };
 };
-export const readUserAreasAction = async (filterOptions: {
+export const readAreasAction = async (filterOptions: {
   search: string;
+  sortBy: AreasSortByOption;
+  archiveStatus: ArchiveStatusFilterOption;
+  colors: Color[];
   page: number;
 }) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  return readCachedUserAreas(userId, filterOptions);
+  return readCachedAreasAction(userId, filterOptions);
 };
-export type ReadUserAreasActionReturnType = UnwrapAsync<
-  typeof readUserAreasAction
->;
+export type ReadAreasActionReturnType = UnwrapAsync<typeof readAreasAction>;
 
 export const createAreaAction = async (unsafeData: AreaSchemaType) => {
   const { userId } = await getCurrentUser();
