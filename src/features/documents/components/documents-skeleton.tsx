@@ -2,10 +2,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const DocumentsSkeleton = () => {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, index) => (
-        <DocumentSkeleton key={index} />
-      ))}
+    <div className="flex w-full flex-col gap-8">
+      <div className="flex items-center gap-2">
+        <div className="flex h-10 flex-1 items-center gap-2 border px-2">
+          <Skeleton className="size-5 shrink-0" />
+          <Skeleton className="h-4 w-full max-w-80" />
+        </div>
+        <div className="flex size-10 shrink-0 items-center justify-center border">
+          <Skeleton className="size-5" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <DocumentSkeleton key={index} />
+        ))}
+      </div>
     </div>
   );
 };

@@ -22,7 +22,7 @@ import {
 } from "../lib/documents-params";
 import { formatDocumentSortByOptions } from "../lib/formatters";
 
-export const DocumentFilters = () => {
+export const DocumentsFilters = () => {
   const [filters, setFilters] = useDocumentsParams();
 
   return (

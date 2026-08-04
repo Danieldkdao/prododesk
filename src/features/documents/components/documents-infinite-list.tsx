@@ -11,7 +11,7 @@ import { DocumentSkeleton } from "./documents-skeleton";
 import { InfoCard } from "@/components/info-card";
 import { SearchXIcon } from "lucide-react";
 
-export const DocumentInfiniteList = ({
+export const DocumentsInfiniteList = ({
   initialDocuments,
   initialHasNextPage,
   projectIds,

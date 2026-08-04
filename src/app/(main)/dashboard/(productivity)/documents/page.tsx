@@ -1,18 +1,16 @@
 import { ErrorState } from "@/components/error-state";
 import { readDocumentsAction } from "@/features/documents/actions/actions";
 import { CreateDocumentButton } from "@/features/documents/components/create-document-button";
-import { DocumentFilters } from "@/features/documents/components/document-filters";
-import { DocumentInfiniteList } from "@/features/documents/components/document-infinite-list";
+import { DocumentsFilters } from "@/features/documents/components/documents-filters";
+import { DocumentsInfiniteList } from "@/features/documents/components/documents-infinite-list";
 import { DocumentsSkeleton } from "@/features/documents/components/documents-skeleton";
 import { loadDocumentsSearchParams } from "@/features/documents/lib/documents-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
+import { SearchParamsType } from "@/lib/types";
 import { PlusIcon } from "lucide-react";
-import { SearchParams } from "nuqs";
 import { Suspense } from "react";
 
-type DocumentsProps = { searchParams: Promise<SearchParams> };
-
-const DocumentsPage = (props: DocumentsProps) => {
+const DocumentsPage = (props: SearchParamsType) => {
   return (
     <div className="w-full h-full flex flex-col gap-4">
       <div className="flex items-center gap-2 flex-wrap justify-between">
@@ -22,18 +20,14 @@ const DocumentsPage = (props: DocumentsProps) => {
           Create document
         </CreateDocumentButton>
       </div>
-      <Suspense fallback={<DocumentsLoading />}>
+      <Suspense fallback={<DocumentsSkeleton />}>
         <DocumentsSuspense {...props} />
       </Suspense>
     </div>
   );
 };
 
-const DocumentsLoading = () => {
-  return <DocumentsSkeleton />;
-};
-
-const DocumentsSuspense = async ({ searchParams }: DocumentsProps) => {
+const DocumentsSuspense = async ({ searchParams }: SearchParamsType) => {
   const filters = await loadDocumentsSearchParams(searchParams);
   const response = await readDocumentsAction({
     ...filters,
@@ -52,8 +46,8 @@ const DocumentsSuspense = async ({ searchParams }: DocumentsProps) => {
 
   return (
     <div className="w-full flex flex-col gap-8">
-      <DocumentFilters />
-      <DocumentInfiniteList
+      <DocumentsFilters />
+      <DocumentsInfiniteList
         key={metadata.clientKey}
         initialDocuments={documents}
         initialHasNextPage={metadata.hasNextPage}

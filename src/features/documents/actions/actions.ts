@@ -51,6 +51,8 @@ const readCachedDocumentsAction = async (
   "use cache";
   cacheTag(getUserDocumentTag(userId));
 
+  if (projectIds?.length && !areValidIds(projectIds)) return null;
+
   const { search, sortBy, page } = filterOptions;
 
   const offset = (page - 1) * PAGE_SIZE;
@@ -58,7 +60,9 @@ const readCachedDocumentsAction = async (
   let existingProjectIds: string[] | undefined = undefined;
   if (projectIds?.length) {
     const existingProjects = await Promise.all(
-      projectIds.map((projectId) => confirmUserProjectOwnership(projectId)),
+      projectIds.map((projectId) =>
+        confirmUserProjectOwnership(projectId, userId),
+      ),
     );
     if (
       !existingProjects.every((project): project is ProjectSelectType =>

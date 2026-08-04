@@ -73,7 +73,9 @@ export const DocumentCard = ({
 
               return (
                 <TooltipWrapper content={document.project.name}>
-                  <Link href={`/dashboard/projects/${document.project.id}`}>
+                  <Link
+                    href={`/dashboard/projects/${document.project.id}/documents`}
+                  >
                     <div
                       className={cn(
                         "flex size-12 shrink-0 items-center justify-center relative z-10",

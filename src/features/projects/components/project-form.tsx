@@ -278,7 +278,7 @@ export const ProjectForm = ({
                   value={field.value}
                   fieldError={!!fieldState.error}
                   errorStateId="invalid-project-start-at-input"
-                  onSelect={(date) => field.onChange(date)}
+                  onValueChange={(date) => field.onChange(date)}
                   disabled={{
                     before: dateToUse,
                     after: endAtValue ? subDays(endAtValue, 1) : undefined,
@@ -305,7 +305,7 @@ export const ProjectForm = ({
                   value={field.value}
                   fieldError={!!fieldState.error}
                   errorStateId="invalid-project-end-at-input"
-                  onSelect={(date) => field.onChange(date)}
+                  onValueChange={(date) => field.onChange(date)}
                   disabled={{
                     before: startAtValue ? addDays(startAtValue, 1) : dateToUse,
                   }}
