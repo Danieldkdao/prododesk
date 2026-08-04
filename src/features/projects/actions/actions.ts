@@ -20,24 +20,60 @@ import { areValidIds } from "@/lib/utils";
 import { cacheTag } from "next/cache";
 import { getProjectIdTag, getUserProjectTag } from "../server/cache/projects";
 import { db } from "@/db/db";
-import { AreaTable, ProjectTable } from "@/db/schema";
-import { and, count, desc, eq, getTableColumns, ilike, or } from "drizzle-orm";
+import { AreaTable, Color, ProjectStatus, ProjectTable } from "@/db/schema";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  SQL,
+} from "drizzle-orm";
 import { UnwrapAsync } from "@/lib/types";
 import { cache } from "react";
+import { ProjectsSortByOption } from "../lib/projects-params";
+import { ArchiveStatusFilterOption } from "@/lib/params";
+import { format } from "date-fns";
 
 const readCachedProjectsAction = async (
   userId: string,
-  filterOptions: { search: string; page: number },
+  filterOptions: {
+    search: string;
+    sortBy: ProjectsSortByOption;
+    colors: Color[];
+    statuses: ProjectStatus[];
+    archiveStatus: ArchiveStatusFilterOption;
+    dateTimeStartRange: Date | null;
+    dateTimeEndRange: Date | null;
+    page: number;
+  },
 ) => {
   "use cache";
   cacheTag(getUserProjectTag(userId));
 
-  const { search, page } = filterOptions;
+  const {
+    search,
+    sortBy,
+    colors,
+    statuses,
+    archiveStatus,
+    dateTimeStartRange,
+    dateTimeEndRange,
+    page,
+  } = filterOptions;
 
   const offset = (page - 1) * PAGE_SIZE;
 
   const searchTerm = `%${search.trim()}%`;
-  const searchQuery = search.trim()
+  const searchFilter = search.trim()
     ? or(
         ilike(ProjectTable.name, searchTerm),
         ilike(ProjectTable.outcome, searchTerm),
@@ -46,7 +82,51 @@ const readCachedProjectsAction = async (
       )
     : undefined;
 
-  const whereQuery = and(eq(ProjectTable.userId, userId), searchQuery);
+  const sortByMap: Record<ProjectsSortByOption, SQL<unknown>> = {
+    oldest: asc(ProjectTable.createdAt),
+    recently_created: desc(ProjectTable.createdAt),
+    recently_updated: desc(ProjectTable.updatedAt),
+  };
+
+  const archiveStatusMap: Record<
+    ArchiveStatusFilterOption,
+    SQL<unknown> | undefined
+  > = {
+    all: undefined,
+    active: and(
+      eq(ProjectTable.isArchived, false),
+      isNull(ProjectTable.archivedAt),
+    ),
+    archived: and(
+      eq(ProjectTable.isArchived, true),
+      isNotNull(ProjectTable.archivedAt),
+    ),
+  };
+
+  const colorsFilter = colors.length
+    ? inArray(ProjectTable.color, colors)
+    : undefined;
+  const statusesFilter = statuses.length
+    ? inArray(ProjectTable.status, statuses)
+    : undefined;
+
+  const dateTimeRangeFilter = and(
+    dateTimeStartRange
+      ? gte(ProjectTable.startAt, format(dateTimeStartRange, "yyyy-MM-dd"))
+      : undefined,
+    dateTimeEndRange
+      ? lte(ProjectTable.startAt, format(dateTimeEndRange, "yyyy-MM-dd"))
+      : undefined,
+  );
+
+  const whereQuery = and(
+    eq(ProjectTable.userId, userId),
+    searchFilter,
+    colorsFilter,
+    statusesFilter,
+    dateTimeRangeFilter,
+    archiveStatusMap[archiveStatus],
+  );
 
   const projects = await db
     .select({
@@ -56,7 +136,7 @@ const readCachedProjectsAction = async (
     .from(ProjectTable)
     .where(whereQuery)
     .leftJoin(AreaTable, eq(AreaTable.id, ProjectTable.areaId))
-    .orderBy(desc(ProjectTable.createdAt))
+    .orderBy(sortByMap[sortBy])
     .offset(offset)
     .limit(PAGE_SIZE);
 
@@ -79,6 +159,12 @@ const readCachedProjectsAction = async (
 };
 export const readProjectsAction = async (filterOptions: {
   search: string;
+  sortBy: ProjectsSortByOption;
+  colors: Color[];
+  statuses: ProjectStatus[];
+  archiveStatus: ArchiveStatusFilterOption;
+  dateTimeStartRange: Date | null;
+  dateTimeEndRange: Date | null;
   page: number;
 }) => {
   const { userId } = await getCurrentUser();

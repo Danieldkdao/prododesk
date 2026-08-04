@@ -16,10 +16,11 @@ export const AreasInfiniteList = ({
   initialHasNextPage: boolean;
 }) => {
   const [filters] = useAreasParams();
-  const { items: areas, isPending } = useInfiniteScroll<
-    ReadAreasActionReturnType["areas"][number],
-    "areas"
-  >(
+  const {
+    items: areas,
+    isPending,
+    setSentinelEl,
+  } = useInfiniteScroll<ReadAreasActionReturnType["areas"][number], "areas">(
     initialAreas,
     initialHasNextPage,
     (nextPage) => readAreasAction({ ...filters, page: nextPage }),
@@ -38,7 +39,7 @@ export const AreasInfiniteList = ({
             <AreaSkeleton key={index} />
           ))}
       </div>
-      <div className="w-full h-1 bg-transparent" />
+      <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (
     <InfoCard

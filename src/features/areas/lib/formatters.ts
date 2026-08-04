@@ -1,6 +1,6 @@
 import { AreasSortByOption } from "./areas-params";
 
-export const formatAreasSortByOptions = (option: AreasSortByOption) => {
+export const formatAreasSortByOption = (option: AreasSortByOption) => {
   switch (option) {
     case "oldest":
       return "Oldest";

@@ -1,6 +1,6 @@
 import { DocumentsSortByOption } from "./documents-params";
 
-export const formatDocumentSortByOptions = (option: DocumentsSortByOption) => {
+export const formatDocumentSortByOption = (option: DocumentsSortByOption) => {
   switch (option) {
     case "oldest":
       return "Oldest";

@@ -20,7 +20,7 @@ import {
   DocumentsSortByOption,
   documentsSortByOptions,
 } from "../lib/documents-params";
-import { formatDocumentSortByOptions } from "../lib/formatters";
+import { formatDocumentSortByOption } from "../lib/formatters";
 
 export const DocumentsFilters = () => {
   const [filters, setFilters] = useDocumentsParams();
@@ -42,7 +42,7 @@ export const DocumentsFilters = () => {
         />
         <PopoverContent className="border" align="end">
           <div className="flex flex-col gap-2">
-            <span className="text-base font-medium">Sort by</span>
+            <span className="font-medium">Sort By</span>
             <Select
               value={filters.sortBy}
               onValueChange={(value) =>
@@ -53,13 +53,13 @@ export const DocumentsFilters = () => {
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Sort by">
-                  {formatDocumentSortByOptions(filters.sortBy)}
+                  {formatDocumentSortByOption(filters.sortBy)}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {documentsSortByOptions.map((option) => (
                   <SelectItem key={option} value={option}>
-                    {formatDocumentSortByOptions(option)}
+                    {formatDocumentSortByOption(option)}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -17,7 +17,7 @@ const DocumentsPage = (props: SearchParamsType) => {
         <h1 className="text-3xl font-semibold">My Documents</h1>
         <CreateDocumentButton projectId="1aab756f-ec90-407e-ae21-bbe0be7e0303">
           <PlusIcon />
-          Create document
+          Create
         </CreateDocumentButton>
       </div>
       <Suspense fallback={<DocumentsSkeleton />}>

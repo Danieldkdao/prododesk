@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AreasSortByOption, areasSortByOptions } from "../lib/areas-params";
-import { formatAreasSortByOptions } from "../lib/formatters";
+import { formatAreasSortByOption } from "../lib/formatters";
 import {
   ArchiveStatusFilterOption,
   archiveStatusFilterOptions,
@@ -55,7 +55,7 @@ export const AreasFilters = () => {
         />
         <PopoverContent className="border flex flex-col gap-4" align="end">
           <div className="flex flex-col gap-2">
-            <span className="text-base font-medium">Sort by</span>
+            <span className="font-medium">Sort By</span>
             <Select
               value={filters.sortBy}
               onValueChange={(value) =>
@@ -64,20 +64,20 @@ export const AreasFilters = () => {
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Sort by">
-                  {formatAreasSortByOptions(filters.sortBy)}
+                  {formatAreasSortByOption(filters.sortBy)}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {areasSortByOptions.map((option) => (
                   <SelectItem key={option} value={option}>
-                    {formatAreasSortByOptions(option)}
+                    {formatAreasSortByOption(option)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-2">
-            <span className="text-base font-medium">Archive status</span>
+            <span className="font-medium">Archive Status</span>
             <Select
               value={filters.archiveStatus}
               onValueChange={(value) =>
@@ -101,7 +101,7 @@ export const AreasFilters = () => {
             </Select>
           </div>
           <div className="flex flex-col gap-2">
-            <span className="text-base font-medium">Colors</span>
+            <span className="font-medium">Colors</span>
             <MultiSelect
               values={filters.colors}
               onValuesChange={(values) =>

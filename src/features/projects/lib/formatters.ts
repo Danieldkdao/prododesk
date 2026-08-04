@@ -6,6 +6,7 @@ import {
   ClipboardListIcon,
   PauseCircleIcon,
 } from "lucide-react";
+import { ProjectsSortByOption } from "./projects-params";
 
 export const formatProjectStatus = (status: ProjectStatus) => {
   switch (status) {
@@ -51,5 +52,20 @@ export const formatProjectStatus = (status: ProjectStatus) => {
       };
     default:
       throw new Error(`Unknown project status: ${status satisfies never}`);
+  }
+};
+
+export const formatProjectsSortByOption = (option: ProjectsSortByOption) => {
+  switch (option) {
+    case "oldest":
+      return "Oldest";
+    case "recently_created":
+      return "Recently created";
+    case "recently_updated":
+      return "Recently updated";
+    default:
+      throw new Error(
+        `Unknown projects sort by option: ${option satisfies never}`,
+      );
   }
 };

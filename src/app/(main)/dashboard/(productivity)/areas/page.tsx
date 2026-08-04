@@ -19,7 +19,7 @@ const AreasPage = (props: SearchParamsType) => {
         <AreaDialog>
           <Button>
             <PlusIcon />
-            Create new
+            Create
           </Button>
         </AreaDialog>
       </div>
