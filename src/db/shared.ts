@@ -70,3 +70,14 @@ export const projectStatuses = [
 ] as const;
 export type ProjectStatus = (typeof projectStatuses)[number];
 export const projectStatusEnum = pgEnum("project_statuses", projectStatuses);
+
+export const milestoneStatuses = [
+  "not_started",
+  "in-progress",
+  "completed",
+] as const;
+export type MilestoneStatus = (typeof milestoneStatuses)[number];
+export const milestoneStatusEnum = pgEnum(
+  "milestone_statuses",
+  milestoneStatuses,
+);

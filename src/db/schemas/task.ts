@@ -4,6 +4,7 @@ import { createdAt, id, updatedAt } from "../helpers";
 import { taskPriorityEnum, taskStatusEnum } from "../shared";
 import { ProjectTable } from "./project";
 import { user } from "./user";
+import { MilestoneTable } from "./milestone";
 
 export const TaskTable = pgTable("tasks", {
   id,
@@ -18,6 +19,9 @@ export const TaskTable = pgTable("tasks", {
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   dueAt: timestamp("due_at", { withTimezone: true }),
   projectId: uuid("project_id").references(() => ProjectTable.id, {
+    onDelete: "set null",
+  }),
+  milestoneId: uuid("milestone_id").references(() => MilestoneTable.id, {
     onDelete: "set null",
   }),
   createdAt,
@@ -35,5 +39,9 @@ export const taskRelations = relations(TaskTable, ({ one }) => ({
   project: one(ProjectTable, {
     fields: [TaskTable.projectId],
     references: [ProjectTable.id],
+  }),
+  milestone: one(MilestoneTable, {
+    fields: [TaskTable.milestoneId],
+    references: [MilestoneTable.id],
   }),
 }));
