@@ -22,7 +22,7 @@ export const ToggleAreaArchiveStatusButton = ({
   const [isPending, startTransition] = useTransition();
   const [ConfirmationDialog, confirm] = useConfirm(
     "Confirm Archive Status Update",
-    `Are you sure you want to ${newArchiveStatus ? "archive this area? You will be unable to use it until you reactivate it." : "reactivate this area?"}`,
+    `Are you sure you want to ${newArchiveStatus ? "archive this area? You will be unable to use it until you reactivate it." : "restore this area?"}`,
   );
 
   const handleUpdate = async () => {

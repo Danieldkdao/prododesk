@@ -20,7 +20,7 @@ export const ToggleProjectArchiveStatusButton = ({
   const [isPending, startTransition] = useTransition();
   const [ConfirmationDialog, confirm] = useConfirm(
     "Confirm Archive Status Update",
-    `Are you sure you want to ${newArchiveStatus ? "archive this project? It will be considered inactive and won't appear on your usual lists." : "reactivate this project?"}`,
+    `Are you sure you want to ${newArchiveStatus ? "archive this project? It will be considered inactive and won't appear on your usual lists." : "restore this project?"}`,
   );
 
   const handleUpdate = async () => {

@@ -277,11 +277,11 @@ const getCachedTasksAction = async (
 
   const priorityRank = sql`
     CASE ${TaskTable.priority}
-      WHEN 'urgent' THEN 4
-      WHEN 'high' THEN 3
-      WHEN 'medium' THEN 2
-      WHEN 'low' THEN 1
-      ELSE 0
+      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      ELSE 5
     END
   `;
 
@@ -301,7 +301,7 @@ const getCachedTasksAction = async (
     name_a_z: asc(sql`lower(${TaskTable.name})`),
     name_z_a: desc(sql`lower(${TaskTable.name})`),
     oldest: asc(TaskTable.createdAt),
-    priority: desc(priorityRank),
+    priority: asc(priorityRank),
     recently_created: desc(TaskTable.createdAt),
   };
 

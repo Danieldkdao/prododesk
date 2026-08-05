@@ -9,7 +9,13 @@ import {
 import { ReactElement, useState } from "react";
 import { ProjectDialog } from "./project-dialog";
 import { ProjectSelectType } from "@/db/schema";
-import { ArchiveIcon, EditIcon, RotateCcwIcon, Trash2Icon } from "lucide-react";
+import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
+  EditIcon,
+  RotateCcwIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { ToggleProjectArchiveStatusButton } from "./toggle-project-archive-status-button";
 import { DeleteProjectButton } from "./delete-project-button";
 
@@ -30,6 +36,9 @@ export const ProjectOptions = ({
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
         existingProject={project}
+        defaultValues={{
+          area: project.area,
+        }}
       />
       <DropdownMenu>
         <DropdownMenuTrigger render={children} />
@@ -49,8 +58,8 @@ export const ProjectOptions = ({
               >
                 {project.isArchived ? (
                   <>
-                    <RotateCcwIcon />
-                    Reactivate
+                    <ArchiveRestoreIcon />
+                    Restore
                   </>
                 ) : (
                   <>

@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { TaskSelectType } from "@/db/schema";
-import { ReactElement, useState } from "react";
+import { ComponentProps, ReactElement, useState } from "react";
 import { TaskForm } from "./task-form";
 import { SetterType } from "@/lib/types";
 import { TaskFormDefaultValues } from "../lib/types";
@@ -20,13 +20,14 @@ export const TaskDialog = ({
   existingTask,
   open,
   onOpenChange,
+  ...triggerProps
 }: {
   defaultValues?: TaskFormDefaultValues;
   children?: ReactElement;
   existingTask?: TaskSelectType;
   open?: boolean;
   onOpenChange?: SetterType<boolean>;
-}) => {
+} & Omit<ComponentProps<typeof DialogTrigger>, "render" | "children">) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const openToUse = open ?? isOpen;
@@ -34,7 +35,7 @@ export const TaskDialog = ({
 
   return (
     <Dialog open={openToUse} onOpenChange={handleOpenChange}>
-      {children && <DialogTrigger render={children} />}
+      {children && <DialogTrigger {...triggerProps} render={children} />}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>

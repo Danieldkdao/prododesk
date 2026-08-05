@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db/db";
-import { AreaTable, Color } from "@/db/schema";
+import { AreaTable, Color, ProjectTable, TaskTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -19,6 +19,7 @@ import {
   count,
   desc,
   eq,
+  getTableColumns,
   ilike,
   inArray,
   isNotNull,
@@ -37,6 +38,7 @@ import {
 } from "../server/areas";
 import { getUserAreaTag } from "../server/cache/areas";
 import { areaSchema, AreaSchemaType } from "./schemas";
+import { alias } from "drizzle-orm/pg-core";
 
 const readCachedAreasAction = async (
   userId: string,
@@ -94,7 +96,36 @@ const readCachedAreasAction = async (
   );
 
   const areas = await db
-    .select()
+    .select({
+      ...getTableColumns(AreaTable),
+      activeProjectCount: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${ProjectTable} pt
+        WHERE pt.area_id = "areas"."id"
+          AND pt.is_archived = FALSE
+          AND pt.status = 'active'
+      )`,
+      projectCount: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${ProjectTable} pt
+        WHERE pt.area_id = "areas"."id"
+      )`,
+      taskCount: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${TaskTable} tt
+        INNER JOIN ${ProjectTable} pt
+          ON tt.project_id = pt.id
+        WHERE pt.area_id = "areas"."id"
+      )`,
+      completeTaskCount: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${TaskTable} tt
+        INNER JOIN ${ProjectTable} pt
+          ON tt.project_id = pt.id
+        WHERE pt.area_id = "areas"."id"
+          AND tt.status = 'completed'
+      )`,
+    })
     .from(AreaTable)
     .where(whereQuery)
     .orderBy(sortByMap[sortBy])
@@ -267,7 +298,7 @@ export const toggleAreaArchiveStatusAction = async (
       error: false,
       message: newArchiveStatus
         ? "Area archived successfully!"
-        : "Area reactivated successfully!",
+        : "Area restored successfully!",
     };
   } catch (error) {
     console.error(error);

@@ -20,7 +20,14 @@ import { areValidIds } from "@/lib/utils";
 import { cacheTag } from "next/cache";
 import { getProjectIdTag, getUserProjectTag } from "../server/cache/projects";
 import { db } from "@/db/db";
-import { AreaTable, Color, ProjectStatus, ProjectTable } from "@/db/schema";
+import {
+  AreaTable,
+  Color,
+  ProjectStatus,
+  ProjectTable,
+  TaskSelectType,
+  TaskTable,
+} from "@/db/schema";
 import {
   and,
   asc,
@@ -34,7 +41,9 @@ import {
   isNotNull,
   isNull,
   lte,
+  ne,
   or,
+  sql,
   SQL,
 } from "drizzle-orm";
 import { UnwrapAsync } from "@/lib/types";
@@ -128,10 +137,47 @@ const readCachedProjectsAction = async (
     archiveStatusMap[archiveStatus],
   );
 
+  const priorityRank = sql`
+    CASE ${TaskTable.priority}
+      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      ELSE 5
+    END
+  `;
+
   const projects = await db
     .select({
       ...getTableColumns(ProjectTable),
       area: getTableColumns(AreaTable),
+      taskCount: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${TaskTable} tt
+        WHERE tt.project_id = ${ProjectTable.id}
+      )`,
+      completeTaskCount: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${TaskTable} tt
+        WHERE tt.project_id = ${ProjectTable.id}
+          AND tt.status = 'completed'
+      )`,
+      nextTask: sql<TaskSelectType | null>`(
+        ${db
+          .select({ task: sql`row_to_json(tasks.*)` })
+          .from(TaskTable)
+          .where(
+            and(
+              ne(TaskTable.status, "completed"),
+              eq(TaskTable.projectId, ProjectTable.id),
+            ),
+          )
+          .orderBy(asc(priorityRank))
+          .limit(1)}
+      )`.mapWith((val) => {
+        if (!val) return null;
+        return typeof val === "string" ? JSON.parse(val) : val;
+      }),
     })
     .from(ProjectTable)
     .where(whereQuery)
@@ -331,7 +377,7 @@ export const toggleProjectArchiveStatusAction = async (
       error: false,
       message: newArchiveStatus
         ? "Project archived successfully!"
-        : "Project reactivated successfully!",
+        : "Project restored successfully!",
     };
   } catch (error) {
     console.error(error);

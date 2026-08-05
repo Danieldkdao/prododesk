@@ -10,22 +10,24 @@ import {
 } from "@/components/ui/dialog";
 import { ProjectSelectType } from "@/db/schema";
 import { SetterType } from "@/lib/types";
-import { ReactElement, useState } from "react";
+import { ComponentProps, ReactElement, useState } from "react";
 import { ProjectForm } from "./project-form";
+import { ProjectFormDefaultValues } from "../lib/types";
 
 export const ProjectDialog = ({
   existingProject,
+  defaultValues,
   children,
   open,
   onOpenChange,
+  ...triggerProps
 }: {
-  existingProject?: ProjectSelectType & {
-    area?: { name: string; icon?: string | null } | null;
-  };
+  existingProject?: ProjectSelectType;
+  defaultValues?: ProjectFormDefaultValues;
   children?: ReactElement;
   open?: boolean;
   onOpenChange?: SetterType<boolean>;
-}) => {
+} & Omit<ComponentProps<typeof DialogTrigger>, "render" | "children">) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const openToUse = open ?? isOpen;
@@ -33,7 +35,7 @@ export const ProjectDialog = ({
 
   return (
     <Dialog open={openToUse} onOpenChange={handleOpenChange}>
-      {children && <DialogTrigger render={children} />}
+      {children && <DialogTrigger {...triggerProps} render={children} />}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -45,6 +47,7 @@ export const ProjectDialog = ({
         </DialogHeader>
         <ProjectForm
           existingProject={existingProject}
+          defaultValues={defaultValues}
           afterAction={() => handleOpenChange(false)}
         />
       </DialogContent>

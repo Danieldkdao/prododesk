@@ -32,14 +32,15 @@ import { createProjectAction, updateProjectAction } from "../actions/actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ProjectFormDefaultValues } from "../lib/types";
 
 export const ProjectForm = ({
   existingProject,
+  defaultValues,
   afterAction,
 }: {
-  existingProject?: ProjectSelectType & {
-    area?: { name: string; icon?: string | null } | null;
-  };
+  existingProject?: ProjectSelectType;
+  defaultValues?: ProjectFormDefaultValues;
   afterAction?: () => void;
 }) => {
   const router = useRouter();
@@ -47,13 +48,8 @@ export const ProjectForm = ({
     resolver: zodResolver(projectSchema),
     defaultValues: existingProject
       ? {
-          name: existingProject.name,
-          outcome: existingProject.outcome,
-          areaId: existingProject.areaId ?? undefined,
-          status: existingProject.status,
-          color: existingProject.color,
+          ...existingProject,
           icon: existingProject.icon ?? "",
-          isArchived: existingProject.isArchived,
           startAt: existingProject.startAt
             ? parse(existingProject.startAt, "yyyy-MM-dd", new Date())
             : undefined,
@@ -249,7 +245,7 @@ export const ProjectForm = ({
             <FieldLabel>Area</FieldLabel>
             <FieldContent>
               <AreaCommandSelect
-                initialValue={existingProject?.area}
+                initialValue={defaultValues?.area}
                 value={field.value}
                 onValueChange={field.onChange}
               />

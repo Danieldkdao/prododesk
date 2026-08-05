@@ -1,34 +1,42 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
+import { Card, CardContent } from "@/components/ui/card";
 import { formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { format, formatDistanceToNow, parse, startOfDay } from "date-fns";
 import {
-  differenceInCalendarDays,
-  format,
-  formatDistanceToNow,
-  parse,
-  startOfDay,
-} from "date-fns";
-import {
-  EllipsisVerticalIcon,
+  ArchiveIcon,
+  ArrowRightIcon,
+  CalendarDaysIcon,
+  CalendarIcon,
+  CircleDashedIcon,
+  ClockIcon,
+  DotIcon,
+  EllipsisIcon,
   FolderKanbanIcon,
-  FolderMinusIcon,
+  PlusIcon,
   ShapesIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { ReadProjectsActionReturnType } from "../actions/actions";
 import { formatProjectStatus } from "../lib/formatters";
+import { ProjectDialog } from "./project-dialog";
 import { ProjectOptions } from "./project-options";
+import { Progress } from "@/components/ui/progress";
+import { Fragment } from "react/jsx-runtime";
+import { TaskDialog } from "@/features/tasks/components/task-dialog";
 
 export const ProjectCard = ({
   project,
 }: {
   project: ReadProjectsActionReturnType["projects"][number];
 }) => {
-  const { text: projectStatusText, icon: ProjectStatusIcon } =
-    formatProjectStatus(project.status);
+  const {
+    text: projectStatusText,
+    icon: ProjectStatusIcon,
+    bgColor,
+    textColor,
+  } = formatProjectStatus(project.status);
+  const { borderLeft, bgLight, text, bg } = formatColor(project.color);
 
   const today = startOfDay(new Date());
   const startDate = project.startAt
@@ -38,139 +46,181 @@ export const ProjectCard = ({
     ? parse(project.endAt, "yyyy-MM-dd", today)
     : null;
 
-  let dateRangeProgress = 0;
+  const projectProgress = Math.round(
+    (project.completeTaskCount / project.taskCount) * 100,
+  );
 
-  if (startDate && endDate) {
-    const totalDays = Math.max(differenceInCalendarDays(endDate, startDate));
-
-    const elapsedDays = differenceInCalendarDays(today, startDate);
-
-    dateRangeProgress = Math.round(
-      Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100)),
-    );
-  }
+  const stats = [
+    {
+      icon: project.isArchived ? ArchiveIcon : ProjectStatusIcon,
+      label: project.isArchived ? "Archived" : projectStatusText,
+    },
+    {
+      icon: ShapesIcon,
+      label: project.area?.name || "No area",
+      href: project.area?.id ? `/dashboard/areas/${project.area.id}` : null,
+    },
+    {
+      icon: CalendarDaysIcon,
+      label: startDate
+        ? `${format(startDate, "PP")} — ${endDate ? format(endDate, "PP") : "No end date"}`
+        : "No dates",
+    },
+    {
+      icon: ClockIcon,
+      label: formatDistanceToNow(project.updatedAt, {
+        includeSeconds: true,
+        addSuffix: true,
+      }),
+    },
+  ];
 
   return (
     <Card
       className={cn(
-        "border border-t-4 w-full h-full min-w-0 py-6 relative pb-0 gap-0",
-        formatColor(project.color).borderTop,
+        "border border-l-4 w-full h-full min-w-0 relative py-4",
+        borderLeft,
       )}
     >
-      {project.isArchived && (
-        <div className="absolute z-10 inset-0 bg-muted/10 backdrop-blur-sm w-full h-full flex flex-col gap-0.5 items-center justify-center p-4">
-          <h3 className="text-2xl font-semibold text-center">Archived</h3>
-          <p className="text-muted-foreground text-lg text-center">
-            This project has been archived since{" "}
-            {project.archivedAt ? format(project.archivedAt, "PP") : "unknown"}.
-          </p>
-        </div>
-      )}
-      <CardContent className="flex flex-col gap-4 w-full min-w-0 px-5">
-        <div className="flex items-start gap-4 w-full min-w-0">
-          <div
-            className={cn(
-              "shrink-0 size-10 flex items-center justify-center",
-              formatColor(project.color).bgLight,
-            )}
-          >
-            {project.icon ? (
-              <span className="text-lg">{project.icon}</span>
-            ) : (
-              <FolderKanbanIcon />
-            )}
-          </div>
-          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-            <Link href={`/dashboard/projects/${project.id}`}>
-              <div className="absolute inset-0" />
-            </Link>
-            <h2 className="text-2xl font-semibold truncate">{project.name}</h2>
-            <p
-              className={cn(
-                "text-muted-foreground text-lg line-clamp-2",
-                !project.outcome && "italic",
-              )}
-            >
-              {project.outcome || "No outcome provided."}
-            </p>
-            <div className="flex items-center gap-2 mb-2 mt-4">
-              <ProjectStatusIcon className="size-5" />
-              <span className="text-base">{projectStatusText}</span>
+      <CardContent className="px-4 min-w-0 flex flex-col gap-4 h-full">
+        <div className="flex w-full min-w-0">
+          <div className="flex flex-col gap-2 flex-1">
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "size-10 flex items-center justify-center shrink-0",
+                  bgLight,
+                )}
+              >
+                {project.icon ? (
+                  <span className="text-2xl">{project.icon}</span>
+                ) : (
+                  <FolderKanbanIcon className={text} />
+                )}
+              </div>
+              <span className="text-2xl font-semibold">{project.name}</span>
+              <Link href={`/dashboard/projects/${project.id}`}>
+                <span className="absolute inset-0" />
+              </Link>
             </div>
+            {project.outcome ? (
+              <p className="text-muted-foreground text-lg line-clamp-2">
+                {project.outcome}
+              </p>
+            ) : (
+              <ProjectDialog
+                nativeButton={false}
+                existingProject={project}
+                defaultValues={{ area: project.area }}
+              >
+                <div
+                  className={cn(
+                    "flex items-start gap-2 leading-7 relative z-10",
+                    text,
+                  )}
+                >
+                  <span className="h-[1lh] flex items-center">
+                    <PlusIcon />
+                  </span>
+                  <span className="text-lg">
+                    Add an outcome so this project has a clear finish line
+                  </span>
+                </div>
+              </ProjectDialog>
+            )}
           </div>
           <ProjectOptions project={project}>
             <Button variant="ghost" size="icon-sm" className="relative z-10">
-              <EllipsisVerticalIcon />
+              <EllipsisIcon />
             </Button>
           </ProjectOptions>
         </div>
-        <div className="flex items-center gap-2">
-          {startDate && endDate ? (
+        <div className="flex items-start gap-2 leading-6 p-2 bg-muted">
+          {project.isArchived || project.nextTask ? (
             <>
-              <span className="text-nowrap">{format(startDate, "PP")}</span>
-              <Slider
-                value={[dateRangeProgress]}
-                max={100}
-                disabled
-                trackClassName={cn("data-horizontal:h-2")}
-                indicatorClassName={cn(formatColor(project.color).bg)}
-                thumbClassName={cn(formatColor(project.color).bg)}
-              />
-              <span className="text-nowrap">{format(endDate, "PP")}</span>
-            </>
-          ) : startDate ? (
-            <>
-              <span className="text-nowrap">
-                Starts {format(startDate, "PP")}
+              <span className="h-[1lh] flex items-center">
+                <ArrowRightIcon className="size-5 text-muted-foreground shrink-0" />
               </span>
-              <Separator className="flex-1" />
-              <span className="text-nowrap text-muted-foreground">
-                No end date
+              <span className="text-base text-foreground font-medium">
+                Next:{" "}
+                <span className="text-muted-foreground font-normal">
+                  {project.isArchived
+                    ? "Restore to continue"
+                    : project.nextTask.name}
+                </span>
               </span>
             </>
           ) : (
             <>
-              <Separator className="flex-1" />
-              <span className="text-muted-foreground font-medium">
-                No dates selected
+              <span className="h-[1lh] flex items-center">
+                <PlusIcon className="size-5 text-muted-foreground shrink-0" />
               </span>
-              <Separator className="flex-1" />
+              <span className="text-base text-foreground font-medium">
+                Set next action:{" "}
+                <span className="text-muted-foreground font-normal">
+                  Choose the smallest useful step
+                </span>
+              </span>
             </>
           )}
         </div>
-      </CardContent>
-      <Separator className="mt-(--card-spacing)" />
-      <CardFooter className="flex items-center gap-2 justify-between px-5 py-4 h-full!">
-        {project.area ? (
-          <Link
-            href={`/dashboard/areas/${project.area.id}`}
-            className={cn(!project.isArchived && "relative z-10")}
-          >
-            <div className="flex items-center gap-2 px-4 py-2 hover:bg-muted transition-colors duration-300">
-              {project.area.icon ? (
-                <span className="text-base">{project.area.icon}</span>
-              ) : (
-                <ShapesIcon />
-              )}
-              <span className="text-base font-medium">{project.area.name}</span>
+        {project.taskCount ? (
+          <div className="flex flex-col gap-1">
+            <div className="w-full flex items-center gap-2 justify-between">
+              <span className="text-muted-foreground text-base">
+                {project.completeTaskCount} / {project.taskCount} tasks
+              </span>
+              <span className="text-muted-foreground text-base font-medium">
+                {projectProgress}%
+              </span>
             </div>
-          </Link>
-        ) : (
-          <div className="flex items-center gap-2">
-            <FolderMinusIcon className="size-5 text-muted-foreground" />
-            <span className="text-muted-foreground text-base font-medium">
-              No area
-            </span>
+            <Progress
+              value={projectProgress}
+              className="w-full"
+              indicatorClassName={bg}
+              trackClassName="h-2"
+            />
           </div>
+        ) : (
+          <TaskDialog nativeButton={false} defaultValues={{ project }}>
+            <div className="flex items-start gap-2 leading-6 p-2 bg-muted cursor-pointer relative z-10">
+              <span className="h-[1lh] flex items-center">
+                <CircleDashedIcon className="size-5 text-muted-foreground shrink-0" />
+              </span>
+              <span className="text-base text-muted-foreground">
+                Progress starts when tasks added
+              </span>
+            </div>
+          </TaskDialog>
         )}
-        <span className="text-muted-foreground italic">
-          Last updated{" "}
-          {formatDistanceToNow(project.updatedAt, {
-            addSuffix: true,
-            includeSeconds: true,
+        <div className="flex items-center gap-1 flex-wrap mt-2">
+          {stats.map((stat, index) => {
+            const children = (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <stat.icon className="size-5" />
+                <span className="text-base">{stat.label}</span>
+              </div>
+            );
+
+            if (stat.href) {
+              return (
+                <Fragment key={index}>
+                  <Link key={index} href={stat.href} className="relative z-10">
+                    {children}
+                  </Link>
+                  <DotIcon className="text-muted-foreground/30 size-5 last:hidden" />
+                </Fragment>
+              );
+            }
+            return (
+              <Fragment key={index}>
+                {children}
+                <DotIcon className="text-muted-foreground/30 size-5 last:hidden" />
+              </Fragment>
+            );
           })}
-        </span>
-      </CardFooter>
+        </div>
+      </CardContent>
     </Card>
   );
 };

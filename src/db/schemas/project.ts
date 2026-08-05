@@ -1,12 +1,12 @@
 import { relations } from "drizzle-orm";
 import {
-    boolean,
-    date,
-    pgTable,
-    text,
-    timestamp,
-    uuid,
-    varchar,
+  boolean,
+  date,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { colorEnum, projectStatusEnum } from "../shared";
@@ -23,7 +23,9 @@ export const ProjectTable = pgTable("projects", {
   outcome: text("outcome"),
   icon: varchar("icon"),
   color: colorEnum("color").notNull(),
-  areaId: uuid("area").references(() => AreaTable.id, { onDelete: "set null" }),
+  areaId: uuid("area_id").references(() => AreaTable.id, {
+    onDelete: "set null",
+  }),
   startAt: date("started_at", { mode: "string" }),
   endAt: date("end_at", { mode: "string" }),
   status: projectStatusEnum("status").notNull(),
