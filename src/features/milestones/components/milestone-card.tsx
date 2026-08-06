@@ -27,6 +27,7 @@ import { ReadProjectMilestonesActionType } from "../actions/actions";
 import { formatMilestoneStatus } from "../lib/formatters";
 import { DeleteMilestoneButton } from "./delete-milestone-button";
 import { MilestoneDialog } from "./milestone-dialog";
+import { useDroppable } from "@dnd-kit/react";
 
 export const MilestoneCard = ({
   milestone,
@@ -34,6 +35,9 @@ export const MilestoneCard = ({
   milestone: ReadProjectMilestonesActionType["milestones"][number];
 }) => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const { ref } = useDroppable({
+    id: milestone.id,
+  });
   const {
     icon: MilestoneStatusIcon,
     bgColor,
@@ -49,7 +53,7 @@ export const MilestoneCard = ({
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
       />
-      <div className="flex items-start gap-4 w-full min-w-0">
+      <div ref={ref} className="flex items-start gap-4 w-full min-w-0">
         <div
           className={cn(
             "size-10 flex items-center justify-center shrink-0 border",

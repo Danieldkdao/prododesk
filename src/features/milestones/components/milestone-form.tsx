@@ -40,6 +40,7 @@ export const MilestoneForm = ({
   existingMilestone?: MilestoneSelectType;
   afterAction?: () => void;
 }) => {
+  const today = new Date();
   const router = useRouter();
   const form = useForm<MilestoneSchemaType>({
     resolver: zodResolver(milestoneSchema),
@@ -184,6 +185,9 @@ export const MilestoneForm = ({
                 mode="single"
                 value={value}
                 onValueChange={onChange}
+                disabled={{
+                  before: today,
+                }}
                 {...props}
               />
             </FieldContent>

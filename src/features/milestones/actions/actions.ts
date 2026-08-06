@@ -1,52 +1,126 @@
 "use server";
 
+import { db } from "@/db/db";
+import { MilestoneStatus, MilestoneTable } from "@/db/schema";
+import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
-import { milestoneSchema, MilestoneSchemaType } from "./schemas";
 import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
   NOT_FOUND_ERROR_MESSAGE,
+  PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
+import { UnwrapAsync } from "@/lib/types";
+import { areValidIds } from "@/lib/utils";
+import { format } from "date-fns";
+import {
+  and,
+  asc,
+  count,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
+import { cacheTag } from "next/cache";
+import { getProjectMilestoneTag } from "../server/cache/milestones";
 import {
   confirmUserMilestoneOwnership,
   deleteMilestoneDb,
   insertMilestoneDb,
   updateMilestoneDb,
 } from "../server/milestones";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { MilestoneTable } from "@/db/schema";
-import { format } from "date-fns";
-import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
-import { UnwrapAsync } from "@/lib/types";
-import { cacheTag } from "next/cache";
-import { getProjectMilestoneTag } from "../server/cache/milestones";
-import { db } from "@/db/db";
-import { areValidIds } from "@/lib/utils";
+import { milestoneSchema, MilestoneSchemaType } from "./schemas";
 
 const readCachedProjectMilestonesAction = async (
   userId: string,
   projectId: string,
+  filterOptions: {
+    search: string;
+    statuses: MilestoneStatus[];
+    dueAtOnAfter: Date | null;
+    dueAtOnBefore: Date | null;
+    page: number;
+  },
 ) => {
   "use cache";
   cacheTag(getProjectMilestoneTag(projectId));
 
+  const { search, statuses, dueAtOnAfter, dueAtOnBefore, page } = filterOptions;
+
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const searchTerm = `%${search.trim()}%`;
+  const searchFilter = search.trim()
+    ? or(
+        ilike(MilestoneTable.name, searchTerm),
+        ilike(MilestoneTable.description, searchTerm),
+      )
+    : undefined;
+
+  const statusesFilter = statuses.length
+    ? inArray(MilestoneTable.status, statuses)
+    : undefined;
+
+  const dueAtFilter = and(
+    dueAtOnAfter
+      ? gte(MilestoneTable.dueAt, format(dueAtOnAfter, "yyyy-MM-dd"))
+      : undefined,
+    dueAtOnBefore
+      ? lte(MilestoneTable.dueAt, format(dueAtOnBefore, "yyyy-MM-dd"))
+      : undefined,
+  );
+
+  const whereQuery = and(
+    eq(MilestoneTable.userId, userId),
+    eq(MilestoneTable.projectId, projectId),
+    searchFilter,
+    statusesFilter,
+    dueAtFilter,
+  );
+
   const milestones = await db.query.MilestoneTable.findMany({
-    where: and(
-      eq(MilestoneTable.userId, userId),
-      eq(MilestoneTable.projectId, projectId),
-    ),
+    where: whereQuery,
     orderBy: asc(MilestoneTable.position),
     with: {
       tasks: true,
     },
+    offset,
+    limit: PAGE_SIZE,
   });
+
+  const [totalMilestones] = await db
+    .select({ count: count() })
+    .from(MilestoneTable)
+    .where(whereQuery);
+
+  const hasPrevPage = page > 1;
+  const hasNextPage = page * PAGE_SIZE < totalMilestones.count;
+  const clientKey = `${JSON.stringify(milestones)}${hasNextPage ? "has next page" : "no next page"}`;
 
   return {
     milestones,
+    metadata: {
+      hasPrevPage,
+      hasNextPage,
+      clientKey,
+    },
   };
 };
-export const readProjectMilestonesAction = async (projectId: string) => {
+export const readProjectMilestonesAction = async (
+  projectId: string,
+  filterOptions: {
+    search: string;
+    statuses: MilestoneStatus[];
+    dueAtOnAfter: Date | null;
+    dueAtOnBefore: Date | null;
+    page: number;
+  },
+) => {
   if (!areValidIds(projectId)) return null;
 
   const { userId } = await getCurrentUser();
@@ -55,7 +129,11 @@ export const readProjectMilestonesAction = async (projectId: string) => {
   const existingProject = await confirmUserProjectOwnership(projectId);
   if (!existingProject) return null;
 
-  return readCachedProjectMilestonesAction(userId, existingProject.id);
+  return readCachedProjectMilestonesAction(
+    userId,
+    existingProject.id,
+    filterOptions,
+  );
 };
 export type ReadProjectMilestonesActionType = UnwrapAsync<
   typeof readProjectMilestonesAction
