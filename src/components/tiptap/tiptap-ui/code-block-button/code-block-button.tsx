@@ -11,8 +11,8 @@ import { parseShortcutKeys } from "@/lib/tiptap-utils";
 // --- Tiptap UI ---
 import type { UseCodeBlockConfig } from "@/components/tiptap/tiptap-ui/code-block-button";
 import {
-  CODE_BLOCK_SHORTCUT_KEY,
-  useCodeBlock,
+    CODE_BLOCK_SHORTCUT_KEY,
+    useCodeBlock,
 } from "@/components/tiptap/tiptap-ui/code-block-button";
 
 // --- UI Primitives ---

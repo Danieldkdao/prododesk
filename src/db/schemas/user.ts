@@ -3,9 +3,9 @@ import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { AreaTable } from "./area";
 import { ChatTable } from "./chat";
 import { DocumentTable } from "./document";
+import { MilestoneTable } from "./milestone";
 import { ProjectTable } from "./project";
 import { TaskTable } from "./task";
-import { MilestoneTable } from "./milestone";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),

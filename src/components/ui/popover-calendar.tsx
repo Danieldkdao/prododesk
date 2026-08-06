@@ -166,7 +166,7 @@ export const PopoverCalendar = ({
         align="start"
         className={cn(
           "w-auto overflow-hidden p-0",
-          props.mode === "single" && props.withTime && "border bg-card",
+          props.mode === "single" && "border bg-card",
         )}
       >
         {calendar}

@@ -222,10 +222,7 @@ export type ReadProjectsActionReturnType = UnwrapAsync<
   typeof readProjectsAction
 >;
 
-export const readCachedProjectAction = async (
-  userId: string,
-  projectId: string,
-) => {
+const readCachedProjectAction = async (userId: string, projectId: string) => {
   "use cache";
   cacheTag(getProjectIdTag(projectId));
 

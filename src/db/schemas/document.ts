@@ -1,8 +1,8 @@
+import { relations } from "drizzle-orm";
 import { pgTable, text, uuid, varchar } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
-import { user } from "./user";
 import { ProjectTable } from "./project";
-import { relations } from "drizzle-orm";
+import { user } from "./user";
 
 export const DocumentTable = pgTable("documents", {
   id,

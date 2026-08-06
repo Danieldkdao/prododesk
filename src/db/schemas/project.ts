@@ -1,12 +1,12 @@
 import { relations } from "drizzle-orm";
 import {
-  boolean,
-  date,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-  varchar,
+    boolean,
+    date,
+    pgTable,
+    text,
+    timestamp,
+    uuid,
+    varchar,
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { colorEnum, projectStatusEnum } from "../shared";

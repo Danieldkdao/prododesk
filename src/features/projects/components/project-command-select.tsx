@@ -39,7 +39,16 @@ export const ProjectCommandSelect = ({
 
   const fetchProjects = useCallback(
     (nextPage: number) => {
-      return readProjectsAction({ search, page: nextPage });
+      return readProjectsAction({
+        search,
+        archiveStatus: "active",
+        colors: [],
+        sortBy: "recently_created",
+        statuses: [],
+        dateTimeEndRange: null,
+        dateTimeStartRange: null,
+        page: nextPage,
+      });
     },
     [search],
   );
@@ -64,7 +73,16 @@ export const ProjectCommandSelect = ({
 
   const handleSearch = () => {
     startSearchTransition(async () => {
-      const response = await readProjectsAction({ search, page: DEFAULT_PAGE });
+      const response = await readProjectsAction({
+        search,
+        archiveStatus: "active",
+        colors: [],
+        sortBy: "recently_created",
+        statuses: [],
+        dateTimeEndRange: null,
+        dateTimeStartRange: null,
+        page: DEFAULT_PAGE,
+      });
 
       if (!response) return;
 

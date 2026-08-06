@@ -2,9 +2,9 @@ import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { taskPriorityEnum, taskStatusEnum } from "../shared";
+import { MilestoneTable } from "./milestone";
 import { ProjectTable } from "./project";
 import { user } from "./user";
-import { MilestoneTable } from "./milestone";
 
 export const TaskTable = pgTable("tasks", {
   id,

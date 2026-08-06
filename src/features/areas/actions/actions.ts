@@ -4,41 +4,40 @@ import { db } from "@/db/db";
 import { AreaTable, Color, ProjectTable, TaskTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
-  GENERAL_ERROR_MESSAGE,
-  INVALID_DATA_ERROR_MESSAGE,
-  NOT_FOUND_ERROR_MESSAGE,
-  PAGE_SIZE,
-  UNAUTHED_ERROR_MESSAGE,
+    GENERAL_ERROR_MESSAGE,
+    INVALID_DATA_ERROR_MESSAGE,
+    NOT_FOUND_ERROR_MESSAGE,
+    PAGE_SIZE,
+    UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { ArchiveStatusFilterOption } from "@/lib/params";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
 import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  getTableColumns,
-  ilike,
-  inArray,
-  isNotNull,
-  isNull,
-  or,
-  SQL,
-  sql,
+    and,
+    asc,
+    count,
+    desc,
+    eq,
+    getTableColumns,
+    ilike,
+    inArray,
+    isNotNull,
+    isNull,
+    or,
+    SQL,
+    sql,
 } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { AreasSortByOption } from "../lib/areas-params";
 import {
-  confirmUserAreaOwnership,
-  deleteAreaDb,
-  insertAreaDb,
-  updateAreaDb,
+    confirmUserAreaOwnership,
+    deleteAreaDb,
+    insertAreaDb,
+    updateAreaDb,
 } from "../server/areas";
 import { getUserAreaTag } from "../server/cache/areas";
 import { areaSchema, AreaSchemaType } from "./schemas";
-import { alias } from "drizzle-orm/pg-core";
 
 const readCachedAreasAction = async (
   userId: string,

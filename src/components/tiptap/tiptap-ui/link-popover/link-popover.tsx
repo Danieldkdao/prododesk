@@ -22,15 +22,15 @@ import type { ButtonProps } from "@/components/tiptap/tiptap-ui-primitive/button
 import { Button } from "@/components/tiptap/tiptap-ui-primitive/button";
 import { ButtonGroup } from "@/components/tiptap/tiptap-ui-primitive/button-group";
 import {
-  Card,
-  CardBody,
-  CardItemGroup,
+    Card,
+    CardBody,
+    CardItemGroup,
 } from "@/components/tiptap/tiptap-ui-primitive/card";
 import { Input } from "@/components/tiptap/tiptap-ui-primitive/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from "@/components/tiptap/tiptap-ui-primitive/popover";
 import { Separator } from "@/components/tiptap/tiptap-ui-primitive/separator";
 

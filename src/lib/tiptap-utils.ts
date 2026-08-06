@@ -1,16 +1,16 @@
 import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
 import {
-  AllSelection,
-  NodeSelection,
-  Selection,
-  TextSelection,
+    AllSelection,
+    NodeSelection,
+    Selection,
+    TextSelection,
 } from "@tiptap/pm/state";
 import { cellAround, CellSelection } from "@tiptap/pm/tables";
 import {
-  findParentNodeClosestToPos,
-  type Editor,
-  type NodeWithPos,
+    findParentNodeClosestToPos,
+    type Editor,
+    type NodeWithPos,
 } from "@tiptap/react";
 import { clsx, type ClassValue } from "clsx";
 

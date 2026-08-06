@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
+import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -217,15 +217,6 @@ function DrawerDescription({
 }
 
 export {
-  Drawer,
-  DrawerPortal,
-  DrawerOverlay,
-  DrawerSwipeHandle,
-  DrawerTrigger,
-  DrawerClose,
-  DrawerContent,
-  DrawerHeader,
-  DrawerFooter,
-  DrawerTitle,
-  DrawerDescription,
+    Drawer, DrawerClose,
+    DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerOverlay, DrawerPortal, DrawerSwipeHandle, DrawerTitle, DrawerTrigger
 }

@@ -43,7 +43,8 @@ export const AreaCommandSelect = ({
       return readAreasAction({
         search,
         sortBy: "recently_created",
-        archiveStatus: "all",
+        archiveStatus: "active",
+        colors: [],
         page: nextPage,
       });
     },
@@ -68,7 +69,8 @@ export const AreaCommandSelect = ({
       const response = await readAreasAction({
         search,
         sortBy: "recently_created",
-        archiveStatus: "all",
+        archiveStatus: "active",
+        colors: [],
         page: DEFAULT_PAGE,
       });
 
@@ -86,8 +88,6 @@ export const AreaCommandSelect = ({
   });
 
   const selectedArea = areas.find((area) => area.id === value);
-
-  // TODO: handle archived areas
 
   return (
     <Popover open={commandOpen} onOpenChange={setCommandOpen}>
