@@ -7,7 +7,7 @@ export const formatMilestoneStatus = (status: MilestoneStatus) => {
       return {
         label: "Completed",
         icon: CheckSquare2Icon,
-        textColor: "text-emerald-700 dark:text-emerald-400",
+        textColor: "text-emerald-600 dark:text-emerald-400",
         borderColor: "border-emerald-300 dark:border-emerald-800",
         bgColor: "bg-emerald-50 dark:bg-emerald-950/40",
       };
@@ -17,7 +17,7 @@ export const formatMilestoneStatus = (status: MilestoneStatus) => {
         label: "In progress",
         icon: SquareDotIcon,
         textColor: "text-primary",
-        borderColor: "border-primary/80",
+        borderColor: "border-primary/50",
         bgColor: "bg-primary/10",
       };
 
@@ -26,7 +26,7 @@ export const formatMilestoneStatus = (status: MilestoneStatus) => {
         label: "Not started",
         icon: SquareIcon,
         textColor: "text-muted-foreground",
-        borderColor: "border-muted-foreground/80",
+        borderColor: "border-muted-foreground/50",
         bgColor: "bg-muted-foreground/10",
       };
 
