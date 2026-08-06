@@ -64,11 +64,11 @@ export const formatToolNameForChat = (toolName: ToolName) => {
         error: "Update task",
         icon: EditIcon,
       };
-    case "toggleTasksCompletionStatus":
+    case "updateTasksStatus":
       return {
-        preparing: "update tasks completion status",
-        finished: "updating tasks completion status",
-        error: "Update tasks completion status",
+        preparing: "update tasks status",
+        finished: "updating tasks status",
+        error: "Update tasks status",
         icon: ListChecksIcon,
       };
     default:

@@ -14,7 +14,7 @@ import {
   insertMilestoneDb,
   updateMilestoneDb,
 } from "../server/milestones";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { MilestoneTable } from "@/db/schema";
 import { format } from "date-fns";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
@@ -36,7 +36,10 @@ const readCachedProjectMilestonesAction = async (
       eq(MilestoneTable.userId, userId),
       eq(MilestoneTable.projectId, projectId),
     ),
-    orderBy: desc(MilestoneTable.createdAt),
+    orderBy: asc(MilestoneTable.position),
+    with: {
+      tasks: true,
+    },
   });
 
   return {

@@ -1,8 +1,9 @@
 import { ErrorState } from "@/components/error-state";
 import { readProjectMilestonesAction } from "@/features/milestones/actions/actions";
+import { MilestoneCard } from "@/features/milestones/components/milestone-card";
 import { MilestoneFilters } from "@/features/milestones/components/milestone-filters";
 import { ParamsId } from "@/lib/types";
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 
 type ProjectIdMilestonesProps = ParamsId<"projectId">;
 
@@ -37,7 +38,14 @@ const ProjectIdMilestonesSuspense = async ({
   return (
     <div className="w-full flex flex-col gap-4">
       <MilestoneFilters projectId={projectId} />
-      <div>{JSON.stringify(milestones)}</div>
+      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr]">
+        <div>task list goes here</div>
+        <div className="flex flex-col gap-4 w-full min-w-0">
+          {milestones.map((milestone) => (
+            <MilestoneCard key={milestone.id} milestone={milestone} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
