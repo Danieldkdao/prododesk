@@ -135,7 +135,7 @@ export const updateTaskMilestoneAction = async (
   taskId: string,
   milestoneId: string | null,
 ) => {
-  if (!areValidIds([taskId, milestoneId])) {
+  if (!areValidIds(taskId) || (milestoneId && !areValidIds(milestoneId))) {
     return {
       error: true,
       message: NOT_FOUND_ERROR_MESSAGE,

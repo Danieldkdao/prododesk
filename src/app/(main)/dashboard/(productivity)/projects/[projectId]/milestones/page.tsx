@@ -1,5 +1,6 @@
 import { ErrorState } from "@/components/error-state";
 import { readProjectMilestonesAction } from "@/features/milestones/actions/actions";
+import { MilestonesSkeleton } from "@/features/milestones/components/milestones-skeleton";
 import { MilestonesView } from "@/features/milestones/components/milestones-view";
 import { loadMilestonesSearchParams } from "@/features/milestones/lib/milestones-params";
 import { readTasksAction } from "@/features/tasks/actions/actions";
@@ -15,14 +16,10 @@ type ProjectIdMilestonesProps = ParamsId<"projectId"> & SearchParamsType;
 
 const ProjectIdMilestonesPage = (props: ProjectIdMilestonesProps) => {
   return (
-    <Suspense fallback={<ProjectIdMilestonesLoading />}>
+    <Suspense fallback={<MilestonesSkeleton />}>
       <ProjectIdMilestonesSuspense {...props} />
     </Suspense>
   );
-};
-
-const ProjectIdMilestonesLoading = () => {
-  return <div>loading</div>;
 };
 
 const ProjectIdMilestonesSuspense = async ({

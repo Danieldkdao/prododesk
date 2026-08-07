@@ -18,6 +18,7 @@ export const TaskMilestoneItem = ({
 }) => {
   const { ref } = useDraggable({
     id: task.id,
+    type: "task",
   });
 
   const priorityBadgeClasses = getTaskPriorityBadgeClasses(task.priority);

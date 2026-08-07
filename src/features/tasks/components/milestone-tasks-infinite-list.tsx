@@ -9,6 +9,10 @@ import { useTasksParams } from "../hooks/use-tasks-params";
 import { defaultDayTasksParamsOptions } from "../lib/tasks-params";
 import { TaskBoardItem } from "./task-board-item";
 import { SetterType } from "@/lib/types";
+import { useDroppable } from "@dnd-kit/react";
+import { cn } from "@/lib/utils";
+import { MILESTONE_ID_NULL } from "@/features/milestones/lib/constants";
+import { TaskSkeleton } from "./task-skeleton";
 
 export const MilestoneTasksInfiniteList = ({
   projectId,
@@ -21,6 +25,9 @@ export const MilestoneTasksInfiniteList = ({
   setTasks: SetterType<ReadTasksActionReturnType["tasks"]>;
   initialHasNextPage: boolean;
 }) => {
+  const { ref, isDropTarget } = useDroppable({
+    id: MILESTONE_ID_NULL,
+  });
   const [filters] = useTasksParams();
 
   const fetchTasks = useCallback(
@@ -53,22 +60,31 @@ export const MilestoneTasksInfiniteList = ({
 
   const filteredTasks = tasksToUse.filter((task) => !task.milestoneId);
 
-  return filteredTasks.length ? (
-    <div className="flex flex-col gap-2">
-      {filteredTasks.map((task) => (
-        <TaskBoardItem key={task.id} task={task} className="border" />
-      ))}
-      {isPending && (
-        <div className="w-full flex items-center justify-center">
-          <Loader2Icon className="text-primary animate-spin" />
-        </div>
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "flex flex-col gap-2 transition-colors duration-200",
+        isDropTarget && "ring-1 ring-primary",
       )}
-      <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
+    >
+      {filteredTasks.length ? (
+        <div className="flex flex-col gap-2">
+          {filteredTasks.map((task) => (
+            <TaskBoardItem key={task.id} task={task} className="border" />
+          ))}
+          {isPending &&
+            Array.from({ length: 4 }).map((_, index) => (
+              <TaskSkeleton key={index} />
+            ))}
+          <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
+        </div>
+      ) : (
+        <NotFound
+          title="No more tasks"
+          description="We were unable to find any tasks that match the search terms provided. Try searching again with a different query."
+        />
+      )}
     </div>
-  ) : (
-    <NotFound
-      title="No more tasks"
-      description="We were unable to find any tasks that match the search terms provided. Try searching again with a different query."
-    />
   );
 };

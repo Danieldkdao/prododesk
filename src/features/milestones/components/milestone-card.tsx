@@ -21,28 +21,45 @@ import {
   ChevronDownIcon,
   EditIcon,
   EllipsisIcon,
+  GripVerticalIcon,
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useState } from "react";
-import { ReadProjectMilestonesActionType } from "../actions/actions";
+import { useState, useTransition } from "react";
+import {
+  ReadProjectMilestonesActionType,
+  updateMilestoneStatusAction,
+} from "../actions/actions";
 import { formatMilestoneStatus } from "../lib/formatters";
 import { DeleteMilestoneButton } from "./delete-milestone-button";
 import { MilestoneDialog } from "./milestone-dialog";
-import { ProjectSelectType, TaskSelectType } from "@/db/schema";
+import {
+  MilestoneStatus,
+  milestoneStatuses,
+  ProjectSelectType,
+  TaskSelectType,
+} from "@/db/schema";
+import { toast } from "sonner";
+import { useSortable } from "@dnd-kit/react/sortable";
 
 export const MilestoneCard = ({
   milestone,
   tasks,
+  index,
   isLast = false,
 }: {
   milestone: ReadProjectMilestonesActionType["milestones"][number];
   tasks: (TaskSelectType & { project: ProjectSelectType | null })[];
+  index: number;
   isLast?: boolean;
 }) => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const { ref, isDropTarget } = useDroppable({
+  const [isStatusPending, startStatusTransition] = useTransition();
+  const [status, setStatus] = useState(milestone.status);
+  const { ref, isDropTarget } = useSortable({
     id: milestone.id,
+    index,
+    type: "milestone",
   });
 
   const {
@@ -51,9 +68,26 @@ export const MilestoneCard = ({
     bgColor,
     textColor,
     borderColor,
-  } = formatMilestoneStatus(milestone.status);
+  } = formatMilestoneStatus(status);
 
   const taskLabel = tasks.length === 1 ? "1 task" : `${tasks.length} tasks`;
+
+  const handleStatusUpdate = (newStatus: MilestoneStatus) => {
+    const prevStatus = status;
+
+    setStatus(newStatus);
+
+    startStatusTransition(async () => {
+      const response = await updateMilestoneStatusAction(
+        milestone.id,
+        newStatus,
+      );
+      if (response.error) {
+        setStatus(prevStatus);
+        toast.error(response.message);
+      }
+    });
+  };
 
   return (
     <>
@@ -63,19 +97,41 @@ export const MilestoneCard = ({
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
       />
-
       <div ref={ref} className="flex w-full min-w-0 gap-3">
         <div className="flex shrink-0 flex-col items-center">
-          <div
-            className={cn(
-              "mt-3 flex size-9 items-center justify-center border",
-              bgColor,
-              textColor,
-              borderColor,
-            )}
-          >
-            <MilestoneStatusIcon className="size-5" />
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              nativeButton={false}
+              disabled={isStatusPending}
+              render={
+                <div
+                  className={cn(
+                    "mt-3 flex size-9 items-center justify-center border cursor-pointer",
+                    bgColor,
+                    textColor,
+                    borderColor,
+                  )}
+                >
+                  <MilestoneStatusIcon className="size-5" />
+                </div>
+              }
+            />
+            <DropdownMenuContent>
+              {milestoneStatuses.map((status) => {
+                const { label, icon: Icon } = formatMilestoneStatus(status);
+
+                return (
+                  <DropdownMenuItem
+                    key={status}
+                    onClick={() => handleStatusUpdate(status)}
+                  >
+                    <Icon className="size-5" />
+                    <span>{label}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {!isLast && <div className="mt-2 w-px flex-1 bg-border" />}
         </div>
@@ -87,7 +143,10 @@ export const MilestoneCard = ({
               isDropTarget && "border-primary",
             )}
           >
-            <CollapsibleTrigger className="min-w-0 flex-1 p-4 text-left cursor-pointer">
+            <div className="py-4.5 pr-1 pl-4 cursor-pointer">
+              <GripVerticalIcon className="size-5 text-muted-foreground" />
+            </div>
+            <CollapsibleTrigger className="min-w-0 flex-1 pr-4 py-4 pl-1 text-left cursor-pointer">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="min-w-0 flex-1 truncate text-lg font-medium">
                   {milestone.name}
@@ -137,7 +196,6 @@ export const MilestoneCard = ({
                   </Button>
                 }
               />
-
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setUpdateDialogOpen(true)}>
                   <EditIcon />

@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import {
   and,
   asc,
+  between,
   count,
   eq,
   gte,
@@ -24,10 +25,14 @@ import {
   inArray,
   lte,
   or,
+  SQL,
   sql,
 } from "drizzle-orm";
 import { cacheTag } from "next/cache";
-import { getProjectMilestoneTag } from "../server/cache/milestones";
+import {
+  getProjectMilestoneTag,
+  revalidateMilestoneCache,
+} from "../server/cache/milestones";
 import {
   confirmUserMilestoneOwnership,
   deleteMilestoneDb,
@@ -35,6 +40,7 @@ import {
   updateMilestoneDb,
 } from "../server/milestones";
 import { milestoneSchema, MilestoneSchemaType } from "./schemas";
+import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 
 const readCachedProjectMilestonesAction = async (
   userId: string,
@@ -239,6 +245,164 @@ export const updateMilestoneAction = async (
     return {
       error: false,
       message: "Milestone updated successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
+
+export const updateMilestoneStatusAction = async (
+  milestoneId: string,
+  newStatus: MilestoneStatus,
+) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const existingMilestone = await confirmUserMilestoneOwnership(milestoneId);
+  if (!existingMilestone) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  try {
+    const updatedMilestone = await updateMilestoneDb(existingMilestone.id, {
+      status: newStatus,
+    });
+    if (!updatedMilestone) throw new Error("Failed to update milestone.");
+
+    return {
+      error: false,
+      message: "Milestone updated successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
+
+export const moveMilestoneAction = async (
+  projectId: string,
+  milestoneId: string,
+  newPosition: number,
+) => {
+  if (!areValidIds([projectId, milestoneId])) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const existingProject = await confirmUserProjectOwnership(projectId);
+  if (!existingProject) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  const [totalMilestones] = await db
+    .select({ count: count() })
+    .from(MilestoneTable)
+    .where(
+      and(
+        eq(MilestoneTable.userId, userId),
+        eq(MilestoneTable.projectId, existingProject.id),
+      ),
+    );
+  if (newPosition <= 0 || newPosition > totalMilestones.count) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
+  const existingMilestone = await confirmUserMilestoneOwnership(milestoneId, [
+    eq(MilestoneTable.projectId, existingProject.id),
+  ]);
+  if (!existingMilestone) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  if (newPosition === existingMilestone.position) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
+  const oldPosition = existingMilestone.position;
+
+  const updateSql =
+    newPosition > oldPosition
+      ? sql`
+    CASE
+      WHEN ${MilestoneTable.id} = ${existingMilestone.id}
+        THEN ${newPosition}
+      WHEN ${MilestoneTable.position} > ${oldPosition}
+        AND ${MilestoneTable.position} <= ${newPosition}
+        THEN ${MilestoneTable.position} - 1
+      ELSE ${MilestoneTable.position}
+    END
+  `
+      : sql`
+    CASE
+      WHEN ${MilestoneTable.id} = ${existingMilestone.id}
+        THEN ${newPosition}
+      WHEN ${MilestoneTable.position} < ${oldPosition}
+        AND ${MilestoneTable.position} >= ${newPosition}
+        THEN ${MilestoneTable.position} + 1
+      ELSE ${MilestoneTable.position} + 1
+    END
+  `;
+
+  try {
+    const minimumPosition = Math.min(oldPosition, newPosition);
+    const maximumPosition = Math.max(oldPosition, newPosition);
+
+    await db
+      .update(MilestoneTable)
+      .set({
+        position: updateSql,
+      })
+      .where(
+        and(
+          eq(MilestoneTable.userId, userId),
+          eq(MilestoneTable.projectId, existingProject.id),
+          between(MilestoneTable.position, minimumPosition, maximumPosition),
+        ),
+      );
+
+    revalidateMilestoneCache(userId, existingProject.id);
+    revalidateProjectCache(userId, existingProject.id);
+
+    return {
+      error: false,
+      message: "Milestones reordered successfully!",
     };
   } catch (error) {
     console.error(error);

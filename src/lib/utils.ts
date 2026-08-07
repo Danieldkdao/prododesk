@@ -33,8 +33,7 @@ export const mergeDateTime = (date: Date, time: string) => {
   return selectedDate;
 };
 
-export const areValidIds = (ids: (string | null) | (string | null)[]) => {
-  if (!ids) return false;
+export const areValidIds = (ids: string | string[]) => {
   const idSchema = z.uuid();
   if (typeof ids === "string") {
     return idSchema.safeParse(ids).success;
