@@ -1,14 +1,14 @@
 "use client";
 
+import { NotFound } from "@/components/not-found";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
-import { useProjectsParams } from "../hooks/use-projects-params";
+import { useCallback } from "react";
 import {
   readProjectsAction,
   ReadProjectsActionReturnType,
 } from "../actions/actions";
+import { useProjectsParams } from "../hooks/use-projects-params";
 import { ProjectCard } from "./project-card";
-import { InfoCard } from "@/components/info-card";
-import { SearchXIcon } from "lucide-react";
 import { ProjectSkeleton } from "./projects-skeleton";
 
 export const ProjectsInfiniteList = ({
@@ -19,6 +19,14 @@ export const ProjectsInfiniteList = ({
   initialHasNextPage: boolean;
 }) => {
   const [filters] = useProjectsParams();
+
+  const fetchProjects = useCallback(
+    (nextPage: number) => {
+      return readProjectsAction({ ...filters, page: nextPage });
+    },
+    [filters],
+  );
+
   const {
     items: projects,
     isPending,
@@ -26,14 +34,9 @@ export const ProjectsInfiniteList = ({
   } = useInfiniteScroll<
     ReadProjectsActionReturnType["projects"][number],
     "projects"
-  >(
-    initialProjects,
-    initialHasNextPage,
-    (nextPage) => readProjectsAction({ ...filters, page: nextPage }),
-    {
-      additionalScrollDeps: [filters],
-    },
-  );
+  >(initialProjects, initialHasNextPage, fetchProjects, {
+    additionalScrollDeps: [filters],
+  });
 
   return projects.length ? (
     <div className="w-full">
@@ -49,10 +52,9 @@ export const ProjectsInfiniteList = ({
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (
-    <InfoCard
+    <NotFound
       title="No projects found"
       description="We weren't able to find any of your projects. Create a new one to get started or update your search filters."
-      icon={<SearchXIcon />}
     />
   );
 };

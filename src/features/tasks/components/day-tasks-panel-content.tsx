@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button";
 import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
 import { format } from "date-fns";
 import { XIcon } from "lucide-react";
-import { GetTasksActionReturnType } from "../actions/actions";
+import { ReadTasksActionReturnType } from "../actions/actions";
 import { DayTasksPanelContentSkeleton } from "./day-tasks-panel-content-skeleton";
 import { DayTasksPanelInfiniteList } from "./day-tasks-panel-infinite-list";
 
 export const DayTasksPanelContent = ({
   dayTasks,
 }: {
-  dayTasks: GetTasksActionReturnType | null;
+  dayTasks: ReadTasksActionReturnType | null;
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
 
@@ -25,15 +25,6 @@ export const DayTasksPanelContent = ({
   ) {
     return <DayTasksPanelContentSkeleton />;
   }
-
-  const listKey = `${[...selectedDayTasks]
-    .sort()
-    // todo: maybe make this key more efficient in the future?
-    .map(
-      (task) =>
-        `${task.id}${task.name}${task.description}${task.emoji}${task.scheduledAt && task.scheduledAt instanceof Date ? task.scheduledAt.toISOString() : "no start at"}${task.dueAt && task.dueAt instanceof Date ? task.dueAt.toISOString() : "no end at"}`,
-    )
-    .join("")} ${metadata.hasNextPage ? "yes" : "no"}`;
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
@@ -53,7 +44,7 @@ export const DayTasksPanelContent = ({
         initialDayTasks={selectedDayTasks}
         initialHasNextPage={metadata.hasNextPage}
         allTasksCompleted={metadata.allTasksCompleted}
-        key={listKey}
+        key={metadata.clientKey}
       />
     </div>
   );

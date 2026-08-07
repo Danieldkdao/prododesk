@@ -1,10 +1,15 @@
 import { DEFAULT_PAGE } from "@/lib/constants";
+import { SetterType } from "@/lib/types";
 import { useEffect, useState, useTransition } from "react";
 
-type Options = {
+type Options<T> = {
   rootMargin?: `${number}px`;
   defaultPage?: number;
   additionalScrollDeps?: unknown[];
+  ownState?: {
+    values: T[];
+    setValues: SetterType<T[]>;
+  };
 };
 
 export const useInfiniteScroll = <T, K extends string>(
@@ -20,7 +25,8 @@ export const useInfiniteScroll = <T, K extends string>(
     rootMargin = "400px",
     defaultPage = DEFAULT_PAGE,
     additionalScrollDeps = [],
-  }: Options = {},
+    ownState = undefined,
+  }: Options<T> = {},
 ) => {
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
@@ -29,6 +35,9 @@ export const useInfiniteScroll = <T, K extends string>(
   const [hasNextPage, setHasNextPage] = useState(initialHasNextPage);
   const [page, setPage] = useState(defaultPage ?? DEFAULT_PAGE);
   const [isPending, startTransition] = useTransition();
+
+  const itemsToUse = ownState?.values ?? items;
+  const setterToUse = ownState?.setValues ?? setItems;
 
   const scrollDeps = [
     containerEl,
@@ -65,7 +74,7 @@ export const useInfiniteScroll = <T, K extends string>(
             .filter((value): value is T[] => Array.isArray(value))
             .flat();
 
-          setItems((prev) => [...prev, ...items]);
+          setterToUse((prev) => [...prev, ...items]);
           setHasNextPage(metadata.hasNextPage);
           setPage(nextPage);
         });
@@ -82,8 +91,8 @@ export const useInfiniteScroll = <T, K extends string>(
   }, finalScrollDeps);
 
   return {
-    items,
-    setItems,
+    items: itemsToUse,
+    setItems: setterToUse,
     setContainerEl,
     setSentinelEl,
     isPending,

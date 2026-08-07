@@ -1,6 +1,8 @@
 "use client";
 
+import { NotFound } from "@/components/not-found";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { useCallback } from "react";
 import {
   readDocumentsAction,
   ReadDocumentsActionReturnType,
@@ -8,8 +10,6 @@ import {
 import { useDocumentsParams } from "../hooks/use-documents-params";
 import { DocumentCard } from "./document-card";
 import { DocumentSkeleton } from "./documents-skeleton";
-import { InfoCard } from "@/components/info-card";
-import { SearchXIcon } from "lucide-react";
 
 export const DocumentsInfiniteList = ({
   initialDocuments,
@@ -21,6 +21,14 @@ export const DocumentsInfiniteList = ({
   projectIds?: string[];
 }) => {
   const [filters] = useDocumentsParams();
+
+  const fetchDocuments = useCallback(
+    (nextPage: number) => {
+      return readDocumentsAction({ ...filters, page: nextPage }, projectIds);
+    },
+    [filters, projectIds],
+  );
+
   const {
     items: documents,
     isPending,
@@ -28,15 +36,9 @@ export const DocumentsInfiniteList = ({
   } = useInfiniteScroll<
     ReadDocumentsActionReturnType["documents"][number],
     "documents"
-  >(
-    initialDocuments,
-    initialHasNextPage,
-    (nextPage) =>
-      readDocumentsAction({ ...filters, page: nextPage }, projectIds),
-    {
-      additionalScrollDeps: [filters],
-    },
-  );
+  >(initialDocuments, initialHasNextPage, fetchDocuments, {
+    additionalScrollDeps: [filters],
+  });
 
   return documents.length ? (
     <div className="w-full">
@@ -53,10 +55,9 @@ export const DocumentsInfiniteList = ({
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (
-    <InfoCard
+    <NotFound
       title="No documents found"
       description="We were unable to find any documents. Create one to get started or change your search filters."
-      icon={<SearchXIcon />}
     />
   );
 };

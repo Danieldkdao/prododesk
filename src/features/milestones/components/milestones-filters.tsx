@@ -30,8 +30,8 @@ export const MilestonesFilters = ({ projectId }: { projectId: string }) => {
   return (
     <div className="flex items-center gap-2">
       <SearchInput
-        initialSearch={filters.search}
-        onValueChange={(search) => setFilters({ search })}
+        initialSearch={filters.milestoneSearch}
+        onValueChange={(search) => setFilters({ milestoneSearch: search })}
         placeholder="Search by milestone name or description"
       />
       <Popover>

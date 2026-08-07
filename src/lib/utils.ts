@@ -1,14 +1,14 @@
 import { tz } from "@date-fns/tz";
 import { clsx, type ClassValue } from "clsx";
 import {
-    format,
-    endOfDay as getEndOfDay,
-    endOfMonth as getEndOfMonth,
-    endOfWeek as getEndOfWeek,
-    startOfDay as getStartOfDay,
-    startOfMonth as getStartOfMonth,
-    startOfWeek as getStartOfWeek,
-    transpose,
+  format,
+  endOfDay as getEndOfDay,
+  endOfMonth as getEndOfMonth,
+  endOfWeek as getEndOfWeek,
+  startOfDay as getStartOfDay,
+  startOfMonth as getStartOfMonth,
+  startOfWeek as getStartOfWeek,
+  transpose,
 } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import z from "zod";
@@ -33,7 +33,8 @@ export const mergeDateTime = (date: Date, time: string) => {
   return selectedDate;
 };
 
-export const areValidIds = (ids: string | string[]) => {
+export const areValidIds = (ids: (string | null) | (string | null)[]) => {
+  if (!ids) return false;
   const idSchema = z.uuid();
   if (typeof ids === "string") {
     return idSchema.safeParse(ids).success;

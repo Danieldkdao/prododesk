@@ -13,7 +13,7 @@ import {
   Loader2Icon,
   PlusIcon,
 } from "lucide-react";
-import { GetTasksActionReturnType, getTasksAction } from "../actions/actions";
+import { ReadTasksActionReturnType, readTasksAction } from "../actions/actions";
 import { useTasksParams } from "../hooks/use-tasks-params";
 import { defaultDayTasksParamsOptions } from "../lib/tasks-params";
 import { TasksFilters } from "./tasks-filters";
@@ -26,7 +26,7 @@ export const DayTasksPanelInfiniteList = ({
   initialHasNextPage,
   allTasksCompleted,
 }: {
-  initialDayTasks: GetTasksActionReturnType["tasks"];
+  initialDayTasks: ReadTasksActionReturnType["tasks"];
   initialHasNextPage: boolean;
   allTasksCompleted: boolean;
 }) => {
@@ -35,7 +35,7 @@ export const DayTasksPanelInfiniteList = ({
 
   const fetchTasks = useCallback(
     (nextPage: number) => {
-      return getTasksAction(calendarFilters.day, [], {
+      return readTasksAction(calendarFilters.day, [], {
         ...dayTasksFilters,
         page: nextPage,
       });
@@ -49,7 +49,7 @@ export const DayTasksPanelInfiniteList = ({
     setContainerEl,
     setSentinelEl,
     isPending,
-  } = useInfiniteScroll<GetTasksActionReturnType["tasks"][number], "tasks">(
+  } = useInfiniteScroll<ReadTasksActionReturnType["tasks"][number], "tasks">(
     initialDayTasks,
     initialHasNextPage,
     fetchTasks,

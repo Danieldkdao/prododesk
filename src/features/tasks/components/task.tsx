@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
-  GetTasksActionReturnType,
+  ReadTasksActionReturnType,
   updateTasksStatusAction,
 } from "../actions/actions";
 import {
@@ -35,7 +35,7 @@ export const Task = ({
   includeDay = false,
   index,
 }: {
-  task: GetTasksActionReturnType["tasks"][number];
+  task: ReadTasksActionReturnType["tasks"][number];
   includeDay?: boolean;
   disabled?: boolean;
   index: number;

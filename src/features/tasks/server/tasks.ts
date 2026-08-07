@@ -4,6 +4,7 @@ import { revalidateTaskCache } from "./cache/tasks";
 import { and, eq, SQL } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
+import { revalidateMilestoneCache } from "@/features/milestones/server/cache/milestones";
 
 export const confirmUserTaskOwnership = async (
   taskId: string,
@@ -61,6 +62,7 @@ export const updateTaskDb = async (
   revalidateTaskCache(updatedTask.userId, updatedTask.id);
   if (updatedTask?.projectId) {
     revalidateProjectCache(updatedTask.userId, updatedTask.projectId);
+    revalidateMilestoneCache(updatedTask.userId, updatedTask.projectId);
   }
 
   return updatedTask;

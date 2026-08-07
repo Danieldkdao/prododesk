@@ -1,12 +1,12 @@
 "use client";
 
+import { NotFound } from "@/components/not-found";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { useCallback } from "react";
 import { readAreasAction, ReadAreasActionReturnType } from "../actions/actions";
 import { useAreasParams } from "../hooks/use-areas-params";
 import { AreaCard } from "./area-card";
 import { AreaSkeleton } from "./areas-skeleton";
-import { InfoCard } from "@/components/info-card";
-import { SearchXIcon } from "lucide-react";
 
 export const AreasInfiniteList = ({
   initialAreas,
@@ -16,6 +16,14 @@ export const AreasInfiniteList = ({
   initialHasNextPage: boolean;
 }) => {
   const [filters] = useAreasParams();
+
+  const fetchAreas = useCallback(
+    (nextPage: number) => {
+      return readAreasAction({ ...filters, page: nextPage });
+    },
+    [filters],
+  );
+
   const {
     items: areas,
     isPending,
@@ -23,7 +31,7 @@ export const AreasInfiniteList = ({
   } = useInfiniteScroll<ReadAreasActionReturnType["areas"][number], "areas">(
     initialAreas,
     initialHasNextPage,
-    (nextPage) => readAreasAction({ ...filters, page: nextPage }),
+    fetchAreas,
     {
       additionalScrollDeps: [filters],
     },
@@ -42,10 +50,9 @@ export const AreasInfiniteList = ({
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (
-    <InfoCard
+    <NotFound
       title="No areas found"
       description="We were unable to find any areas. Create one to get started or update your search filters."
-      icon={<SearchXIcon />}
     />
   );
 };

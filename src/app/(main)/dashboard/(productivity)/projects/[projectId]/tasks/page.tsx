@@ -1,7 +1,7 @@
 import { ErrorState } from "@/components/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectTasksView } from "@/features/projects/components/project-tasks-view";
-import { getTasksAction } from "@/features/tasks/actions/actions";
+import { readTasksAction } from "@/features/tasks/actions/actions";
 import { loadTasksSearchParams } from "@/features/tasks/lib/tasks-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { ParamsId, SearchParamsType } from "@/lib/types";
@@ -59,7 +59,7 @@ const ProjectIdTasksSuspense = async ({
   const { projectId } = await params;
   const taskFilters = await loadTasksSearchParams(searchParams);
 
-  const response = await getTasksAction(null, [projectId], {
+  const response = await readTasksAction(null, [projectId], {
     page: DEFAULT_PAGE,
     ...taskFilters,
   });

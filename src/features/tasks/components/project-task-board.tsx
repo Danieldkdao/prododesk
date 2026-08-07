@@ -81,12 +81,12 @@ export const ProjectTaskBoard = <
         if (!source?.id || !target?.id) return;
 
         const sourceTask = tasks.find((task) => task.id === source.id);
-        if (!sourceTask || sourceTask.status === target.id) return;
+        if (!sourceTask || sourceTask[property] === target.id) return;
 
         flushSync(() =>
           setTasks((prev) =>
             prev.map((task) => {
-              if (task.id === source.id && task.status !== target.id)
+              if (task.id === source.id && task[property] !== target.id)
                 return { ...task, [property]: target.id as Property };
               return task;
             }),

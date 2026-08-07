@@ -40,7 +40,7 @@ const readCachedProjectMilestonesAction = async (
   userId: string,
   projectId: string,
   filterOptions: {
-    search: string;
+    milestoneSearch: string;
     statuses: MilestoneStatus[];
     dueAtOnAfter: Date | null;
     dueAtOnBefore: Date | null;
@@ -50,12 +50,13 @@ const readCachedProjectMilestonesAction = async (
   "use cache";
   cacheTag(getProjectMilestoneTag(projectId));
 
-  const { search, statuses, dueAtOnAfter, dueAtOnBefore, page } = filterOptions;
+  const { milestoneSearch, statuses, dueAtOnAfter, dueAtOnBefore, page } =
+    filterOptions;
 
   const offset = (page - 1) * PAGE_SIZE;
 
-  const searchTerm = `%${search.trim()}%`;
-  const searchFilter = search.trim()
+  const searchTerm = `%${milestoneSearch.trim()}%`;
+  const searchFilter = milestoneSearch.trim()
     ? or(
         ilike(MilestoneTable.name, searchTerm),
         ilike(MilestoneTable.description, searchTerm),
@@ -87,7 +88,11 @@ const readCachedProjectMilestonesAction = async (
     where: whereQuery,
     orderBy: asc(MilestoneTable.position),
     with: {
-      tasks: true,
+      tasks: {
+        with: {
+          project: true,
+        },
+      },
     },
     offset,
     limit: PAGE_SIZE,
@@ -114,7 +119,7 @@ const readCachedProjectMilestonesAction = async (
 export const readProjectMilestonesAction = async (
   projectId: string,
   filterOptions: {
-    search: string;
+    milestoneSearch: string;
     statuses: MilestoneStatus[];
     dueAtOnAfter: Date | null;
     dueAtOnBefore: Date | null;

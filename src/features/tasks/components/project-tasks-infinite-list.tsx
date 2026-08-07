@@ -12,7 +12,7 @@ import {
   PlusIcon,
 } from "lucide-react";
 import { useCallback } from "react";
-import { GetTasksActionReturnType, getTasksAction } from "../actions/actions";
+import { ReadTasksActionReturnType, readTasksAction } from "../actions/actions";
 import { useTasksParams } from "../hooks/use-tasks-params";
 import { defaultDayTasksParamsOptions } from "../lib/tasks-params";
 import { Task } from "./task";
@@ -26,7 +26,7 @@ export const ProjectTasksInfiniteList = ({
   allTasksCompleted,
 }: {
   project: ProjectSelectType;
-  initialTasks: GetTasksActionReturnType["tasks"];
+  initialTasks: ReadTasksActionReturnType["tasks"];
   initialHasNextPage: boolean;
   allTasksCompleted: boolean;
 }) => {
@@ -34,7 +34,7 @@ export const ProjectTasksInfiniteList = ({
 
   const fetchTasks = useCallback(
     (nextPage: number) => {
-      return getTasksAction(null, [project.id], {
+      return readTasksAction(null, [project.id], {
         ...tasksFilters,
         page: nextPage,
       });
@@ -48,7 +48,7 @@ export const ProjectTasksInfiniteList = ({
     setContainerEl,
     setSentinelEl,
     isPending,
-  } = useInfiniteScroll<GetTasksActionReturnType["tasks"][number], "tasks">(
+  } = useInfiniteScroll<ReadTasksActionReturnType["tasks"][number], "tasks">(
     initialTasks,
     initialHasNextPage,
     fetchTasks,

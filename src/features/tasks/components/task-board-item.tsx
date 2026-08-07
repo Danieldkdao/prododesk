@@ -17,10 +17,12 @@ import { BoardProperty } from "@/features/projects/lib/types";
 
 export const TaskBoardItem = ({
   task,
+  className,
   property,
 }: {
   task: TaskSelectType & { project: ProjectSelectType | null };
-  property: BoardProperty;
+  className?: string;
+  property?: BoardProperty;
 }) => {
   const { ref } = useDraggable({
     id: task.id,
@@ -30,15 +32,18 @@ export const TaskBoardItem = ({
   const { icon: StatusIcon, textColor } = formatTaskStatus(task.status);
 
   return (
-    <div ref={ref} className="p-2 bg-background cursor-pointer flex">
+    <div
+      ref={ref}
+      className={cn("p-2 bg-background cursor-pointer flex", className)}
+    >
       <div className="flex-1 min-w-0 p-2 flex flex-col gap-1">
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            {property === "priority" && (
+            {(property === "priority" || !property) && (
               <StatusIcon className={cn("size-5", textColor)} />
             )}
             <span className="text-lg font-medium">{task.name}</span>
-            {property === "status" && (
+            {(property === "status" || !property) && (
               <Badge
                 variant="outline"
                 className={cn(

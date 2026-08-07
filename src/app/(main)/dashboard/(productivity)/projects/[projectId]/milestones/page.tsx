@@ -1,9 +1,12 @@
 import { ErrorState } from "@/components/error-state";
 import { readProjectMilestonesAction } from "@/features/milestones/actions/actions";
-import { MilestoneCard } from "@/features/milestones/components/milestone-card";
-import { MilestonesFilters } from "@/features/milestones/components/milestones-filters";
-import { MilestonesInfiniteList } from "@/features/milestones/components/milestones-infinite-list";
+import { MilestonesView } from "@/features/milestones/components/milestones-view";
 import { loadMilestonesSearchParams } from "@/features/milestones/lib/milestones-params";
+import { readTasksAction } from "@/features/tasks/actions/actions";
+import {
+  defaultDayTasksParamsOptions,
+  loadTasksSearchParams,
+} from "@/features/tasks/lib/tasks-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { ParamsId, SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
@@ -28,12 +31,18 @@ const ProjectIdMilestonesSuspense = async ({
 }: ProjectIdMilestonesProps) => {
   const { projectId } = await params;
   const filters = await loadMilestonesSearchParams(searchParams);
+  const { search } = await loadTasksSearchParams(searchParams);
 
-  const response = await readProjectMilestonesAction(projectId, {
+  const milestonesResponse = await readProjectMilestonesAction(projectId, {
     ...filters,
     page: DEFAULT_PAGE,
   });
-  if (!response) {
+  const tasksResponse = await readTasksAction(null, [projectId], {
+    ...defaultDayTasksParamsOptions,
+    search,
+    page: DEFAULT_PAGE,
+  });
+  if (!milestonesResponse || !tasksResponse) {
     return (
       <ErrorState
         title="An error occurred"
@@ -42,21 +51,12 @@ const ProjectIdMilestonesSuspense = async ({
     );
   }
 
-  const { milestones, metadata } = response;
-
   return (
-    <div className="w-full flex flex-col gap-4">
-      <MilestonesFilters projectId={projectId} />
-      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr]">
-        <div>task list goes here</div>
-        <MilestonesInfiniteList
-          key={metadata.clientKey}
-          projectId={projectId}
-          initialMilestones={milestones}
-          initialHasNextPage={metadata.hasNextPage}
-        />
-      </div>
-    </div>
+    <MilestonesView
+      projectId={projectId}
+      milestonesResponse={milestonesResponse}
+      tasksResponse={tasksResponse}
+    />
   );
 };
 

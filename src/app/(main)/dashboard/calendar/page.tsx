@@ -5,7 +5,7 @@ import { MainCalendarSkeleton } from "@/features/calendar/components/main-calend
 import { loadCalendarSearchParams } from "@/features/calendar/lib/calendar-params";
 import {
   getCalendarTasksAction,
-  getTasksAction,
+  readTasksAction,
 } from "@/features/tasks/actions/actions";
 import { DayTasksPanel } from "@/features/tasks/components/day-tasks-panel";
 import { loadTasksSearchParams } from "@/features/tasks/lib/tasks-params";
@@ -48,7 +48,7 @@ const DashboardCalendarSuspense = async ({
 
   const [monthDaysTasks, selectedDayTasks] = await Promise.all([
     getCalendarTasksAction(calendarFilters.month),
-    getTasksAction(calendarFilters.day, [], {
+    readTasksAction(calendarFilters.day, [], {
       ...dayTasksFilters,
       page: DEFAULT_PAGE,
     }),

@@ -9,6 +9,7 @@ import {
 
 export const defaultDayTasksParamsOptions = {
   priorities: [],
+  statuses: [],
   schedule: "any" as const,
   search: "",
   sortBy: "recently_created" as const,

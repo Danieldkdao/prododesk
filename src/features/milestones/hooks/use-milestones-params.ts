@@ -10,7 +10,7 @@ import {
 export const useMilestonesParams = () => {
   return useQueryStates(
     {
-      search: parseAsString
+      milestoneSearch: parseAsString
         .withDefault("")
         .withOptions({ clearOnDefault: true }),
       statuses: parseAsArrayOf(parseAsStringEnum([...milestoneStatuses]))

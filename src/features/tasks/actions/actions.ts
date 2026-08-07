@@ -131,6 +131,50 @@ export const updateTaskAction = async (
   }
 };
 
+export const updateTaskMilestoneAction = async (
+  taskId: string,
+  milestoneId: string | null,
+) => {
+  if (!areValidIds([taskId, milestoneId])) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const existingTask = await confirmUserTaskOwnership(taskId);
+  if (!existingTask) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  try {
+    const updatedTask = await updateTaskDb(existingTask.id, { milestoneId });
+    if (!updatedTask) throw new Error("Failed to update task milestone.");
+
+    return {
+      error: false,
+      message: "Task updated successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
+
 export const deleteTaskAction = async (taskId: string) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
@@ -223,7 +267,7 @@ export type GetCalendarTasksActionReturnType = UnwrapAsync<
   typeof getCalendarTasksAction
 >;
 
-const getCachedTasksAction = async (
+const readCachedTasksAction = async (
   userId: string,
   selectedDay: Date | null,
   projectIds: string[],
@@ -379,6 +423,7 @@ const getCachedTasksAction = async (
 
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalSelectedTasks.count;
+  const clientKey = `${JSON.stringify(tasks)}${hasNextPage ? "has next page" : "no next page"}`;
 
   return {
     tasks,
@@ -388,10 +433,11 @@ const getCachedTasksAction = async (
       allTasksCompleted: totalCompletedTasks.count === totalTasks.count,
       day: selectedDay ? format(selectedDay, "yyyy-MM-dd") : null,
       projects: existingProjects ?? null,
+      clientKey,
     },
   };
 };
-export const getTasksAction = async (
+export const readTasksAction = async (
   selectedDay: Date | null,
   projectIds: string[],
   filterOptions: {
@@ -407,7 +453,7 @@ export const getTasksAction = async (
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) return null;
 
-  return getCachedTasksAction(
+  return readCachedTasksAction(
     userId,
     selectedDay,
     projectIds,
@@ -415,7 +461,7 @@ export const getTasksAction = async (
     filterOptions,
   );
 };
-export type GetTasksActionReturnType = UnwrapAsync<typeof getTasksAction>;
+export type ReadTasksActionReturnType = UnwrapAsync<typeof readTasksAction>;
 
 export const updateTasksStatusAction = async (
   taskId: string | string[],

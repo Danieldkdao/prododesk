@@ -8,7 +8,9 @@ import {
 } from "nuqs/server";
 
 const filterSearchParams = {
-  search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
+  milestoneSearch: parseAsString
+    .withDefault("")
+    .withOptions({ clearOnDefault: true }),
   statuses: parseAsArrayOf(parseAsStringEnum([...milestoneStatuses]))
     .withDefault([])
     .withOptions({ clearOnDefault: true }),

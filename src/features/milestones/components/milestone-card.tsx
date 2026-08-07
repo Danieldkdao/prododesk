@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -13,10 +12,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { TaskMilestoneItem } from "@/features/tasks/components/task-milestone-item";
 import { cn } from "@/lib/utils";
+import { useDroppable } from "@dnd-kit/react";
 import { format, parse } from "date-fns";
 import {
   CalendarDaysIcon,
+  ChevronDownIcon,
   EditIcon,
   EllipsisIcon,
   PlusIcon,
@@ -27,23 +29,31 @@ import { ReadProjectMilestonesActionType } from "../actions/actions";
 import { formatMilestoneStatus } from "../lib/formatters";
 import { DeleteMilestoneButton } from "./delete-milestone-button";
 import { MilestoneDialog } from "./milestone-dialog";
-import { useDroppable } from "@dnd-kit/react";
+import { ProjectSelectType, TaskSelectType } from "@/db/schema";
 
 export const MilestoneCard = ({
   milestone,
+  tasks,
+  isLast = false,
 }: {
   milestone: ReadProjectMilestonesActionType["milestones"][number];
+  tasks: (TaskSelectType & { project: ProjectSelectType | null })[];
+  isLast?: boolean;
 }) => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const { ref } = useDroppable({
+  const { ref, isDropTarget } = useDroppable({
     id: milestone.id,
   });
+
   const {
+    label,
     icon: MilestoneStatusIcon,
     bgColor,
     textColor,
     borderColor,
   } = formatMilestoneStatus(milestone.status);
+
+  const taskLabel = tasks.length === 1 ? "1 task" : `${tasks.length} tasks`;
 
   return (
     <>
@@ -53,95 +63,122 @@ export const MilestoneCard = ({
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
       />
-      <div ref={ref} className="flex items-start gap-4 w-full min-w-0">
-        <div
-          className={cn(
-            "size-10 flex items-center justify-center shrink-0 border",
-            bgColor,
-            textColor,
-            borderColor,
-          )}
-        >
-          <MilestoneStatusIcon />
+
+      <div ref={ref} className="flex w-full min-w-0 gap-3">
+        <div className="flex shrink-0 flex-col items-center">
+          <div
+            className={cn(
+              "mt-3 flex size-9 items-center justify-center border",
+              bgColor,
+              textColor,
+              borderColor,
+            )}
+          >
+            <MilestoneStatusIcon className="size-5" />
+          </div>
+
+          {!isLast && <div className="mt-2 w-px flex-1 bg-border" />}
         </div>
-        <Collapsible className="flex flex-col gap-4 flex-1 min-w-0">
-          <CollapsibleTrigger
-            nativeButton={false}
-            className="flex items-start gap-4 cursor-pointer"
-            render={
-              <Card className="border flex-1 min-w-0 py-4">
-                <CardContent className="flex-1 min-w-0 flex flex-col gap-0.5 px-4">
-                  <span className="text-xl font-medium">{milestone.name}</span>
-                  {milestone.description ? (
-                    <p className="text-muted-foreground text-base">
-                      {milestone.description}
-                    </p>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <PlusIcon className="size-5 text-muted-foreground" />
-                      <span className="text-muted-foreground text-base">
-                        Add a description to explain the milestone and its
-                        outcomes
-                      </span>
-                    </div>
-                  )}
-                  {milestone.dueAt && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <CalendarDaysIcon className="text-muted-foreground size-5" />
-                      <span className="text-base text-muted-foreground">
-                        Due by{" "}
-                        {format(
-                          parse(milestone.dueAt, "yyyy-MM-dd", new Date()),
-                          "PP",
-                        )}
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            }
-          ></CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="border-l-3 px-5 py-4">
-              {milestone.tasks.length ? (
-                <div></div>
-              ) : (
-                <span className="text-base font-medium text-muted-foreground">
-                  No tasks have been assigned to this milestone.
+
+        <Collapsible className="group min-w-0 flex-1 pb-4">
+          <div
+            className={cn(
+              "flex items-start border bg-card shadow-sm transition-colors hover:bg-muted/20",
+              isDropTarget && "border-primary",
+            )}
+          >
+            <CollapsibleTrigger className="min-w-0 flex-1 p-4 text-left cursor-pointer">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-lg font-medium">
+                  {milestone.name}
                 </span>
+
+                <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-open:rotate-180" />
+              </div>
+
+              {milestone.description ? (
+                <p className="mt-1 line-clamp-2 text-base text-muted-foreground">
+                  {milestone.description}
+                </p>
+              ) : (
+                <p className="mt-1 text-base italic text-muted-foreground">
+                  No description
+                </p>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                <span className={cn("font-medium text-base", textColor)}>
+                  {label}
+                </span>
+
+                <span className="text-base">{taskLabel}</span>
+
+                {milestone.dueAt && (
+                  <span className="flex items-center gap-1.5 text-base">
+                    <CalendarDaysIcon className="size-5" />
+                    Due{" "}
+                    {format(
+                      parse(milestone.dueAt, "yyyy-MM-dd", new Date()),
+                      "PP",
+                    )}
+                  </span>
+                )}
+              </div>
+            </CollapsibleTrigger>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="m-3 shrink-0"
+                  >
+                    <EllipsisIcon />
+                  </Button>
+                }
+              />
+
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setUpdateDialogOpen(true)}>
+                  <EditIcon />
+                  Edit
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  nativeButton
+                  variant="destructive"
+                  render={
+                    <DeleteMilestoneButton
+                      milestoneId={milestone.id}
+                      variant="destructive"
+                      className="h-auto w-full justify-start bg-transparent px-2 py-1.5"
+                    >
+                      <Trash2Icon />
+                      Delete
+                    </DeleteMilestoneButton>
+                  }
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <CollapsibleContent className="overflow-hidden">
+            <div className="ml-4 border-l-2 border-border px-4 pt-3">
+              {tasks.length ? (
+                <div className="flex flex-col gap-2">
+                  {tasks.map((task) => (
+                    <TaskMilestoneItem key={task.id} task={task} />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+                  <PlusIcon className="size-4" />
+                  No tasks assigned
+                </div>
               )}
             </div>
           </CollapsibleContent>
         </Collapsible>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="icon-sm">
-                <EllipsisIcon />
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setUpdateDialogOpen(true)}>
-              <EditIcon />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              nativeButton
-              variant="destructive"
-              render={
-                <DeleteMilestoneButton
-                  milestoneId={milestone.id}
-                  variant="destructive"
-                  className="w-full h-auto py-2 px-3.5 justify-start bg-transparent focus:bg-destructive/10 dark:focus:bg-destructive/20"
-                >
-                  <Trash2Icon />
-                  Delete
-                </DeleteMilestoneButton>
-              }
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </>
   );

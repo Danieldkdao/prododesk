@@ -11,7 +11,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { taskPriorities, taskStatuses } from "@/db/shared";
 import {
-  GetTasksActionReturnType,
+  ReadTasksActionReturnType,
   updateTasksPriorityAction,
   updateTasksStatusAction,
 } from "@/features/tasks/actions/actions";
@@ -30,7 +30,7 @@ export const ProjectTasksView = ({
   response,
 }: {
   projectId: string;
-  response: GetTasksActionReturnType;
+  response: ReadTasksActionReturnType;
 }) => {
   const { tasks, metadata } = response;
 
@@ -49,20 +49,8 @@ export const ProjectTasksView = ({
   }
 
   const tasksClientKey =
-    `${tasks.map(
-      (task) => `
-    ${task.name}
-    ${task.createdAt.toISOString()}
-    ${task.description}
-    ${task.dueAt ? task.dueAt.toISOString() : "no due date"}
-    ${task.emoji || "no emoji"}${task.id}${task.priority}
-    ${task.projectId || "no project"}
-    ${task.scheduledAt ? task.scheduledAt.toISOString() : "no scheduled date"}
-    ${task.status}${task.updatedAt.toISOString()}
-    ${task.userId}`,
-    )}
-  ` +
-    `${metadata.hasNextPage ? "has next page" : "no next page"}${metadata.allTasksCompleted ? "all tasks complete" : "some tasks remain"}`;
+    metadata.clientKey +
+    `${metadata.allTasksCompleted ? "all tasks complete" : "some tasks remain"}`;
 
   return (
     <Tabs defaultValue="list">
