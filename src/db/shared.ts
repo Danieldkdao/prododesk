@@ -81,3 +81,19 @@ export const milestoneStatusEnum = pgEnum(
   "milestone_statuses",
   milestoneStatuses,
 );
+
+export const activitySources = ["user", "ai", "system"] as const;
+export type ActivitySource = (typeof activitySources)[number];
+export const activitySourceEnum = pgEnum("activity_sources", activitySources);
+
+export const activitySubjects = [
+  "project",
+  "task",
+  "milestone",
+  "document",
+] as const;
+export type ActivitySubject = (typeof activitySubjects)[number];
+export const activitySubjectEnum = pgEnum(
+  "activity_subjects",
+  activitySubjects,
+);

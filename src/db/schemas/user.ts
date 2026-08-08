@@ -6,6 +6,7 @@ import { DocumentTable } from "./document";
 import { MilestoneTable } from "./milestone";
 import { ProjectTable } from "./project";
 import { TaskTable } from "./task";
+import { ActivityTable } from "./activity";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -89,6 +90,7 @@ export const userRelations = relations(user, ({ many }) => ({
   chats: many(ChatTable),
   documents: many(DocumentTable),
   milestones: many(MilestoneTable),
+  activity: many(ActivityTable),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

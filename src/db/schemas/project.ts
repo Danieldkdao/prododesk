@@ -1,18 +1,19 @@
 import { relations } from "drizzle-orm";
 import {
-    boolean,
-    date,
-    pgTable,
-    text,
-    timestamp,
-    uuid,
-    varchar,
+  boolean,
+  date,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { colorEnum, projectStatusEnum } from "../shared";
 import { AreaTable } from "./area";
 import { TaskTable } from "./task";
 import { user } from "./user";
+import { ActivityTable } from "./activity";
 
 export const ProjectTable = pgTable("projects", {
   id,
@@ -48,4 +49,5 @@ export const projectRelations = relations(ProjectTable, ({ one, many }) => ({
     references: [AreaTable.id],
   }),
   tasks: many(TaskTable),
+  activity: many(ActivityTable),
 }));
