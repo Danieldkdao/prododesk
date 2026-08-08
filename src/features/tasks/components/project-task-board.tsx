@@ -96,30 +96,32 @@ export const ProjectTaskBoard = <
         queueTaskPropertySave(sourceTask.id, target.id as PropertyOption);
       }}
     >
-      <div className="w-full grid grid-cols-4 gap-4">
-        {propertyOptions.map((propertyOption) => {
-          const statusTasks = tasks.filter(
-            (task) => task[property] === propertyOption,
-          );
+      <div className="overflow-auto min-w-0 w-full">
+        <div className="w-full grid grid-cols-4 gap-4 min-w-300">
+          {propertyOptions.map((propertyOption) => {
+            const statusTasks = tasks.filter(
+              (task) => task[property] === propertyOption,
+            );
 
-          return (
-            <TaskBoardColumn
-              key={propertyOption}
-              property={property}
-              propertyValue={propertyOption}
-              project={project}
-              formatter={formatter}
-            >
-              {statusTasks.map((task) => (
-                <TaskBoardItem
-                  key={task.id}
-                  task={{ ...task, project }}
-                  property={property}
-                />
-              ))}
-            </TaskBoardColumn>
-          );
-        })}
+            return (
+              <TaskBoardColumn
+                key={propertyOption}
+                property={property}
+                propertyValue={propertyOption}
+                project={project}
+                formatter={formatter}
+              >
+                {statusTasks.map((task) => (
+                  <TaskBoardItem
+                    key={task.id}
+                    task={{ ...task, project }}
+                    property={property}
+                  />
+                ))}
+              </TaskBoardColumn>
+            );
+          })}
+        </div>
       </div>
     </DragDropProvider>
   );

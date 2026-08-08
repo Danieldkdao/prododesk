@@ -111,7 +111,14 @@ const readCachedProjectMilestonesAction = async (
 
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalMilestones.count;
-  const clientKey = `${JSON.stringify(milestones)}${hasNextPage ? "has next page" : "no next page"}`;
+  const clientKey = JSON.stringify({
+    context: {
+      projectId,
+    },
+    filters: filterOptions,
+    results: milestones.map(({ id, updatedAt }) => ({ id, updatedAt })),
+    hasNextPage,
+  });
 
   return {
     milestones,

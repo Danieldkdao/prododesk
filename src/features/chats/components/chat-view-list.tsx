@@ -21,7 +21,7 @@ import { getModelInfo, LLMModel } from "@/services/ai/models";
 import { CustomUIMessage } from "@/services/ai/types";
 import { useState } from "react";
 import { toast } from "sonner";
-import { GetChatActionReturnType } from "../actions/actions";
+import { ReadChatActionReturnType } from "../actions/actions";
 import { ChatHeader } from "../chat-header";
 import { ChatViewListMessage } from "./chat-view-list-message";
 
@@ -29,7 +29,7 @@ export const ChatViewList = ({
   chat,
   messages,
 }: {
-  chat: GetChatActionReturnType;
+  chat: ReadChatActionReturnType;
   messages: CustomUIMessage[];
 }) => {
   const {

@@ -194,12 +194,18 @@ const readCachedProjectsAction = async (
 
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalProjects.count;
+  const clientKey = JSON.stringify({
+    filters: filterOptions,
+    results: projects.map(({ id, updatedAt }) => ({ id, updatedAt })),
+    hasNextPage,
+  });
 
   return {
     projects,
     metadata: {
       hasPrevPage,
       hasNextPage,
+      clientKey,
     },
   };
 };

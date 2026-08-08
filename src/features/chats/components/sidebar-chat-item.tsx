@@ -9,13 +9,13 @@ import {
 import { EllipsisVerticalIcon, MessageCircleIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GetChatsActionReturnType } from "../actions/actions";
+import { ReadChatsActionReturnType } from "../actions/actions";
 import { ChatOptions } from "./chat-options";
 
 export const SidebarChatItem = ({
   chat,
 }: {
-  chat: GetChatsActionReturnType["chats"][number];
+  chat: ReadChatsActionReturnType["chats"][number];
 }) => {
   const pathname = usePathname();
   const { state, isMobile } = useSidebar();

@@ -35,6 +35,7 @@ import {
   gte,
   ilike,
   inArray,
+  isNull,
   lte,
   ne,
   or,
@@ -280,6 +281,7 @@ const readCachedTasksAction = async (
     dateTimeStartRange: Date | null;
     dateTimeEndRange: Date | null;
     page: number;
+    unassignedOnly?: boolean;
   },
 ) => {
   "use cache";
@@ -295,6 +297,7 @@ const readCachedTasksAction = async (
     dateTimeStartRange,
     dateTimeEndRange,
     page,
+    unassignedOnly = false,
   } = filterOptions;
 
   let existingProjects;
@@ -375,6 +378,10 @@ const readCachedTasksAction = async (
     );
   }
 
+  const milestoneFilter = unassignedOnly
+    ? isNull(TaskTable.milestoneId)
+    : undefined;
+
   const whereQuery = and(
     eq(TaskTable.userId, userId),
     dayFilter,
@@ -383,6 +390,7 @@ const readCachedTasksAction = async (
     projectsFilter,
     statusFilter,
     timeRangeFilter,
+    milestoneFilter,
   );
 
   const tasks = await db
@@ -421,16 +429,35 @@ const readCachedTasksAction = async (
       ),
     );
 
+  const allTasksCompleted = totalCompletedTasks.count === totalTasks.count;
+
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalSelectedTasks.count;
-  const clientKey = `${JSON.stringify(tasks)}${hasNextPage ? "has next page" : "no next page"}`;
+  const clientKey = JSON.stringify({
+    context: {
+      selectedDay,
+      projectIds: projectIds ? [...projectIds].sort() : null,
+    },
+    filters: {
+      ...filterOptions,
+      priorities: [...filterOptions.priorities].sort(),
+      statuses: [...filterOptions.statuses].sort(),
+    },
+    results: tasks.map(({ id, updatedAt }) => ({ id, updatedAt })),
+    pagination: {
+      hasNextPage,
+    },
+    derivedState: {
+      allTasksCompleted,
+    },
+  });
 
   return {
     tasks,
     metadata: {
       hasPrevPage,
       hasNextPage,
-      allTasksCompleted: totalCompletedTasks.count === totalTasks.count,
+      allTasksCompleted,
       day: selectedDay ? format(selectedDay, "yyyy-MM-dd") : null,
       projects: existingProjects ?? null,
       clientKey,
@@ -448,6 +475,7 @@ export const readTasksAction = async (
     dateTimeStartRange: Date | null;
     dateTimeEndRange: Date | null;
     page: number;
+    unassignedOnly?: boolean;
   },
 ) => {
   const { userId, user } = await getCurrentUser();

@@ -19,12 +19,14 @@ export const MilestonesInfiniteList = ({
   setMilestones,
   initialHasNextPage,
   tasksState,
+  resetKey,
 }: {
   projectId: string;
   milestones: ReadProjectMilestonesActionType["milestones"];
   setMilestones: SetterType<ReadProjectMilestonesActionType["milestones"]>;
   initialHasNextPage: boolean;
   tasksState: (TaskSelectType & { project: ProjectSelectType | null })[];
+  resetKey: string;
 }) => {
   const [filters] = useMilestonesParams();
 
@@ -42,21 +44,23 @@ export const MilestonesInfiniteList = ({
     items: milestonesToUse,
     setSentinelEl,
     isPending,
+    hasNextPage,
   } = useInfiniteScroll<
     ReadProjectMilestonesActionType["milestones"][number],
     "milestones"
   >(milestones, initialHasNextPage, fetchMilestones, {
     additionalScrollDeps: [filters],
+    resetKey,
     ownState: {
       values: milestones,
       setValues: setMilestones,
     },
   });
 
-  return milestonesToUse.length ? (
-    <div>
+  return (
+    <div className="w-full min-w-0">
       <div className="flex flex-col w-full min-w-0">
-        {milestones.map((milestone, index) => {
+        {milestonesToUse.map((milestone, index) => {
           const milestoneTasks = tasksState.filter(
             (task) => task.milestoneId === milestone.id,
           );
@@ -67,7 +71,7 @@ export const MilestonesInfiniteList = ({
               milestone={milestone}
               tasks={milestoneTasks}
               index={index}
-              isLast={index === milestones.length - 1}
+              isLast={index === milestonesToUse.length - 1}
             />
           );
         })}
@@ -77,11 +81,12 @@ export const MilestonesInfiniteList = ({
           <MilestoneSkeleton key={index} isLast={index === 3} />
         ))}
       <div ref={setSentinelEl} className="h-1 w-full bg-transparent" />
+      {!milestonesToUse.length && !isPending && !hasNextPage && (
+        <NotFound
+          title="No milestones found"
+          description="We weren't able to find any milestones that match the selected filters. Create a new milestone to get started or update your search filters."
+        />
+      )}
     </div>
-  ) : (
-    <NotFound
-      title="No milestones found"
-      description="We weren't able to find any milestones that match the selected filters. Create a new milestone to get started or update your search filters."
-    />
   );
 };

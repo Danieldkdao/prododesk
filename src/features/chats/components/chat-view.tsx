@@ -3,11 +3,11 @@
 import { useChatProvider } from "@/hooks/use-chat-provider";
 import { CustomUIMessage } from "@/services/ai/types";
 import { useEffect, useMemo } from "react";
-import { GetChatActionReturnType } from "../actions/actions";
+import { ReadChatActionReturnType } from "../actions/actions";
 import { ChatViewList } from "./chat-view-list";
 import { PendingChatView } from "./pending-chat-view";
 
-export const ChatView = ({ chat }: { chat: GetChatActionReturnType }) => {
+export const ChatView = ({ chat }: { chat: ReadChatActionReturnType }) => {
   const {
     id: activeChatId,
     messages,

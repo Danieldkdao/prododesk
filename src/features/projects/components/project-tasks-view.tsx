@@ -48,10 +48,6 @@ export const ProjectTasksView = ({
     );
   }
 
-  const tasksClientKey =
-    metadata.clientKey +
-    `${metadata.allTasksCompleted ? "all tasks complete" : "some tasks remain"}`;
-
   return (
     <Tabs defaultValue="list">
       <div className="flex flex-col gap-4 w-full">
@@ -81,7 +77,7 @@ export const ProjectTasksView = ({
         </div>
         <TabsContent value="list">
           <ProjectTasksInfiniteList
-            key={tasksClientKey}
+            key={metadata.clientKey}
             project={currentProject}
             initialTasks={tasks}
             initialHasNextPage={metadata.hasNextPage}

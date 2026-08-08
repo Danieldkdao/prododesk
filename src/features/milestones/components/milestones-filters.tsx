@@ -28,7 +28,7 @@ export const MilestonesFilters = ({ projectId }: { projectId: string }) => {
   const [filters, setFilters] = useMilestonesParams();
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 w-full">
       <SearchInput
         initialSearch={filters.milestoneSearch}
         onValueChange={(search) => setFilters({ milestoneSearch: search })}

@@ -80,7 +80,7 @@ export const createChatAction = async (unsafeData: ChatMessageSchemaType) => {
   }
 };
 
-export const getChatAction = async (userId: string, chatId: string) => {
+export const readChatAction = async (userId: string, chatId: string) => {
   "use cache";
   cacheTag(getChatIdTag(chatId));
 
@@ -103,9 +103,9 @@ export const getChatAction = async (userId: string, chatId: string) => {
 
   return existingChat ?? null;
 };
-export type GetChatActionReturnType = UnwrapAsync<typeof getChatAction>;
+export type ReadChatActionReturnType = UnwrapAsync<typeof readChatAction>;
 
-export const getChatsAction = async (
+export const readChatsAction = async (
   userId: string,
   filterOptions: { search?: string | null; page: number },
 ) => {
@@ -139,16 +139,31 @@ export const getChatsAction = async (
 
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalChats.count;
+  const clientKey = JSON.stringify({
+    context: {
+      userId,
+    },
+    filters: {
+      search,
+    },
+    results: chats.map(({ id, name, updatedAt }) => ({
+      id,
+      name,
+      updatedAt,
+    })),
+    hasNextPage,
+  });
 
   return {
     chats,
     metadata: {
       hasPrevPage,
       hasNextPage,
+      clientKey,
     },
   };
 };
-export type GetChatsActionReturnType = UnwrapAsync<typeof getChatsAction>;
+export type ReadChatsActionReturnType = UnwrapAsync<typeof readChatsAction>;
 
 export const updateChatAction = async (
   chatId: string,

@@ -38,6 +38,7 @@ const ProjectIdMilestonesSuspense = async ({
     ...defaultDayTasksParamsOptions,
     search,
     page: DEFAULT_PAGE,
+    unassignedOnly: true,
   });
   if (!milestonesResponse || !tasksResponse) {
     return (

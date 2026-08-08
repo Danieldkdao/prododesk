@@ -4,37 +4,37 @@ import { db } from "@/db/db";
 import { AreaTable, Color, ProjectTable, TaskTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
-    GENERAL_ERROR_MESSAGE,
-    INVALID_DATA_ERROR_MESSAGE,
-    NOT_FOUND_ERROR_MESSAGE,
-    PAGE_SIZE,
-    UNAUTHED_ERROR_MESSAGE,
+  GENERAL_ERROR_MESSAGE,
+  INVALID_DATA_ERROR_MESSAGE,
+  NOT_FOUND_ERROR_MESSAGE,
+  PAGE_SIZE,
+  UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { ArchiveStatusFilterOption } from "@/lib/params";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
 import {
-    and,
-    asc,
-    count,
-    desc,
-    eq,
-    getTableColumns,
-    ilike,
-    inArray,
-    isNotNull,
-    isNull,
-    or,
-    SQL,
-    sql,
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  SQL,
+  sql,
 } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { AreasSortByOption } from "../lib/areas-params";
 import {
-    confirmUserAreaOwnership,
-    deleteAreaDb,
-    insertAreaDb,
-    updateAreaDb,
+  confirmUserAreaOwnership,
+  deleteAreaDb,
+  insertAreaDb,
+  updateAreaDb,
 } from "../server/areas";
 import { getUserAreaTag } from "../server/cache/areas";
 import { areaSchema, AreaSchemaType } from "./schemas";
@@ -140,7 +140,11 @@ const readCachedAreasAction = async (
 
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalAreas.count;
-  const clientKey = `${JSON.stringify(areas)}${hasNextPage ? "has next page" : "no next page"}`;
+  const clientKey = JSON.stringify({
+    filters: filterOptions,
+    results: areas.map(({ id, updatedAt }) => ({ id, updatedAt })),
+    hasNextPage,
+  });
 
   return {
     areas,

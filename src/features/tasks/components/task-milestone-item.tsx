@@ -32,7 +32,7 @@ export const TaskMilestoneItem = ({
     >
       <div className="min-w-0 p-2 w-full">
         <div className="flex items-center gap-2 min-w-0">
-          <StatusIcon className={cn("size-4", textColor)} />
+          <StatusIcon className={cn("size-4 shrink-0", textColor)} />
           <span className="text-base font-medium">{task.name}</span>
           <Badge
             variant="outline"

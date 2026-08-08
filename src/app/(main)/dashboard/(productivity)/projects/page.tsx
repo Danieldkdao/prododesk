@@ -48,6 +48,7 @@ const ProjectsSuspense = async ({ searchParams }: SearchParamsType) => {
     <div className="w-full flex flex-col gap-8">
       <ProjectsFilters />
       <ProjectsInfiniteList
+        key={metadata.clientKey}
         initialProjects={projects}
         initialHasNextPage={metadata.hasNextPage}
       />

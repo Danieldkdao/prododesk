@@ -1,6 +1,6 @@
 import { ErrorState } from "@/components/error-state";
 import { Button } from "@/components/ui/button";
-import { getChatAction } from "@/features/chats/actions/actions";
+import { readChatAction } from "@/features/chats/actions/actions";
 import { ChatView } from "@/features/chats/components/chat-view";
 import { ChatViewSkeleton } from "@/features/chats/components/chat-view-skeleton";
 import { getCurrentUser } from "@/lib/auth/helpers";
@@ -38,7 +38,7 @@ const ChatIdSuspense = async ({ params }: ChatIdParams) => {
     );
 
   const { chatId } = await params;
-  const chat = await getChatAction(userId, chatId);
+  const chat = await readChatAction(userId, chatId);
 
   if (!chat) {
     return (

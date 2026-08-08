@@ -1,11 +1,12 @@
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { SetterType } from "@/lib/types";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 type Options<T> = {
-  rootMargin?: `${number}px`;
+  rootMargin?: string;
   defaultPage?: number;
   additionalScrollDeps?: unknown[];
+  resetKey?: string;
   ownState?: {
     values: T[];
     setValues: SetterType<T[]>;
@@ -24,10 +25,13 @@ export const useInfiniteScroll = <T, K extends string>(
   {
     rootMargin = "400px",
     defaultPage = DEFAULT_PAGE,
+    resetKey,
     additionalScrollDeps = [],
     ownState = undefined,
   }: Options<T> = {},
 ) => {
+  const loadingRef = useRef(false);
+
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
 
@@ -53,13 +57,22 @@ export const useInfiniteScroll = <T, K extends string>(
     : scrollDeps;
 
   useEffect(() => {
+    loadingRef.current = false;
+    setPage(defaultPage);
+    setHasNextPage(initialHasNextPage);
+    setterToUse(initialItems);
+  }, [resetKey]);
+
+  useEffect(() => {
     if (!sentinelEl || isPending || !hasNextPage) return;
 
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
+      async ([entry]) => {
+        if (!entry.isIntersecting || loadingRef.current) return;
 
-        startTransition(async () => {
+        loadingRef.current = true;
+
+        try {
           const nextPage = page + 1;
 
           const response = await fetchData(nextPage);
@@ -74,10 +87,14 @@ export const useInfiniteScroll = <T, K extends string>(
             .filter((value): value is T[] => Array.isArray(value))
             .flat();
 
-          setterToUse((prev) => [...prev, ...items]);
-          setHasNextPage(metadata.hasNextPage);
-          setPage(nextPage);
-        });
+          startTransition(() => {
+            setterToUse((prev) => [...prev, ...items]);
+            setHasNextPage(metadata.hasNextPage);
+            setPage(nextPage);
+          });
+        } finally {
+          loadingRef.current = false;
+        }
       },
       {
         root: containerEl ?? undefined,

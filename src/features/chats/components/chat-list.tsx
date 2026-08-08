@@ -1,7 +1,7 @@
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { ReactNode, Suspense } from "react";
-import { getChatsAction } from "../actions/actions";
+import { readChatsAction } from "../actions/actions";
 import {
   ChatListVariant,
   InfiniteChatListAdapter,
@@ -39,14 +39,14 @@ const ChatListSuspense = async ({
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  const { chats, metadata } = await getChatsAction(userId, {
+  const { chats, metadata } = await readChatsAction(userId, {
     search: useSearch ? "" : undefined,
     page: DEFAULT_PAGE,
   });
 
   return (
     <InfiniteChatListAdapter
-      key={chats.map((chat) => `${chat.id}-${chat.name}`).join("")}
+      key={metadata.clientKey}
       userId={userId}
       initialChats={chats}
       initialHasNextPage={metadata.hasNextPage}

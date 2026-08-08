@@ -5,7 +5,7 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { useDialogStateStore } from "@/store/use-dialog-state-store";
 import { JSX, ReactNode, useCallback, useEffect } from "react";
-import { getChatsAction } from "./actions/actions";
+import { readChatsAction } from "./actions/actions";
 
 export const InfiniteChatList = ({
   userId,
@@ -26,7 +26,7 @@ export const InfiniteChatList = ({
 
   const fetchChats = useCallback(
     (nextPage: number) => {
-      return getChatsAction(userId, {
+      return readChatsAction(userId, {
         search: useSearch ? search : undefined,
         page: nextPage,
       });
@@ -60,7 +60,7 @@ export const InfiniteChatList = ({
     setPage(DEFAULT_PAGE);
 
     startTransition(async () => {
-      const { chats, metadata } = await getChatsAction(userId, {
+      const { chats, metadata } = await readChatsAction(userId, {
         search,
         page: DEFAULT_PAGE,
       });

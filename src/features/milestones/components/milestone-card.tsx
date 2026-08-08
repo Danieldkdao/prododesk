@@ -12,9 +12,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  MilestoneStatus,
+  milestoneStatuses,
+  ProjectSelectType,
+  TaskSelectType,
+} from "@/db/schema";
 import { TaskMilestoneItem } from "@/features/tasks/components/task-milestone-item";
 import { cn } from "@/lib/utils";
-import { useDroppable } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
 import { format, parse } from "date-fns";
 import {
   CalendarDaysIcon,
@@ -26,6 +32,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import {
   ReadProjectMilestonesActionType,
   updateMilestoneStatusAction,
@@ -33,14 +40,6 @@ import {
 import { formatMilestoneStatus } from "../lib/formatters";
 import { DeleteMilestoneButton } from "./delete-milestone-button";
 import { MilestoneDialog } from "./milestone-dialog";
-import {
-  MilestoneStatus,
-  milestoneStatuses,
-  ProjectSelectType,
-  TaskSelectType,
-} from "@/db/schema";
-import { toast } from "sonner";
-import { useSortable } from "@dnd-kit/react/sortable";
 
 export const MilestoneCard = ({
   milestone,
@@ -56,10 +55,11 @@ export const MilestoneCard = ({
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [isStatusPending, startStatusTransition] = useTransition();
   const [status, setStatus] = useState(milestone.status);
-  const { ref, isDropTarget } = useSortable({
+  const { ref, handleRef, isDropTarget } = useSortable({
     id: milestone.id,
     index,
     type: "milestone",
+    accept: ["task", "milestone"],
   });
 
   const {
@@ -143,9 +143,9 @@ export const MilestoneCard = ({
               isDropTarget && "border-primary",
             )}
           >
-            <div className="py-4.5 pr-1 pl-4 cursor-pointer">
+            <button ref={handleRef} className="py-4.5 pr-1 pl-4 cursor-pointer">
               <GripVerticalIcon className="size-5 text-muted-foreground" />
-            </div>
+            </button>
             <CollapsibleTrigger className="min-w-0 flex-1 pr-4 py-4 pl-1 text-left cursor-pointer">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="min-w-0 flex-1 truncate text-lg font-medium">

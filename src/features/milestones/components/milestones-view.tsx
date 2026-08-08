@@ -197,20 +197,18 @@ export const MilestonesView = ({
         }
       }}
     >
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="w-full flex flex-col gap-4 md:max-w-100">
-          <TasksFilters onlySearch />
-          {/*todo: adjust layout later*/}
-          <div className="min-h-100 h-full overflow-y-auto">
-            <div className="flex flex-col gap-4">
-              <MilestoneTasksInfiniteList
-                projectId={projectId}
-                tasks={tasks}
-                setTasks={setTasks}
-                initialHasNextPage={tasksMetadata.hasNextPage}
-              />
-            </div>
+      <div className="flex flex-col lg:flex-row gap-2 lg:gap-4 w-full">
+        <div className="flex w-full min-w-0 flex-col gap-4 lg:h-[calc(100dvh-12rem)] lg:max-w-100">
+          <div className="hidden lg:block">
+            <TasksFilters onlySearch />
           </div>
+          <MilestoneTasksInfiniteList
+            projectId={projectId}
+            tasks={tasks}
+            setTasks={setTasks}
+            initialHasNextPage={tasksMetadata.hasNextPage}
+            resetKey={tasksMetadata.clientKey}
+          />
         </div>
         <Separator orientation="vertical" />
         <div className="w-full flex flex-col gap-4 flex-1">
@@ -221,6 +219,7 @@ export const MilestonesView = ({
             setMilestones={setMilestones}
             initialHasNextPage={milestonesMetadata.hasNextPage}
             tasksState={tasks}
+            resetKey={milestonesMetadata.clientKey}
           />
         </div>
       </div>
