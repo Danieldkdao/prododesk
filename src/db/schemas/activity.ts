@@ -1,9 +1,13 @@
-import { pgTable, text, uuid, varchar } from "drizzle-orm/pg-core";
-import { createdAt, id } from "../helpers";
-import { user } from "./user";
-import { activitySourceEnum, activitySubjectEnum } from "../shared";
-import { ProjectTable } from "./project";
 import { relations } from "drizzle-orm";
+import { pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { createdAt, id } from "../helpers";
+import {
+  activityActionEnum,
+  activitySourceEnum,
+  activitySubjectEnum,
+} from "../shared";
+import { ProjectTable } from "./project";
+import { user } from "./user";
 
 export const ActivityTable = pgTable("activities", {
   id,
@@ -11,14 +15,14 @@ export const ActivityTable = pgTable("activities", {
     .references(() => user.id, { onDelete: "cascade" })
     .notNull(),
   source: activitySourceEnum("source").notNull(),
+  action: activityActionEnum("action").notNull(),
   subject: activitySubjectEnum("subject").notNull(),
   subjectId: uuid("subject_id"),
   subjectLabel: text("subject_label").notNull(),
   projectId: uuid("project_id").references(() => ProjectTable.id, {
-    onDelete: "cascade",
+    onDelete: "set null",
   }),
-  title: varchar("title"),
-  description: text("description"),
+  message: text("message").notNull(),
   createdAt,
 });
 

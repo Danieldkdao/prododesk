@@ -97,3 +97,7 @@ export const activitySubjectEnum = pgEnum(
   "activity_subjects",
   activitySubjects,
 );
+
+export const activityActions = ["create", "update", "delete"] as const;
+export type ActivityAction = (typeof activityActions)[number];
+export const activityActionEnum = pgEnum("activity_actions", activityActions);

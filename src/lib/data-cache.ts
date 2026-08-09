@@ -1,5 +1,11 @@
 type CacheTag =
-  "tasks" | "chats" | "areas" | "projects" | "documents" | "milestones";
+  | "tasks"
+  | "chats"
+  | "areas"
+  | "projects"
+  | "documents"
+  | "milestones"
+  | "activity";
 
 export const getGlobalTag = (tag: CacheTag) => {
   return `global:${tag}` as const;

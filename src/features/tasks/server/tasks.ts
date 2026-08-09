@@ -1,10 +1,11 @@
-import { db } from "@/db/db";
+import { db, DbTransaction } from "@/db/db";
 import { TaskTable, TaskInsertType, TaskSelectType } from "@/db/schema";
 import { revalidateTaskCache } from "./cache/tasks";
 import { and, eq, SQL } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 import { revalidateMilestoneCache } from "@/features/milestones/server/cache/milestones";
+import { insertActivityDb } from "@/features/activity/server/activity";
 
 export const confirmUserTaskOwnership = async (
   taskId: string,
@@ -26,18 +27,46 @@ export const confirmUserTaskOwnership = async (
   return existingTask ?? null;
 };
 
-export const insertTaskDb = async (taskData: TaskInsertType) => {
-  const [insertedTask] = await db
-    .insert(TaskTable)
-    .values(taskData)
-    .returning();
+export const insertTaskDb = async (
+  taskData: TaskInsertType,
+  tx?: DbTransaction,
+) => {
+  try {
+    const insertedTask = await db.transaction(async (pgtx) => {
+      const [insertedTask] = await (tx ?? pgtx)
+        .insert(TaskTable)
+        .values(taskData)
+        .returning();
 
-  revalidateTaskCache(insertedTask.userId, insertedTask.id);
-  if (insertedTask?.projectId) {
-    revalidateProjectCache(insertedTask.userId, insertedTask.projectId);
+      if (!insertedTask) throw new Error("Failed to insert task.");
+
+      const insertedActivity = await insertActivityDb(
+        {
+          source: "user",
+          subject: "task",
+          action: "create",
+          subjectId: insertedTask.id,
+          subjectLabel: insertedTask.name,
+          projectId: insertedTask.projectId,
+          message: `Created task "${insertedTask.name}"`,
+        },
+        tx ?? pgtx,
+      );
+      if (!insertedActivity) throw new Error("Failed to insert activity.");
+
+      return insertedTask;
+    });
+
+    revalidateTaskCache(insertedTask.userId, insertedTask.id);
+    if (insertedTask?.projectId) {
+      revalidateProjectCache(insertedTask.userId, insertedTask.projectId);
+    }
+
+    return insertedTask;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
-
-  return insertedTask;
 };
 
 export const updateTaskDb = async (
@@ -46,44 +75,87 @@ export const updateTaskDb = async (
     Partial<TaskSelectType>,
     "id" | "createdAt" | "updatedAt" | "userId"
   >,
+  tx?: DbTransaction,
 ) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
-
   const existingTask = await confirmUserTaskOwnership(taskId);
   if (!existingTask) return null;
 
-  const [updatedTask] = await db
-    .update(TaskTable)
-    .set(taskData)
-    .where(eq(TaskTable.id, existingTask.id))
-    .returning();
+  try {
+    const updatedTask = await db.transaction(async (pgtx) => {
+      const [updatedTask] = await (tx ?? pgtx)
+        .update(TaskTable)
+        .set(taskData)
+        .where(eq(TaskTable.id, existingTask.id))
+        .returning();
+      if (!updatedTask) throw new Error("Failed to update task.");
 
-  revalidateTaskCache(updatedTask.userId, updatedTask.id);
-  if (updatedTask?.projectId) {
-    revalidateProjectCache(updatedTask.userId, updatedTask.projectId);
-    revalidateMilestoneCache(updatedTask.userId, updatedTask.projectId);
+      const insertedActivity = await insertActivityDb(
+        {
+          source: "user",
+          subject: "task",
+          action: "update",
+          subjectId: updatedTask.id,
+          subjectLabel: updatedTask.name,
+          projectId: updatedTask.projectId,
+          message: `Updated task ${updatedTask.name}`,
+        },
+        tx ?? pgtx,
+      );
+      if (!insertedActivity) throw new Error("Failed to insert activity.");
+
+      return updatedTask;
+    });
+
+    revalidateTaskCache(updatedTask.userId, updatedTask.id);
+    if (updatedTask?.projectId) {
+      revalidateProjectCache(updatedTask.userId, updatedTask.projectId);
+      revalidateMilestoneCache(updatedTask.userId, updatedTask.projectId);
+    }
+
+    return updatedTask;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
-
-  return updatedTask;
 };
 
-export const deleteTaskDb = async (taskId: string) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
-
+export const deleteTaskDb = async (taskId: string, tx?: DbTransaction) => {
   const existingTask = await confirmUserTaskOwnership(taskId);
   if (!existingTask) return null;
 
-  const [deletedTask] = await db
-    .delete(TaskTable)
-    .where(eq(TaskTable.id, existingTask.id))
-    .returning();
+  try {
+    const deletedTask = await db.transaction(async (pgtx) => {
+      const [deletedTask] = await (tx ?? pgtx)
+        .delete(TaskTable)
+        .where(eq(TaskTable.id, existingTask.id))
+        .returning();
+      if (!deletedTask) throw new Error("Failed to delete task.");
 
-  revalidateTaskCache(deletedTask.userId, deletedTask.id);
-  if (deletedTask?.projectId) {
-    revalidateProjectCache(deletedTask.userId, deletedTask.projectId);
+      const insertedActivity = await insertActivityDb(
+        {
+          source: "user",
+          subject: "task",
+          action: "delete",
+          subjectId: deletedTask.id,
+          subjectLabel: deletedTask.name,
+          projectId: deletedTask.projectId,
+          message: `Deleted task "${deletedTask.name}"`,
+        },
+        tx ?? pgtx,
+      );
+      if (!insertedActivity) throw new Error("Failed to insert activity.");
+
+      return deletedTask;
+    });
+
+    revalidateTaskCache(deletedTask.userId, deletedTask.id);
+    if (deletedTask?.projectId) {
+      revalidateProjectCache(deletedTask.userId, deletedTask.projectId);
+    }
+
+    return deletedTask;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
-
-  return deletedTask;
 };
