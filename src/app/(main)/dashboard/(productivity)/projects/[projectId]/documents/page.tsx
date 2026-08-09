@@ -42,7 +42,7 @@ const ProjectIdDocumentsSuspense = async ({
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <DocumentsFilters />
+      <DocumentsFilters projectId={projectId} />
       <DocumentsInfiniteList
         key={metadata.clientKey}
         initialDocuments={documents}

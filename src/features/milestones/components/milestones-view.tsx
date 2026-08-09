@@ -21,6 +21,7 @@ import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { MILESTONE_ID_NULL } from "../lib/constants";
 import { isSortableOperation } from "@dnd-kit/react/sortable";
+import { ProjectSelectType, TaskSelectType } from "@/db/schema";
 
 export const MilestonesView = ({
   projectId,
@@ -38,7 +39,15 @@ export const MilestonesView = ({
   const taskSavesQueueRef = useRef(new Map<string, Promise<void>>());
   const milestoneSavesQueueRef = useRef(new Map<string, Promise<void>>());
   const [milestones, setMilestones] = useState(serverMilestones);
-  const [tasks, setTasks] = useState(serverTasks);
+  const [tasks, setTasks] = useState([...serverTasks]);
+  const allTasks = [
+    ...tasks,
+    ...milestones
+      .flatMap((milestone) => milestone.tasks)
+      .filter((task): task is TaskSelectType & { project: ProjectSelectType } =>
+        Boolean(task),
+      ),
+  ];
 
   useEffect(() => {
     setMilestones(serverMilestones);
@@ -218,7 +227,7 @@ export const MilestonesView = ({
             milestones={milestones}
             setMilestones={setMilestones}
             initialHasNextPage={milestonesMetadata.hasNextPage}
-            tasksState={tasks}
+            tasksState={allTasks}
             resetKey={milestonesMetadata.clientKey}
           />
         </div>

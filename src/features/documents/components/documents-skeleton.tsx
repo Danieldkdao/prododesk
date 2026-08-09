@@ -11,6 +11,9 @@ export const DocumentsSkeleton = () => {
         <div className="flex size-10 shrink-0 items-center justify-center border">
           <Skeleton className="size-5" />
         </div>
+        <div className="flex size-10 shrink-0 items-center justify-center border">
+          <Skeleton className="size-5" />
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 8 }).map((_, index) => (

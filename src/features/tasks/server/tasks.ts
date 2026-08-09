@@ -97,7 +97,7 @@ export const updateTaskDb = async (
           subjectId: updatedTask.id,
           subjectLabel: updatedTask.name,
           projectId: updatedTask.projectId,
-          message: `Updated task ${updatedTask.name}`,
+          message: `Updated task "${updatedTask.name}"`,
         },
         tx ?? pgtx,
       );

@@ -8,7 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { FilterIcon } from "lucide-react";
+import { FilterIcon, PlusIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -21,8 +21,10 @@ import {
   documentsSortByOptions,
 } from "../lib/documents-params";
 import { formatDocumentSortByOption } from "../lib/formatters";
+import { CreateDocumentButton } from "./create-document-button";
+import { TooltipWrapper } from "@/components/tooltip-wrapper";
 
-export const DocumentsFilters = () => {
+export const DocumentsFilters = ({ projectId }: { projectId: string }) => {
   const [filters, setFilters] = useDocumentsParams();
 
   return (
@@ -67,6 +69,11 @@ export const DocumentsFilters = () => {
           </div>
         </PopoverContent>
       </Popover>
+      <TooltipWrapper content="New Document">
+        <CreateDocumentButton projectId={projectId} size="icon">
+          <PlusIcon />
+        </CreateDocumentButton>
+      </TooltipWrapper>
     </div>
   );
 };
