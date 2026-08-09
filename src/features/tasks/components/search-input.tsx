@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { SearchIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDebouncedCallback } from "@tanstack/react-pacer";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +27,10 @@ export const SearchInput = ({
   const handleDebouncedSearch = useDebouncedCallback(handleSearch, {
     wait: 250,
   });
+
+  useEffect(() => {
+    setSearch(initialSearch);
+  }, [initialSearch]);
 
   return (
     <div

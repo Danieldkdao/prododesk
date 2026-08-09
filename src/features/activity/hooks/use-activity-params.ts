@@ -1,5 +1,10 @@
-import { parseAsInteger, useQueryStates } from "nuqs";
-import { parseAsArrayOf, parseAsString, parseAsStringEnum } from "nuqs";
+import {
+  parseAsInteger,
+  useQueryStates,
+  parseAsArrayOf,
+  parseAsString,
+  parseAsStringEnum,
+} from "nuqs";
 import { activitySortByOptions } from "../lib/activity-params";
 import {
   activityActions,

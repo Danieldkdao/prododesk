@@ -14,7 +14,8 @@ import {
 import { ReadProjectActivityActionReturnType } from "../actions/actions";
 import { useActivityParams } from "../hooks/use-activity-params";
 import { ActivityProjectTableRow } from "./activity-project-table-row";
-import { PAGE_SIZE } from "@/lib/constants";
+import { DEFAULT_PAGE, PAGE_SIZE } from "@/lib/constants";
+import { NotFound } from "@/components/not-found";
 
 export const ActivityProjectTable = ({
   response,
@@ -29,7 +30,18 @@ export const ActivityProjectTable = ({
     setFilters({ page: filters.page + amount });
   };
 
-  return (
+  const resetFilters = () => {
+    setFilters({
+      page: DEFAULT_PAGE,
+      search: "",
+      actions: [],
+      sortBy: "most_recent",
+      sources: [],
+      subjects: [],
+    });
+  };
+
+  return activity.length ? (
     <div className="flex flex-col gap-4 w-full">
       <Table>
         <TableHeader>
@@ -38,6 +50,7 @@ export const ActivityProjectTable = ({
             <TableHead>Source</TableHead>
             <TableHead>Action</TableHead>
             <TableHead>Subject</TableHead>
+            <TableHead>When</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -72,5 +85,14 @@ export const ActivityProjectTable = ({
         </div>
       </div>
     </div>
+  ) : (
+    <NotFound
+      title="No activity found"
+      description="We were unable to find any activity in this project that match the selected filters. Try changing the filters or update this project."
+    >
+      <Button onClick={resetFilters} className="w-full">
+        Reset filters
+      </Button>
+    </NotFound>
   );
 };

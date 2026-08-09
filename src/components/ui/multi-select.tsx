@@ -205,7 +205,7 @@ export function MultiSelectValue({
 
   if (selectedValues.size === 0 && placeholder) {
     return (
-      <span className="min-w-0 overflow-hidden font-normal text-muted-foreground">
+      <span className="min-w-0 overflow-hidden font-normal normal-case tracking-normal text-muted-foreground">
         {placeholder}
       </span>
     );
@@ -235,7 +235,7 @@ export function MultiSelectValue({
           <Badge
             variant="outline"
             data-selected-item
-            className="group flex items-center gap-1 tracking-wide bg-primary/20 w-auto! px-2 py-1"
+            className="group flex items-center gap-1 tracking-wide bg-primary/20 w-auto! px-2 py-1 font-medium"
             key={value}
             onClick={
               clickToRemove
@@ -282,7 +282,7 @@ export function MultiSelectContent({
           <CommandList>{children}</CommandList>
         </Command>
       </div>
-      <PopoverContent className="min-w-[var(--radix-popover-trigger-width)] p-0">
+      <PopoverContent className="min-w-[var(--radix-popover-trigger-width)] p-0 border">
         <Command {...props}>
           {canSearch ? (
             <CommandInput

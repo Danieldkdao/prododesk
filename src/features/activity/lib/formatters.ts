@@ -11,6 +11,7 @@ import {
   Trash2Icon,
   UserIcon,
 } from "lucide-react";
+import { ActivitySortByOption } from "./activity-params";
 
 export const formatActivitySource = (source: ActivitySource) => {
   switch (source) {
@@ -80,5 +81,18 @@ export const formatActivitySubject = (subject: ActivitySubject) => {
       };
     default:
       throw new Error(`Unknown activity subject: ${subject satisfies never}`);
+  }
+};
+
+export const formatActivitySortByOption = (option: ActivitySortByOption) => {
+  switch (option) {
+    case "most_recent":
+      return "Most recent";
+    case "oldest":
+      return "Oldest";
+    default:
+      throw new Error(
+        `Unknown activity sort by option: ${option satisfies never}`,
+      );
   }
 };

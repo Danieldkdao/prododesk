@@ -1,8 +1,9 @@
 import { ErrorState } from "@/components/error-state";
 import { readProjectActivityAction } from "@/features/activity/actions/actions";
+import { ActivityFilters } from "@/features/activity/components/activity-filters";
+import { ActivityProjectSectionSkeleton } from "@/features/activity/components/activity-project-section-skeleton";
 import { ActivityProjectTable } from "@/features/activity/components/activity-project-table";
 import { loadActivitySearchParams } from "@/features/activity/lib/activity-params";
-import { DEFAULT_PAGE } from "@/lib/constants";
 import { ParamsId, SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
 
@@ -10,7 +11,7 @@ type ProjectIdActivityParams = ParamsId<"projectId"> & SearchParamsType;
 
 const ProjectIdActivityPage = (props: ProjectIdActivityParams) => {
   return (
-    <Suspense>
+    <Suspense fallback={<ActivityProjectSectionSkeleton />}>
       <ProjectIdActivitySuspense {...props} />
     </Suspense>
   );
@@ -34,10 +35,11 @@ const ProjectIdActivitySuspense = async ({
     );
   }
 
-  const { activity, metadata } = response;
+  const { metadata } = response;
 
   return (
     <div className="flex flex-col gap-4 w-full">
+      <ActivityFilters />
       <ActivityProjectTable key={metadata.clientKey} response={response} />
     </div>
   );
