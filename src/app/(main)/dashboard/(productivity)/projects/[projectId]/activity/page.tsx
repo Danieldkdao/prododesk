@@ -1,5 +1,8 @@
 import { ErrorState } from "@/components/error-state";
 import { readProjectActivityAction } from "@/features/activity/actions/actions";
+import { ActivityProjectTable } from "@/features/activity/components/activity-project-table";
+import { loadActivitySearchParams } from "@/features/activity/lib/activity-params";
+import { DEFAULT_PAGE } from "@/lib/constants";
 import { ParamsId, SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
 
@@ -19,8 +22,10 @@ const ProjectIdActivitySuspense = async ({
 }: ProjectIdActivityParams) => {
   const { projectId } = await params;
 
-  const activity = await readProjectActivityAction(projectId);
-  if (!activity) {
+  const filters = await loadActivitySearchParams(searchParams);
+
+  const response = await readProjectActivityAction(projectId, filters);
+  if (!response) {
     return (
       <ErrorState
         title="An error occurred"
@@ -29,7 +34,13 @@ const ProjectIdActivitySuspense = async ({
     );
   }
 
-  return <div>{JSON.stringify(activity)}</div>;
+  const { activity, metadata } = response;
+
+  return (
+    <div className="flex flex-col gap-4 w-full">
+      <ActivityProjectTable key={metadata.clientKey} response={response} />
+    </div>
+  );
 };
 
 export default ProjectIdActivityPage;
