@@ -1,7 +1,8 @@
 import { db, DbTransaction } from "@/db/db";
 import { ActivityInsertType, ActivityTable } from "@/db/schema";
-import { revalidateActivityCache } from "./cache/activity";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { and, desc, eq } from "drizzle-orm";
+import { revalidateActivityCache } from "./cache/activity";
 
 export const insertActivityDb = async (
   data: Omit<ActivityInsertType, "userId">,
@@ -9,6 +10,20 @@ export const insertActivityDb = async (
 ) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
+
+  const [lastActivity] = await (tx ?? db)
+    .select()
+    .from(ActivityTable)
+    .where(
+      and(
+        eq(ActivityTable.userId, userId),
+        eq(ActivityTable.projectId, data.projectId ?? null),
+      ),
+    )
+    .orderBy(desc(ActivityTable.createdAt))
+    .limit(1);
+
+  if (lastActivity.subjectId === data.subjectId) return lastActivity;
 
   const [insertedActivity] = await (tx ?? db)
     .insert(ActivityTable)

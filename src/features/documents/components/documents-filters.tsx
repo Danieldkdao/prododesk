@@ -24,7 +24,7 @@ import { formatDocumentSortByOption } from "../lib/formatters";
 import { CreateDocumentButton } from "./create-document-button";
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
 
-export const DocumentsFilters = ({ projectId }: { projectId: string }) => {
+export const DocumentsFilters = ({ projectId }: { projectId?: string }) => {
   const [filters, setFilters] = useDocumentsParams();
 
   return (
@@ -69,11 +69,13 @@ export const DocumentsFilters = ({ projectId }: { projectId: string }) => {
           </div>
         </PopoverContent>
       </Popover>
-      <TooltipWrapper content="New Document">
-        <CreateDocumentButton projectId={projectId} size="icon">
-          <PlusIcon />
-        </CreateDocumentButton>
-      </TooltipWrapper>
+      {projectId && (
+        <TooltipWrapper content="New Document">
+          <CreateDocumentButton projectId={projectId} size="icon">
+            <PlusIcon />
+          </CreateDocumentButton>
+        </TooltipWrapper>
+      )}
     </div>
   );
 };
