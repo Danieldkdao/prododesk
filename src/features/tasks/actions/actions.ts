@@ -282,6 +282,7 @@ const readCachedTasksAction = async (
     dateTimeEndRange: Date | null;
     page: number;
     unassignedOnly?: boolean;
+    allTasks?: boolean;
   },
 ) => {
   "use cache";
@@ -298,6 +299,7 @@ const readCachedTasksAction = async (
     dateTimeEndRange,
     page,
     unassignedOnly = false,
+    allTasks = false,
   } = filterOptions;
 
   let existingProjects;
@@ -393,7 +395,7 @@ const readCachedTasksAction = async (
     milestoneFilter,
   );
 
-  const tasks = await db
+  const baseFetchTasks = db
     .select({
       ...getTableColumns(TaskTable),
       project: getTableColumns(ProjectTable),
@@ -401,9 +403,13 @@ const readCachedTasksAction = async (
     .from(TaskTable)
     .where(whereQuery)
     .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
-    .orderBy(sortByMap[sortBy])
-    .offset(offset)
-    .limit(PAGE_SIZE);
+    .orderBy(sortByMap[sortBy]);
+
+  const fetchTasks = allTasks
+    ? baseFetchTasks
+    : baseFetchTasks.offset(offset).limit(PAGE_SIZE);
+
+  const tasks = await fetchTasks;
 
   const [totalSelectedTasks] = await db
     .select({
@@ -476,6 +482,7 @@ export const readTasksAction = async (
     dateTimeEndRange: Date | null;
     page: number;
     unassignedOnly?: boolean;
+    allTasks?: boolean;
   },
 ) => {
   const { userId, user } = await getCurrentUser();

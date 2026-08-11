@@ -24,17 +24,46 @@ import {
 } from "@/features/tasks/lib/formatters";
 import { useState } from "react";
 import { BoardProperty } from "../lib/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CircleIcon, FlagIcon } from "lucide-react";
 
 export const ProjectTasksView = ({
   projectId,
-  response,
+  listResponse,
+  boardResponse,
 }: {
   projectId: string;
-  response: ReadTasksActionReturnType;
+  listResponse: ReadTasksActionReturnType;
+  boardResponse: ReadTasksActionReturnType;
 }) => {
-  const { tasks, metadata } = response;
+  const { tasks: listTasks, metadata } = listResponse;
+  const { tasks: boardTasks } = boardResponse;
 
+  const [tabValue, setTabValue] = useState<"list" | "board">("list");
   const [boardViewKind, setBoardViewKind] = useState<BoardProperty>("status");
+
+  const boardViewKinds = [
+    {
+      icon: CircleIcon,
+      label: "Status",
+      value: "status",
+    },
+    {
+      icon: FlagIcon,
+      label: "Priority",
+      value: "priority",
+    },
+  ];
+
+  const currentSelectedBoardViewKind = boardViewKinds.find(
+    (kind) => kind.value === boardViewKind,
+  );
 
   const currentProject = metadata.projects?.find(
     (project) => project.id === projectId,
@@ -49,37 +78,51 @@ export const ProjectTasksView = ({
   }
 
   return (
-    <Tabs defaultValue="list">
+    <Tabs defaultValue="list" value={tabValue} onValueChange={setTabValue}>
       <div className="flex flex-col gap-4 w-full">
-        <div className="flex items-center gap-2 w-full">
+        <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
           <TasksFilters defaultProject={currentProject} />
           <TabsList>
             <TabsTrigger value="list">List</TabsTrigger>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<TabsTrigger value="board">Board</TabsTrigger>}
-              />
-              <DropdownMenuContent>
-                <DropdownMenuRadioGroup
-                  value={boardViewKind}
-                  onValueChange={setBoardViewKind}
-                >
-                  <DropdownMenuRadioItem value="status">
-                    Status
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="priority">
-                    Priority
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <TabsTrigger
+              nativeButton={false}
+              value="board"
+              render={
+                <div className="flex items-center gap-2">
+                  Board
+                  <Select
+                    value={boardViewKind}
+                    onValueChange={(value) => {
+                      setBoardViewKind(value as BoardProperty);
+                      setTabValue("board");
+                    }}
+                  >
+                    <SelectTrigger className="w-fit border-none">
+                      <SelectValue>
+                        {currentSelectedBoardViewKind && (
+                          <currentSelectedBoardViewKind.icon className="size-4" />
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent align="end">
+                      {boardViewKinds.map((kind) => (
+                        <SelectItem key={kind.value} value={kind.value}>
+                          <kind.icon className="size-5" />
+                          <span>{kind.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              }
+            ></TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="list">
           <ProjectTasksInfiniteList
             key={metadata.clientKey}
             project={currentProject}
-            initialTasks={tasks}
+            initialTasks={listTasks}
             initialHasNextPage={metadata.hasNextPage}
             allTasksCompleted={metadata.allTasksCompleted}
           />
@@ -89,7 +132,7 @@ export const ProjectTasksView = ({
             <ProjectTaskBoard
               key={currentProject.id}
               project={currentProject}
-              initialTasks={tasks}
+              initialTasks={boardTasks}
               property="status"
               propertyOptions={taskStatuses}
               formatter={formatTaskStatus}
@@ -99,7 +142,7 @@ export const ProjectTasksView = ({
             <ProjectTaskBoard
               key={currentProject.id}
               project={currentProject}
-              initialTasks={tasks}
+              initialTasks={boardTasks}
               property="priority"
               propertyOptions={taskPriorities}
               formatter={formatTaskPriority}

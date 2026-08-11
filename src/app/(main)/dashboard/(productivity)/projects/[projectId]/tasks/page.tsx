@@ -59,11 +59,18 @@ const ProjectIdTasksSuspense = async ({
   const { projectId } = await params;
   const taskFilters = await loadTasksSearchParams(searchParams);
 
-  const response = await readTasksAction(null, [projectId], {
-    page: DEFAULT_PAGE,
-    ...taskFilters,
-  });
-  if (!response) {
+  const [listResponse, boardResponse] = await Promise.all([
+    readTasksAction(null, [projectId], {
+      page: DEFAULT_PAGE,
+      ...taskFilters,
+    }),
+    readTasksAction(null, [projectId], {
+      page: DEFAULT_PAGE,
+      allTasks: true,
+      ...taskFilters,
+    }),
+  ]);
+  if (!listResponse || !boardResponse) {
     return (
       <ErrorState
         title="An error occurred"
@@ -72,7 +79,13 @@ const ProjectIdTasksSuspense = async ({
     );
   }
 
-  return <ProjectTasksView projectId={projectId} response={response} />;
+  return (
+    <ProjectTasksView
+      projectId={projectId}
+      listResponse={listResponse}
+      boardResponse={boardResponse}
+    />
+  );
 };
 
 export default ProjectIdTasksPage;
