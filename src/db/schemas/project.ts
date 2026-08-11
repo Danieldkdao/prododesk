@@ -14,6 +14,8 @@ import { AreaTable } from "./area";
 import { TaskTable } from "./task";
 import { user } from "./user";
 import { ActivityTable } from "./activity";
+import { DocumentTable } from "./document";
+import { MilestoneTable } from "./milestone";
 
 export const ProjectTable = pgTable("projects", {
   id,
@@ -49,5 +51,7 @@ export const projectRelations = relations(ProjectTable, ({ one, many }) => ({
     references: [AreaTable.id],
   }),
   tasks: many(TaskTable),
+  documents: many(DocumentTable),
+  milestones: many(MilestoneTable),
   activity: many(ActivityTable),
 }));

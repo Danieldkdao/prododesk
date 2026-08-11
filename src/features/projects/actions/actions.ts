@@ -23,6 +23,8 @@ import { db } from "@/db/db";
 import {
   AreaTable,
   Color,
+  DocumentTable,
+  MilestoneTable,
   ProjectStatus,
   ProjectTable,
   TaskSelectType,
@@ -232,16 +234,82 @@ const readCachedProjectAction = async (userId: string, projectId: string) => {
   "use cache";
   cacheTag(getProjectIdTag(projectId));
 
+  const priorityRank = sql`
+    CASE ${TaskTable.priority}
+      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      ELSE 5
+    END
+  `;
+
   const existingProject = await db.query.ProjectTable.findFirst({
     where: and(eq(ProjectTable.id, projectId), eq(ProjectTable.userId, userId)),
     with: {
       user: true,
-      tasks: true,
+      tasks: {
+        orderBy: asc(priorityRank),
+        limit: 5,
+      },
+      documents: {
+        orderBy: desc(DocumentTable.updatedAt),
+        limit: 4,
+      },
+      milestones: {
+        where: ne(MilestoneTable.status, "completed"),
+        orderBy: asc(MilestoneTable.position),
+        limit: 4,
+      },
       area: true,
     },
   });
 
-  return existingProject ?? null;
+  const [taskCounts, milestoneCounts, [documentCount]] = await Promise.all([
+    db
+      .select({
+        status: TaskTable.status,
+        count: count(),
+      })
+      .from(TaskTable)
+      .where(
+        and(
+          eq(TaskTable.userId, userId),
+          eq(TaskTable.projectId, existingProject?.id ?? ""),
+        ),
+      )
+      .groupBy(TaskTable.status),
+    db
+      .select({ status: MilestoneTable.status, count: count() })
+      .from(MilestoneTable)
+      .where(
+        and(
+          eq(MilestoneTable.userId, userId),
+          eq(MilestoneTable.projectId, existingProject?.id ?? ""),
+        ),
+      )
+      .groupBy(MilestoneTable.status),
+    db
+      .select({
+        count: count(),
+      })
+      .from(DocumentTable)
+      .where(
+        and(
+          eq(DocumentTable.userId, userId),
+          eq(DocumentTable.projectId, existingProject?.id ?? ""),
+        ),
+      ),
+  ]);
+
+  return existingProject
+    ? {
+        ...existingProject,
+        taskCounts,
+        milestoneCounts,
+        documentCount: documentCount.count,
+      }
+    : null;
 };
 export const readProjectAction = cache(async (projectId: string) => {
   const { userId } = await getCurrentUser();

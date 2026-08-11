@@ -185,19 +185,31 @@ export const formatTaskDates = (
   dueAt: Date | null | undefined,
   includeDay = false,
 ) => {
-  if (!scheduledAt) return "No scheduled date";
+  if (!scheduledAt && !dueAt) return "No dates";
 
-  if (dueAt) {
+  if (scheduledAt && dueAt) {
     return isSameDay(dueAt, scheduledAt)
       ? `${format(scheduledAt, "h:mm a")} - ${format(dueAt, "h:mm a")}`
       : `${format(scheduledAt, "PP")} - ${format(dueAt, "PP")}`;
   }
 
-  return includeDay
-    ? isToday(scheduledAt)
-      ? `Today at ${format(scheduledAt, "h:mm a")}`
-      : format(scheduledAt, "PP 'at' h:mm a")
-    : format(scheduledAt, "h:mm a");
+  if (scheduledAt) {
+    return includeDay
+      ? isToday(scheduledAt)
+        ? `Today at ${format(scheduledAt, "h:mm a")}`
+        : format(scheduledAt, "PP 'at' h:mm a")
+      : format(scheduledAt, "h:mm a");
+  }
+
+  if (dueAt) {
+    return `Due ${
+      includeDay
+        ? isToday(dueAt)
+          ? `today at ${format(dueAt, "h:mm a")}`
+          : format(dueAt, "PP 'at' h:mm a")
+        : format(dueAt, "h:mm a")
+    }`;
+  }
 };
 
 export const formatArchivedStatus = (isArchived: boolean) => {
