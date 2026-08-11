@@ -36,8 +36,62 @@ import {
   insertAreaDb,
   updateAreaDb,
 } from "../server/areas";
-import { getUserAreaTag } from "../server/cache/areas";
+import { getAreaIdTag, getUserAreaTag } from "../server/cache/areas";
 import { areaSchema, AreaSchemaType } from "./schemas";
+
+export const readCachedAreaAction = async (userId: string, areaId: string) => {
+  "use cache";
+  cacheTag(getAreaIdTag(areaId));
+
+  const [area, projectCounts, taskCounts] = await Promise.all([
+    db.query.AreaTable.findFirst({
+      where: and(eq(AreaTable.id, areaId), eq(AreaTable.userId, userId)),
+      with: {
+        projects: {
+          // todo: add project priority ordering
+          limit: 4,
+        },
+      },
+    }),
+    db
+      .select({
+        status: ProjectTable.status,
+        count: count(),
+      })
+      .from(ProjectTable)
+      .where(
+        and(eq(ProjectTable.userId, userId), eq(ProjectTable.areaId, areaId)),
+      )
+      .groupBy(ProjectTable.status),
+    db
+      .select({
+        status: TaskTable.status,
+        count: count(),
+      })
+      .from(TaskTable)
+      .innerJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+      .where(and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)))
+      .groupBy(TaskTable.status),
+  ]);
+
+  if (!area) return null;
+
+  return {
+    ...area,
+    projectCounts,
+    taskCounts,
+  };
+};
+export const readAreaAction = async (areaId: string) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  const existingArea = await confirmUserAreaOwnership(areaId);
+  if (!existingArea) return null;
+
+  return readCachedAreaAction(userId, existingArea.id);
+};
+export type ReadAreaActionReturnType = UnwrapAsync<typeof readAreaAction>;
 
 const readCachedAreasAction = async (
   userId: string,

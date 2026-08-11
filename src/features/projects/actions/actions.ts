@@ -65,6 +65,7 @@ const readCachedProjectsAction = async (
     dateTimeStartRange: Date | null;
     dateTimeEndRange: Date | null;
     page: number;
+    areaIds?: string[];
   },
 ) => {
   "use cache";
@@ -79,6 +80,7 @@ const readCachedProjectsAction = async (
     dateTimeStartRange,
     dateTimeEndRange,
     page,
+    areaIds,
   } = filterOptions;
 
   const offset = (page - 1) * PAGE_SIZE;
@@ -130,6 +132,10 @@ const readCachedProjectsAction = async (
       : undefined,
   );
 
+  const areaFilters = areaIds?.length
+    ? inArray(ProjectTable.areaId, areaIds)
+    : undefined;
+
   const whereQuery = and(
     eq(ProjectTable.userId, userId),
     searchFilter,
@@ -137,6 +143,7 @@ const readCachedProjectsAction = async (
     statusesFilter,
     dateTimeRangeFilter,
     archiveStatusMap[archiveStatus],
+    areaFilters,
   );
 
   const priorityRank = sql`
