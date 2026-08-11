@@ -17,7 +17,7 @@ export const insertActivityDb = async (
     .where(
       and(
         eq(ActivityTable.userId, userId),
-        eq(ActivityTable.projectId, data.projectId ?? null),
+        eq(ActivityTable.projectId, data.projectId ?? ""),
       ),
     )
     .orderBy(desc(ActivityTable.createdAt))

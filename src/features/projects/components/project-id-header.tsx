@@ -90,18 +90,29 @@ const ProjectIdHeaderSuspense = async ({ params }: ProjectIdParams) => {
       )}
     >
       <CardContent className="w-full min-w-0">
-        <div className="flex items-start gap-8">
-          <div
-            className={cn(
-              "size-18 flex items-center justify-center shrink-0",
-              bgLight,
-            )}
-          >
-            {project.icon ? (
-              <span className="text-5xl">{project.icon}</span>
-            ) : (
-              <FolderKanbanIcon className={cn("size-14", text)} />
-            )}
+        <div className="flex flex-col md:flex-row items-start gap-8">
+          <div className="flex items-start justify-between gap-2 w-full min-w-0 md:w-fit">
+            <div
+              className={cn(
+                "size-18 flex items-center justify-center shrink-0",
+                bgLight,
+              )}
+            >
+              {project.icon ? (
+                <span className="text-5xl">{project.icon}</span>
+              ) : (
+                <FolderKanbanIcon className={cn("size-14", text)} />
+              )}
+            </div>
+            <ProjectOptions project={project}>
+              <Button
+                variant="ghost"
+                size="icon-lg"
+                className="shrink-0 md:hidden"
+              >
+                <EllipsisIcon className="size-8" />
+              </Button>
+            </ProjectOptions>
           </div>
           <div className="flex flex-col gap-4 flex-1 min-w-0">
             <div className="flex items-center gap-4">
@@ -125,7 +136,7 @@ const ProjectIdHeaderSuspense = async ({ params }: ProjectIdParams) => {
             <p className="text-xl text-muted-foreground max-w-6xl">
               {project.outcome}
             </p>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-6 flex-wrap">
               {project.area && (
                 <Link href={`/dashboard/areas/${project.area.id}`}>
                   <div className="flex items-center gap-2">
@@ -157,7 +168,11 @@ const ProjectIdHeaderSuspense = async ({ params }: ProjectIdParams) => {
             </div>
           </div>
           <ProjectOptions project={project}>
-            <Button variant="ghost" size="icon-lg" className="shrink-0">
+            <Button
+              variant="ghost"
+              size="icon-lg"
+              className="shrink-0 hidden md:inline"
+            >
               <EllipsisIcon className="size-8" />
             </Button>
           </ProjectOptions>

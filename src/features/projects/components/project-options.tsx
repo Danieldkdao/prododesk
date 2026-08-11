@@ -6,27 +6,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ReactElement, useState } from "react";
-import { ProjectDialog } from "./project-dialog";
 import { ProjectSelectType } from "@/db/schema";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
   EditIcon,
-  RotateCcwIcon,
   Trash2Icon,
 } from "lucide-react";
-import { ToggleProjectArchiveStatusButton } from "./toggle-project-archive-status-button";
+import { ReactElement, useState } from "react";
 import { DeleteProjectButton } from "./delete-project-button";
+import { ProjectDialog } from "./project-dialog";
+import { ToggleProjectArchiveStatusButton } from "./toggle-project-archive-status-button";
 
 export const ProjectOptions = ({
   children,
   project,
+  className,
 }: {
   children: ReactElement;
   project: ProjectSelectType & {
     area?: { name: string; icon?: string | null } | null;
   };
+  className?: string;
 }) => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
 
@@ -41,7 +42,7 @@ export const ProjectOptions = ({
         }}
       />
       <DropdownMenu>
-        <DropdownMenuTrigger render={children} />
+        <DropdownMenuTrigger className={className} render={children} />
         <DropdownMenuContent>
           <DropdownMenuItem onClick={() => setUpdateDialogOpen(true)}>
             <EditIcon />

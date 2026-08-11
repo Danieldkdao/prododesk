@@ -6,6 +6,13 @@ import { formatColor } from "@/lib/formatters";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const ProjectIdHeaderTabs = ({
   project,
@@ -24,12 +31,12 @@ export const ProjectIdHeaderTabs = ({
     {
       value: "tasks",
       children: (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 group">
           <span>Tasks</span>
           <div
             className={cn(bg, "py-0.5 px-1 flex items-center justify-center")}
           >
-            <span className="text-white font-medium text-sm">
+            <span className="text-white! font-medium text-sm">
               {project.taskCounts.reduce((a, b) => a + b.count, 0)}
             </span>
           </div>
@@ -54,34 +61,61 @@ export const ProjectIdHeaderTabs = ({
     },
   ];
 
-  const tabValue = tabs.find(
+  const currentTab = tabs.find(
     (tab) => `/dashboard/projects/${project.id}${tab.href}` === pathname,
-  )?.value;
+  );
+  const tabValue = currentTab?.value;
 
   return (
-    <Tabs defaultValue={tabValue ?? "overview"} value={tabValue}>
-      <TabsList variant="line">
-        {tabs.map((tab) => {
-          return (
-            <TabsTrigger
+    <div className="w-full min-w-0">
+      <Tabs defaultValue={tabValue ?? "overview"} value={tabValue}>
+        <TabsList variant="line" className="hidden md:block">
+          {tabs.map((tab) => {
+            return (
+              <TabsTrigger
+                key={tab.value}
+                nativeButton={false}
+                value={tab.value}
+                className={cn(
+                  dataActiveText,
+                  hoverText,
+                  afterBg,
+                  "text-base font-bold",
+                )}
+                render={
+                  <Link href={`/dashboard/projects/${project.id}${tab.href}`}>
+                    {tab.children}
+                  </Link>
+                }
+              />
+            );
+          })}
+        </TabsList>
+      </Tabs>
+      <Select>
+        <SelectTrigger
+          value={tabValue}
+          className="w-full border-none md:hidden"
+        >
+          <SelectValue className="text-base font-bold uppercase">
+            {currentTab?.children}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {tabs.map((tab) => (
+            <SelectItem
               key={tab.value}
-              nativeButton={false}
               value={tab.value}
-              className={cn(
-                dataActiveText,
-                hoverText,
-                afterBg,
-                "text-base font-bold",
-              )}
+              className="text-base font-bold uppercase"
               render={
                 <Link href={`/dashboard/projects/${project.id}${tab.href}`}>
                   {tab.children}
                 </Link>
               }
             />
-          );
-        })}
-      </TabsList>
-    </Tabs>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 };
