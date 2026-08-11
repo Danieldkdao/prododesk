@@ -12,9 +12,11 @@ import { ProjectCard } from "./project-card";
 import { ProjectSkeleton } from "./projects-skeleton";
 
 export const ProjectsInfiniteList = ({
+  areaId,
   initialProjects,
   initialHasNextPage,
 }: {
+  areaId?: string;
   initialProjects: ReadProjectsActionReturnType["projects"];
   initialHasNextPage: boolean;
 }) => {
@@ -22,9 +24,13 @@ export const ProjectsInfiniteList = ({
 
   const fetchProjects = useCallback(
     (nextPage: number) => {
-      return readProjectsAction({ ...filters, page: nextPage });
+      return readProjectsAction({
+        ...filters,
+        areaIds: areaId ? [areaId] : undefined,
+        page: nextPage,
+      });
     },
-    [filters],
+    [filters, areaId],
   );
 
   const {
@@ -35,7 +41,7 @@ export const ProjectsInfiniteList = ({
     ReadProjectsActionReturnType["projects"][number],
     "projects"
   >(initialProjects, initialHasNextPage, fetchProjects, {
-    additionalScrollDeps: [filters],
+    additionalScrollDeps: [areaId, filters],
   });
 
   return projects.length ? (

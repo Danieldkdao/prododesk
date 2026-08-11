@@ -101,7 +101,11 @@ export const insertProjectDb = async (
       return insertedProject;
     });
 
-    revalidateProjectCache(insertedProject.userId, insertedProject.id);
+    revalidateProjectCache(
+      insertedProject.userId,
+      insertedProject.id,
+      insertedProject.areaId,
+    );
 
     return insertedProject;
   } catch (error) {
@@ -155,7 +159,11 @@ export const updateProjectDb = async (
     });
 
     revalidateProjectTasksCache(updatedProject.id);
-    revalidateProjectCache(updatedProject.userId, updatedProject.id);
+    revalidateProjectCache(
+      updatedProject.userId,
+      updatedProject.id,
+      updatedProject.areaId,
+    );
 
     return updatedProject;
   } catch (error) {
@@ -202,7 +210,11 @@ export const deleteProjectDb = async (
     });
 
     revalidateProjectTasksCache(deletedProject.id);
-    revalidateProjectCache(deletedProject.userId, deletedProject.id);
+    revalidateProjectCache(
+      deletedProject.userId,
+      deletedProject.id,
+      deletedProject.areaId,
+    );
 
     return deletedProject;
   } catch (error) {

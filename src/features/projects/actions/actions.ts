@@ -18,9 +18,14 @@ import {
 import { projectSchema, ProjectSchemaType } from "./schemas";
 import { areValidIds } from "@/lib/utils";
 import { cacheTag } from "next/cache";
-import { getProjectIdTag, getUserProjectTag } from "../server/cache/projects";
+import {
+  getAreaProjectTag,
+  getProjectIdTag,
+  getUserProjectTag,
+} from "../server/cache/projects";
 import { db } from "@/db/db";
 import {
+  AreaSelectType,
   AreaTable,
   Color,
   DocumentTable,
@@ -53,6 +58,7 @@ import { cache } from "react";
 import { ProjectsSortByOption } from "../lib/projects-params";
 import { ArchiveStatusFilterOption } from "@/lib/params";
 import { format } from "date-fns";
+import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 
 const readCachedProjectsAction = async (
   userId: string,
@@ -69,7 +75,13 @@ const readCachedProjectsAction = async (
   },
 ) => {
   "use cache";
-  cacheTag(getUserProjectTag(userId));
+  if (filterOptions.areaIds?.length) {
+    filterOptions.areaIds?.forEach((areaId) => {
+      cacheTag(getAreaProjectTag(areaId));
+    });
+  } else {
+    cacheTag(getUserProjectTag(userId));
+  }
 
   const {
     search,
@@ -128,12 +140,28 @@ const readCachedProjectsAction = async (
       ? gte(ProjectTable.startAt, format(dateTimeStartRange, "yyyy-MM-dd"))
       : undefined,
     dateTimeEndRange
-      ? lte(ProjectTable.startAt, format(dateTimeEndRange, "yyyy-MM-dd"))
+      ? lte(ProjectTable.endAt, format(dateTimeEndRange, "yyyy-MM-dd"))
       : undefined,
   );
 
-  const areaFilters = areaIds?.length
-    ? inArray(ProjectTable.areaId, areaIds)
+  let areas: AreaSelectType[] = [];
+  if (areaIds?.length) {
+    const existingAreas = await Promise.all(
+      areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userId)),
+    );
+    if (!existingAreas.every(Boolean)) {
+      return null;
+    }
+    areas = existingAreas.filter((area): area is AreaSelectType =>
+      Boolean(area),
+    );
+  }
+
+  const areaFilters = areas.length
+    ? inArray(
+        ProjectTable.areaId,
+        areas.map((area) => area.id),
+      )
     : undefined;
 
   const whereQuery = and(
@@ -215,6 +243,7 @@ const readCachedProjectsAction = async (
       hasPrevPage,
       hasNextPage,
       clientKey,
+      areas,
     },
   };
 };
@@ -227,6 +256,7 @@ export const readProjectsAction = async (filterOptions: {
   dateTimeStartRange: Date | null;
   dateTimeEndRange: Date | null;
   page: number;
+  areaIds?: string[];
 }) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;

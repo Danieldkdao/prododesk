@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +11,6 @@ import {
   ArchiveIcon,
   ArchiveRestoreIcon,
   EditIcon,
-  EllipsisIcon,
   Trash2Icon,
 } from "lucide-react";
 import { ReactElement, useState } from "react";

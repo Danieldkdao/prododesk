@@ -11,14 +11,23 @@ import { and, eq } from "drizzle-orm";
 import { SQLMap } from "@/lib/types";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 
-export const confirmUserAreaOwnership = async (areaId: string) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
+export const confirmUserAreaOwnership = async (
+  areaId: string,
+  existingUserId?: string,
+) => {
+  let userIdToUse: string | null | undefined = null;
+  if (existingUserId) {
+    userIdToUse = existingUserId;
+  } else {
+    const { userId } = await getCurrentUser();
+    userIdToUse = userId;
+  }
+  if (!userIdToUse) return null;
 
   const [existingArea] = await db
     .select()
     .from(AreaTable)
-    .where(and(eq(AreaTable.id, areaId), eq(AreaTable.userId, userId)));
+    .where(and(eq(AreaTable.id, areaId), eq(AreaTable.userId, userIdToUse)));
 
   return existingArea ?? null;
 };
@@ -36,7 +45,7 @@ const revalidateAreaProjectsCache = async (areaId: string) => {
 
   if (existingAreaProjects.length) {
     existingAreaProjects.forEach((project) => {
-      revalidateProjectCache(project.userId, project.id);
+      revalidateProjectCache(project.userId, project.id, project.areaId);
     });
   }
 };
