@@ -22,7 +22,12 @@ import {
   getUserDocumentTag,
 } from "../server/cache/documents";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
-import { DocumentTable, ProjectSelectType, ProjectTable } from "@/db/schema";
+import {
+  AreaSelectType,
+  DocumentTable,
+  ProjectSelectType,
+  ProjectTable,
+} from "@/db/schema";
 import {
   and,
   asc,
@@ -38,41 +43,24 @@ import {
 import { db } from "@/db/db";
 import { UnwrapAsync } from "@/lib/types";
 import { DocumentsSortByOption } from "../lib/documents-params";
+import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 
 const readCachedDocumentsAction = async (
   userId: string,
   filterOptions: {
     search: string;
     sortBy: DocumentsSortByOption;
+    projectIds?: string[];
+    areaIds?: string[];
     page: number;
   },
-  projectIds?: string[],
 ) => {
   "use cache";
   cacheTag(getUserDocumentTag(userId));
 
-  if (projectIds?.length && !areValidIds(projectIds)) return null;
-
-  const { search, sortBy, page } = filterOptions;
+  const { search, sortBy, projectIds, areaIds, page } = filterOptions;
 
   const offset = (page - 1) * PAGE_SIZE;
-
-  let existingProjectIds: string[] | undefined = undefined;
-  if (projectIds?.length) {
-    const existingProjects = await Promise.all(
-      projectIds.map((projectId) =>
-        confirmUserProjectOwnership(projectId, userId),
-      ),
-    );
-    if (
-      !existingProjects.every((project): project is ProjectSelectType =>
-        Boolean(project),
-      )
-    )
-      return null;
-
-    existingProjectIds = existingProjects.map((project) => project.id);
-  }
 
   const sortByMap: Record<DocumentsSortByOption, SQL<unknown>> = {
     oldest: asc(DocumentTable.createdAt),
@@ -87,12 +75,42 @@ const readCachedDocumentsAction = async (
     ilike(ProjectTable.name, searchTerm),
   );
 
-  const projectsFilter = existingProjectIds?.length
+  let existingProjectIds: string[] = [];
+  if (projectIds?.length) {
+    if (!areValidIds(projectIds)) return null;
+    const existingProjects = await Promise.all(
+      projectIds.map((projectId) =>
+        confirmUserProjectOwnership(projectId, userId),
+      ),
+    );
+    existingProjectIds = existingProjects
+      .filter((project): project is ProjectSelectType => Boolean(project))
+      .map((project) => project.id);
+  }
+
+  const projectsFilter = existingProjectIds.length
     ? inArray(DocumentTable.projectId, existingProjectIds)
     : undefined;
+
+  let existingAreaIds: string[] = [];
+  if (areaIds?.length) {
+    if (!areValidIds(areaIds)) return null;
+    const existingAreas = await Promise.all(
+      areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userId)),
+    );
+    existingAreaIds = existingAreas
+      .filter((area): area is AreaSelectType => Boolean(area))
+      .map((area) => area.id);
+  }
+
+  const areasFilter = existingAreaIds.length
+    ? inArray(ProjectTable.areaId, existingAreaIds)
+    : undefined;
+
   const whereQuery = and(
     eq(DocumentTable.userId, userId),
     projectsFilter,
+    areasFilter,
     searchQuery,
   );
 
@@ -118,7 +136,6 @@ const readCachedDocumentsAction = async (
   const hasNextPage = page * PAGE_SIZE < totalDocuments.count;
   const clientKey = JSON.stringify({
     context: {
-      projectsIds: projectIds ? [...projectIds].sort() : null,
       filters: filterOptions,
       results: documents.map(({ id, updatedAt }) => ({ id, updatedAt })),
       hasNextPage,
@@ -134,18 +151,17 @@ const readCachedDocumentsAction = async (
     documents,
   };
 };
-export const readDocumentsAction = async (
-  filterOptions: {
-    search: string;
-    sortBy: DocumentsSortByOption;
-    page: number;
-  },
-  projectIds?: string[],
-) => {
+export const readDocumentsAction = async (filterOptions: {
+  search: string;
+  sortBy: DocumentsSortByOption;
+  projectIds?: string[];
+  areaIds?: string[];
+  page: number;
+}) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  return readCachedDocumentsAction(userId, filterOptions, projectIds);
+  return readCachedDocumentsAction(userId, filterOptions);
 };
 export type ReadDocumentsActionReturnType = UnwrapAsync<
   typeof readDocumentsAction

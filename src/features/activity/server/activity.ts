@@ -11,19 +11,15 @@ export const insertActivityDb = async (
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  const [lastActivity] = await (tx ?? db)
-    .select()
-    .from(ActivityTable)
-    .where(
-      and(
-        eq(ActivityTable.userId, userId),
-        eq(ActivityTable.projectId, data.projectId ?? ""),
-      ),
-    )
-    .orderBy(desc(ActivityTable.createdAt))
-    .limit(1);
+  const lastActivity = await (tx ?? db).query.ActivityTable.findFirst({
+    where: and(
+      eq(ActivityTable.userId, userId),
+      eq(ActivityTable.projectId, data.projectId ?? ""),
+    ),
+    orderBy: desc(ActivityTable.createdAt),
+  });
 
-  if (lastActivity.subjectId === data.subjectId) return lastActivity;
+  if (lastActivity?.subjectId === data.subjectId) return lastActivity;
 
   const [insertedActivity] = await (tx ?? db)
     .insert(ActivityTable)

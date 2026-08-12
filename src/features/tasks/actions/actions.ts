@@ -427,23 +427,13 @@ const readCachedTasksAction = async (
       project: getTableColumns(ProjectTable),
     })
     .from(TaskTable)
+    .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
     .where(whereQuery)
     .orderBy(sortByMap[sortBy]);
 
-  const joinedFetchTasks =
-    projectsFilter || areasFilter
-      ? baseFetchTasks.innerJoin(
-          ProjectTable,
-          eq(ProjectTable.id, TaskTable.projectId),
-        )
-      : baseFetchTasks.leftJoin(
-          ProjectTable,
-          eq(ProjectTable.id, TaskTable.projectId),
-        );
-
   const fetchTasks = allTasks
-    ? joinedFetchTasks
-    : joinedFetchTasks.offset(offset).limit(PAGE_SIZE);
+    ? baseFetchTasks
+    : baseFetchTasks.offset(offset).limit(PAGE_SIZE);
 
   const tasks = await fetchTasks;
 

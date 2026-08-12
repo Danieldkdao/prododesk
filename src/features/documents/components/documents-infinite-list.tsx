@@ -15,18 +15,25 @@ export const DocumentsInfiniteList = ({
   initialDocuments,
   initialHasNextPage,
   projectIds,
+  areaIds,
 }: {
   initialDocuments: ReadDocumentsActionReturnType["documents"];
   initialHasNextPage: boolean;
   projectIds?: string[];
+  areaIds?: string[];
 }) => {
   const [filters] = useDocumentsParams();
 
   const fetchDocuments = useCallback(
     (nextPage: number) => {
-      return readDocumentsAction({ ...filters, page: nextPage }, projectIds);
+      return readDocumentsAction({
+        ...filters,
+        projectIds,
+        areaIds,
+        page: nextPage,
+      });
     },
-    [filters, projectIds],
+    [filters, projectIds, areaIds],
   );
 
   const {
