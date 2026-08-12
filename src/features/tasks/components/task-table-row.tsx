@@ -163,16 +163,20 @@ export const TaskTableRow = ({
       <TableCell className="text-base">
         {task.dueAt ? format(task.dueAt, "PP p") : "No due date"}
       </TableCell>
-      {showProject && task.project && (
+      {showProject && (
         <TableCell className="text-base">
-          <Link
-            href={`/dashboard/projects/${task.project.id}`}
-            target="_blank"
-            className="flex items-center gap-2"
-          >
-            <span>{task.project.name}</span>
-            <SquareArrowOutUpRightIcon className="size-4" />
-          </Link>
+          {task.project ? (
+            <Link
+              href={`/dashboard/projects/${task.project.id}`}
+              target="_blank"
+              className="flex items-center gap-2"
+            >
+              <span>{task.project.name}</span>
+              <SquareArrowOutUpRightIcon className="size-4" />
+            </Link>
+          ) : (
+            <span className="italic">No project</span>
+          )}
         </TableCell>
       )}
       <TableCell>

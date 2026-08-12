@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { taskPriorities, taskStatuses, TaskSelectType } from "@/db/schema";
+import { taskPriorities, TaskSelectType, taskStatuses } from "@/db/schema";
 import { ProjectCommandSelect } from "@/features/projects/components/project-command-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addDays, subDays } from "date-fns";

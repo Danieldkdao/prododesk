@@ -1,15 +1,16 @@
-import { db, DbTransaction } from "@/db/db";
+import { db } from "@/db/db";
 import {
   AreaInsertType,
   AreaSelectType,
   AreaTable,
   ProjectTable,
 } from "@/db/schema";
-import { revalidateAreaCache } from "./cache/areas";
-import { getCurrentUser } from "@/lib/auth/helpers";
-import { and, eq } from "drizzle-orm";
-import { SQLMap } from "@/lib/types";
+import { insertActivityDb } from "@/features/activity/server/activity";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
+import { getCurrentUser } from "@/lib/auth/helpers";
+import { SQLMap } from "@/lib/types";
+import { and, eq } from "drizzle-orm";
+import { revalidateAreaCache } from "./cache/areas";
 
 export const confirmUserAreaOwnership = async (
   areaId: string,
@@ -50,18 +51,40 @@ const revalidateAreaProjectsCache = async (areaId: string) => {
   }
 };
 
-export const insertAreaDb = async (
-  areaData: SQLMap<AreaInsertType>,
-  tx?: DbTransaction,
-) => {
-  const [insertedArea] = await (tx ?? db)
-    .insert(AreaTable)
-    .values(areaData)
-    .returning();
+export const insertAreaDb = async (areaData: SQLMap<AreaInsertType>) => {
+  try {
+    const insertedArea = await db.transaction(async (tx) => {
+      const [insertedArea] = await tx
+        .insert(AreaTable)
+        .values(areaData)
+        .returning();
+      if (!insertedArea) throw new Error("Failed to insert area.");
 
-  revalidateAreaCache(insertedArea.userId, insertedArea.id);
+      const insertedActivity = await insertActivityDb(
+        {
+          source: "user",
+          action: "create",
+          subject: "area",
+          subjectLabel: insertedArea.name,
+          subjectId: insertedArea.id,
+          areaId: insertedArea.id,
+          message: `Started area "${insertedArea.name}"`,
+        },
+        tx,
+      );
+      if (!insertedActivity) throw new Error("Failed to insert activity.");
 
-  return insertedArea;
+      return insertedArea;
+    });
+
+    revalidateAreaProjectsCache(insertedArea.id);
+    revalidateAreaCache(insertedArea.userId, insertedArea.id);
+
+    return insertedArea;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
 };
 
 export const updateAreaDb = async (
@@ -69,44 +92,91 @@ export const updateAreaDb = async (
   areaData: SQLMap<
     Omit<Partial<AreaSelectType>, "id" | "createdAt" | "updatedAt" | "userId">
   >,
-  tx?: DbTransaction,
 ) => {
   const existingArea = await confirmUserAreaOwnership(areaId);
   if (!existingArea) return null;
 
-  const [updatedArea] = await (tx ?? db)
-    .update(AreaTable)
-    .set(areaData)
-    .where(
-      and(
-        eq(AreaTable.id, existingArea.id),
-        eq(AreaTable.userId, existingArea.userId),
-      ),
-    )
-    .returning();
+  try {
+    const updatedArea = await db.transaction(async (tx) => {
+      const [updatedArea] = await tx
+        .update(AreaTable)
+        .set(areaData)
+        .where(
+          and(
+            eq(AreaTable.id, existingArea.id),
+            eq(AreaTable.userId, existingArea.userId),
+          ),
+        )
+        .returning();
+      if (!updatedArea) throw new Error("Failed to update area.");
 
-  revalidateAreaProjectsCache(updatedArea.id);
-  revalidateAreaCache(updatedArea.userId, updatedArea.id);
+      const insertedActivity = await insertActivityDb(
+        {
+          source: "user",
+          action: "update",
+          subject: "area",
+          subjectLabel: updatedArea.name,
+          subjectId: updatedArea.id,
+          areaId: updatedArea.id,
+          message: `Updated area "${updatedArea.name}"`,
+        },
+        tx,
+      );
+      if (!insertedActivity) throw new Error("Failed to insert activity.");
 
-  return updatedArea;
+      return updatedArea;
+    });
+
+    revalidateAreaProjectsCache(updatedArea.id);
+    revalidateAreaCache(updatedArea.userId, updatedArea.id);
+
+    return updatedArea;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
 };
 
-export const deleteAreaDb = async (areaId: string, tx?: DbTransaction) => {
+export const deleteAreaDb = async (areaId: string) => {
   const existingArea = await confirmUserAreaOwnership(areaId);
   if (!existingArea) return null;
 
-  const [deletedArea] = await (tx ?? db)
-    .delete(AreaTable)
-    .where(
-      and(
-        eq(AreaTable.id, existingArea.id),
-        eq(AreaTable.userId, existingArea.userId),
-      ),
-    )
-    .returning();
+  try {
+    const deletedArea = await db.transaction(async (tx) => {
+      const [deletedArea] = await tx
+        .delete(AreaTable)
+        .where(
+          and(
+            eq(AreaTable.id, existingArea.id),
+            eq(AreaTable.userId, existingArea.userId),
+          ),
+        )
+        .returning();
+      if (!deletedArea) throw new Error("Failed to delete area.");
 
-  revalidateAreaProjectsCache(deletedArea.id);
-  revalidateAreaCache(deletedArea.userId, deletedArea.id);
+      const insertedActivity = await insertActivityDb(
+        {
+          source: "user",
+          action: "delete",
+          subject: "area",
+          subjectLabel: deletedArea.name,
+          subjectId: deletedArea.id,
+          areaId: deletedArea.id,
+          message: `Deleted area "${deletedArea.name}"`,
+        },
+        tx,
+      );
+      if (!insertedActivity) throw new Error("Failed to insert activity.");
 
-  return deletedArea;
+      return deletedArea;
+    });
+
+    revalidateAreaProjectsCache(deletedArea.id);
+    revalidateAreaCache(deletedArea.userId, deletedArea.id);
+
+    return deletedArea;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
 };

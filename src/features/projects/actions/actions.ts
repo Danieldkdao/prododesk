@@ -1,28 +1,5 @@
 "use server";
 
-import { getCurrentUser } from "@/lib/auth/helpers";
-import {
-  GENERAL_ERROR_MESSAGE,
-  INVALID_DATA_ERROR_MESSAGE,
-  NOT_FOUND_ERROR_MESSAGE,
-  PAGE_SIZE,
-  UNAUTHED_ERROR_MESSAGE,
-} from "@/lib/constants";
-import {
-  confirmUserProjectOwnership,
-  deleteProjectDb,
-  insertProjectDb,
-  parseProjectData,
-  updateProjectDb,
-} from "../server/projects";
-import { projectSchema, ProjectSchemaType } from "./schemas";
-import { areValidIds } from "@/lib/utils";
-import { cacheTag } from "next/cache";
-import {
-  getAreaProjectTag,
-  getProjectIdTag,
-  getUserProjectTag,
-} from "../server/cache/projects";
 import { db } from "@/db/db";
 import {
   AreaSelectType,
@@ -35,6 +12,19 @@ import {
   TaskSelectType,
   TaskTable,
 } from "@/db/schema";
+import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+import { getCurrentUser } from "@/lib/auth/helpers";
+import {
+  GENERAL_ERROR_MESSAGE,
+  INVALID_DATA_ERROR_MESSAGE,
+  NOT_FOUND_ERROR_MESSAGE,
+  PAGE_SIZE,
+  UNAUTHED_ERROR_MESSAGE,
+} from "@/lib/constants";
+import { ArchiveStatusFilterOption } from "@/lib/params";
+import { UnwrapAsync } from "@/lib/types";
+import { areValidIds } from "@/lib/utils";
+import { format } from "date-fns";
 import {
   and,
   asc,
@@ -53,12 +43,22 @@ import {
   sql,
   SQL,
 } from "drizzle-orm";
-import { UnwrapAsync } from "@/lib/types";
+import { cacheTag } from "next/cache";
 import { cache } from "react";
 import { ProjectsSortByOption } from "../lib/projects-params";
-import { ArchiveStatusFilterOption } from "@/lib/params";
-import { format } from "date-fns";
-import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+import {
+  getAreaProjectTag,
+  getProjectIdTag,
+  getUserProjectTag,
+} from "../server/cache/projects";
+import {
+  confirmUserProjectOwnership,
+  deleteProjectDb,
+  insertProjectDb,
+  parseProjectData,
+  updateProjectDb,
+} from "../server/projects";
+import { projectSchema, ProjectSchemaType } from "./schemas";
 
 const readCachedProjectsAction = async (
   userId: string,
@@ -312,7 +312,9 @@ const readCachedProjectAction = async (userId: string, projectId: string) => {
       .where(
         and(
           eq(TaskTable.userId, userId),
-          eq(TaskTable.projectId, existingProject?.id ?? ""),
+          existingProject?.id
+            ? eq(TaskTable.projectId, existingProject.id)
+            : undefined,
         ),
       )
       .groupBy(TaskTable.status),
@@ -322,7 +324,9 @@ const readCachedProjectAction = async (userId: string, projectId: string) => {
       .where(
         and(
           eq(MilestoneTable.userId, userId),
-          eq(MilestoneTable.projectId, existingProject?.id ?? ""),
+          existingProject?.id
+            ? eq(MilestoneTable.projectId, existingProject.id)
+            : undefined,
         ),
       )
       .groupBy(MilestoneTable.status),
@@ -334,7 +338,9 @@ const readCachedProjectAction = async (userId: string, projectId: string) => {
       .where(
         and(
           eq(DocumentTable.userId, userId),
-          eq(DocumentTable.projectId, existingProject?.id ?? ""),
+          existingProject?.id
+            ? eq(DocumentTable.projectId, existingProject.id)
+            : undefined,
         ),
       ),
   ]);

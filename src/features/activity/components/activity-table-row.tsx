@@ -1,17 +1,20 @@
 import { TableCell, TableRow } from "@/components/ui/table";
-import { ReadProjectActivityActionReturnType } from "../actions/actions";
+import { ReadActivityActionReturnType } from "../actions/actions";
 import {
   formatActivityAction,
   formatActivitySource,
   formatActivitySubject,
 } from "../lib/formatters";
-import { ClockIcon } from "lucide-react";
+import { ClockIcon, SquareArrowOutUpRightIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 
-export const ActivityProjectTableRow = ({
+export const ActivityTableRow = ({
   activity,
+  showProject = false,
 }: {
-  activity: ReadProjectActivityActionReturnType["activity"][number];
+  activity: ReadActivityActionReturnType["activity"][number];
+  showProject?: boolean;
 }) => {
   const { label: sourceLabel, icon: SourceIcon } = formatActivitySource(
     activity.source,
@@ -30,7 +33,25 @@ export const ActivityProjectTableRow = ({
 
   return (
     <TableRow>
-      <TableCell className="font-medium text-lg">{activity.message}</TableCell>
+      {showProject && (
+        <TableCell className="text-base">
+          {activity.project ? (
+            <Link
+              href={`/dashboard/projects/${activity.project.id}`}
+              target="_blank"
+              className="flex items-center gap-2"
+            >
+              <span>{activity.project.name}</span>
+              <SquareArrowOutUpRightIcon className="size-4" />
+            </Link>
+          ) : (
+            <span className="italic">No project</span>
+          )}
+        </TableCell>
+      )}
+      <TableCell className="font-medium text-base">
+        {activity.message}
+      </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <SourceIcon className="size-5" />

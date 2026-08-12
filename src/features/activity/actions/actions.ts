@@ -6,6 +6,8 @@ import {
   ActivitySource,
   ActivitySubject,
   ActivityTable,
+  AreaSelectType,
+  ProjectSelectType,
   ProjectTable,
 } from "@/db/schema";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
@@ -23,33 +25,60 @@ import {
   SQL,
 } from "drizzle-orm";
 import { cacheTag } from "next/cache";
-import { getProjectActivityTag } from "../server/cache/activity";
+import {
+  getAreaActivityTag,
+  getProjectActivityTag,
+} from "../server/cache/activity";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
 import { ActivitySortByOption } from "../lib/activity-params";
 import { PAGE_SIZE } from "@/lib/constants";
+import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 
-const readCachedProjectActivityAction = async (
+const readCachedActivityAction = async (
   userId: string,
-  projectId: string,
   filterOptions: {
     search: string;
     sortBy: ActivitySortByOption;
     sources: ActivitySource[];
     actions: ActivityAction[];
     subjects: ActivitySubject[];
+    projectIds?: string[];
+    areaIds?: string[];
     page: number;
   },
 ) => {
   "use cache";
-  cacheTag(getProjectActivityTag(projectId));
 
-  const { search, sortBy, sources, actions, subjects, page } = filterOptions;
+  if (filterOptions.projectIds?.length) {
+    filterOptions.projectIds.forEach((projectId) => {
+      cacheTag(getProjectActivityTag(projectId));
+    });
+  }
+  if (filterOptions.areaIds?.length) {
+    filterOptions.areaIds?.forEach((areaId) => {
+      cacheTag(getAreaActivityTag(areaId));
+    });
+  }
+
+  const {
+    search,
+    sortBy,
+    sources,
+    actions,
+    subjects,
+    projectIds,
+    areaIds,
+    page,
+  } = filterOptions;
 
   const offset = (page - 1) * PAGE_SIZE;
 
   const searchTerm = `%${search.trim()}%`;
-  const searchFilter = or(ilike(ActivityTable.message, searchTerm));
+  const searchFilter = or(
+    ilike(ActivityTable.message, searchTerm),
+    ilike(ProjectTable.name, searchTerm),
+  );
 
   const sortByMap: Record<ActivitySortByOption, SQL<unknown>> = {
     most_recent: desc(ActivityTable.createdAt),
@@ -69,9 +98,45 @@ const readCachedProjectActivityAction = async (
     ? inArray(ActivityTable.subject, subjects)
     : undefined;
 
+  let existingProjectIds: string[] = [];
+  if (projectIds?.length) {
+    if (!areValidIds(projectIds)) return null;
+    const existingProjects = await Promise.all(
+      projectIds.map((projectId) =>
+        confirmUserProjectOwnership(projectId, userId),
+      ),
+    );
+    existingProjectIds = existingProjects
+      .filter((project): project is ProjectSelectType => Boolean(project))
+      .map((project) => project.id);
+  }
+
+  const projectsFilter = existingProjectIds.length
+    ? inArray(ActivityTable.projectId, existingProjectIds)
+    : undefined;
+
+  let existingAreaIds: string[] = [];
+  if (areaIds?.length) {
+    if (!areValidIds(areaIds)) return null;
+    const existingAreas = await Promise.all(
+      areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userId)),
+    );
+    existingAreaIds = existingAreas
+      .filter((area): area is AreaSelectType => Boolean(area))
+      .map((area) => area.id);
+  }
+
+  const areasFilter = existingAreaIds.length
+    ? or(
+        inArray(ActivityTable.areaId, existingAreaIds),
+        inArray(ProjectTable.areaId, existingAreaIds),
+      )
+    : undefined;
+
   const whereQuery = and(
     eq(ActivityTable.userId, userId),
-    eq(ActivityTable.projectId, projectId),
+    projectsFilter,
+    areasFilter,
     searchFilter,
     sourcesFilter,
     actionsFilter,
@@ -93,6 +158,7 @@ const readCachedProjectActivityAction = async (
   const [totalActivity] = await db
     .select({ count: count() })
     .from(ActivityTable)
+    .leftJoin(ProjectTable, eq(ProjectTable.id, ActivityTable.projectId))
     .where(whereQuery);
 
   const totalActivityCount = totalActivity.count;
@@ -100,9 +166,6 @@ const readCachedProjectActivityAction = async (
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalActivityCount;
   const clientKey = JSON.stringify({
-    context: {
-      projectId,
-    },
     filters: filterOptions,
     results: activity.map(({ id, createdAt }) => ({ id, createdAt })),
     hasNextPage,
@@ -118,31 +181,21 @@ const readCachedProjectActivityAction = async (
     },
   };
 };
-export const readProjectActivityAction = async (
-  projectId: string,
-  filterOptions: {
-    search: string;
-    sortBy: ActivitySortByOption;
-    sources: ActivitySource[];
-    actions: ActivityAction[];
-    subjects: ActivitySubject[];
-    page: number;
-  },
-) => {
-  if (!areValidIds(projectId)) return null;
-
+export const readActivityAction = async (filterOptions: {
+  search: string;
+  sortBy: ActivitySortByOption;
+  sources: ActivitySource[];
+  actions: ActivityAction[];
+  subjects: ActivitySubject[];
+  projectIds?: string[];
+  areaIds?: string[];
+  page: number;
+}) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  const existingProject = await confirmUserProjectOwnership(projectId);
-  if (!existingProject) return null;
-
-  return readCachedProjectActivityAction(
-    userId,
-    existingProject.id,
-    filterOptions,
-  );
+  return readCachedActivityAction(userId, filterOptions);
 };
-export type ReadProjectActivityActionReturnType = UnwrapAsync<
-  typeof readProjectActivityAction
+export type ReadActivityActionReturnType = UnwrapAsync<
+  typeof readActivityAction
 >;

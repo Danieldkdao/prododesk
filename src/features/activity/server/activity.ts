@@ -14,19 +14,25 @@ export const insertActivityDb = async (
   const lastActivity = await (tx ?? db).query.ActivityTable.findFirst({
     where: and(
       eq(ActivityTable.userId, userId),
-      eq(ActivityTable.projectId, data.projectId ?? ""),
+      data.projectId ? eq(ActivityTable.projectId, data.projectId) : undefined,
+      data.areaId ? eq(ActivityTable.areaId, data.areaId) : undefined,
+      data.subjectId ? eq(ActivityTable.subjectId, data.subjectId) : undefined,
     ),
     orderBy: desc(ActivityTable.createdAt),
   });
 
-  if (lastActivity?.subjectId === data.subjectId) return lastActivity;
+  if (lastActivity) return lastActivity;
 
   const [insertedActivity] = await (tx ?? db)
     .insert(ActivityTable)
     .values({ ...data, userId })
     .returning();
 
-  revalidateActivityCache(insertedActivity.userId, insertedActivity.projectId);
+  revalidateActivityCache(
+    insertedActivity.userId,
+    insertedActivity.projectId,
+    insertedActivity.areaId,
+  );
 
   return insertedActivity;
 };

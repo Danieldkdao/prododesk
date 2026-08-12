@@ -7,6 +7,7 @@ import {
   MilestoneIcon,
   PenIcon,
   SettingsIcon,
+  ShapesIcon,
   SparklesIcon,
   Trash2Icon,
   UserIcon,
@@ -78,6 +79,11 @@ export const formatActivitySubject = (subject: ActivitySubject) => {
       return {
         label: "Task",
         icon: ListCheckIcon,
+      };
+    case "area":
+      return {
+        label: "Area",
+        icon: ShapesIcon,
       };
     default:
       throw new Error(`Unknown activity subject: ${subject satisfies never}`);

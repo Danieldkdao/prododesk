@@ -8,6 +8,7 @@ import {
 } from "../shared";
 import { ProjectTable } from "./project";
 import { user } from "./user";
+import { AreaTable } from "./area";
 
 export const ActivityTable = pgTable("activities", {
   id,
@@ -22,6 +23,9 @@ export const ActivityTable = pgTable("activities", {
   projectId: uuid("project_id").references(() => ProjectTable.id, {
     onDelete: "set null",
   }),
+  areaId: uuid("area_id").references(() => AreaTable.id, {
+    onDelete: "set null",
+  }),
   message: text("message").notNull(),
   createdAt,
 });
@@ -34,8 +38,12 @@ export const activityRelations = relations(ActivityTable, ({ one }) => ({
     fields: [ActivityTable.userId],
     references: [user.id],
   }),
-  projectId: one(ProjectTable, {
+  project: one(ProjectTable, {
     fields: [ActivityTable.projectId],
     references: [ProjectTable.id],
+  }),
+  area: one(AreaTable, {
+    fields: [ActivityTable.areaId],
+    references: [AreaTable.id],
   }),
 }));

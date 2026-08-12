@@ -8,6 +8,7 @@ import {
   MarqueeItem,
 } from "@/components/kibo-ui/marquee";
 import { Button } from "@/components/ui/button";
+import { useAbortableAction } from "@/hooks/use-abortable-action";
 import { useChatProvider } from "@/hooks/use-chat-provider";
 import { LLMModel } from "@/services/ai/models";
 import { useRouter } from "next/navigation";
@@ -15,9 +16,8 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createChatAction } from "../actions/actions";
 import { ChatMessageSchemaType } from "../actions/schemas";
-import { PendingChatMessagesView } from "./pending-chat-messages-view";
 import { ChatHeader } from "../chat-header";
-import { useAbortableAction } from "@/hooks/use-abortable-action";
+import { PendingChatMessagesView } from "./pending-chat-messages-view";
 
 const recommendedPrompts = [
   "What are my tasks for today?",
