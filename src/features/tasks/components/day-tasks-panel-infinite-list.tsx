@@ -35,9 +35,10 @@ export const DayTasksPanelInfiniteList = ({
 
   const fetchTasks = useCallback(
     (nextPage: number) => {
-      return readTasksAction(calendarFilters.day, [], {
+      return readTasksAction({
         ...dayTasksFilters,
         page: nextPage,
+        selectedDay: calendarFilters.day,
       });
     },
     [calendarFilters.day, dayTasksFilters],

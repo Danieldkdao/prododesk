@@ -45,7 +45,7 @@ import {
 import { getAreaIdTag, getUserAreaTag } from "../server/cache/areas";
 import { areaSchema, AreaSchemaType } from "./schemas";
 
-export const readCachedAreaAction = async (userId: string, areaId: string) => {
+const readCachedAreaAction = async (userId: string, areaId: string) => {
   "use cache";
   cacheTag(getAreaIdTag(areaId));
 

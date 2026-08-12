@@ -15,21 +15,18 @@ import {
 } from "lucide-react";
 import { Suspense } from "react";
 import { readAreaAction } from "../actions/actions";
-import { AreaOptions } from "./area-options";
+import { AreaIdHeaderSkeleton } from "./area-id-header-skeletons";
 import { AreaIdHeaderTabs } from "./area-id-header-tabs";
+import { AreaOptions } from "./area-options";
 
 type AreaIdParams = ParamsId<"areaId">;
 
 export const AreaIdHeader = (props: AreaIdParams) => {
   return (
-    <Suspense fallback={<AreaIdLoading />}>
+    <Suspense fallback={<AreaIdHeaderSkeleton />}>
       <AreaIdSuspense {...props} />
     </Suspense>
   );
-};
-
-const AreaIdLoading = () => {
-  return <div>loading</div>;
 };
 
 const AreaIdSuspense = async ({ params }: AreaIdParams) => {
@@ -51,7 +48,7 @@ const AreaIdSuspense = async ({ params }: AreaIdParams) => {
   ) as Record<ProjectStatus, number>;
   const activeProjectCount = projectStatusCounts.active ?? 0;
 
-  const taskStatusCounts = Object.entries(
+  const taskStatusCounts = Object.fromEntries(
     area.taskCounts.map(({ status, count }) => [status, count]),
   ) as Record<TaskStatus, number>;
   const completedTaskCount = taskStatusCounts?.completed ?? 0;

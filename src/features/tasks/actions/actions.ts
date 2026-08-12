@@ -2,6 +2,7 @@
 
 import { db } from "@/db/db";
 import {
+  AreaSelectType,
   ProjectSelectType,
   ProjectTable,
   TaskPriority,
@@ -52,6 +53,7 @@ import {
   updateTaskDb,
 } from "../server/tasks";
 import { taskSchema, TaskSchemaType } from "./schemas";
+import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 
 export const createTaskAction = async (unsafeData: TaskSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -270,8 +272,6 @@ export type GetCalendarTasksActionReturnType = UnwrapAsync<
 
 const readCachedTasksAction = async (
   userId: string,
-  selectedDay: Date | null,
-  projectIds: string[],
   timeZone: string,
   filterOptions: {
     search: string;
@@ -283,12 +283,13 @@ const readCachedTasksAction = async (
     page: number;
     unassignedOnly?: boolean;
     allTasks?: boolean;
+    selectedDay?: Date | null;
+    projectIds?: string[];
+    areaIds?: string[];
   },
 ) => {
   "use cache";
   cacheTag(getUserTaskTag(userId));
-
-  if (!projectIds.length && !selectedDay) return null;
 
   const {
     search,
@@ -300,25 +301,10 @@ const readCachedTasksAction = async (
     page,
     unassignedOnly = false,
     allTasks = false,
+    projectIds,
+    areaIds,
+    selectedDay,
   } = filterOptions;
-
-  let existingProjects;
-
-  if (projectIds.length) {
-    if (!areValidIds(projectIds)) return null;
-
-    existingProjects = await Promise.all(
-      projectIds.map((projectId) =>
-        confirmUserProjectOwnership(projectId, userId),
-      ),
-    );
-    if (
-      !existingProjects.every((project): project is ProjectSelectType =>
-        Boolean(project),
-      )
-    )
-      return null;
-  }
 
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -358,8 +344,47 @@ const readCachedTasksAction = async (
     ? inArray(TaskTable.status, statuses)
     : undefined;
 
-  const projectsFilter = projectIds.length
-    ? inArray(TaskTable.projectId, projectIds)
+  let existingProjects: ProjectSelectType[] = [];
+
+  if (projectIds?.length) {
+    if (!areValidIds(projectIds)) return null;
+
+    const userProjects = await Promise.all(
+      projectIds.map((projectId) =>
+        confirmUserProjectOwnership(projectId, userId),
+      ),
+    );
+
+    existingProjects = userProjects.filter(
+      (project): project is ProjectSelectType => Boolean(project),
+    );
+  }
+
+  const projectsFilter = existingProjects.length
+    ? inArray(
+        TaskTable.projectId,
+        existingProjects.map((project) => project.id),
+      )
+    : undefined;
+
+  let existingAreas: AreaSelectType[] = [];
+
+  if (areaIds?.length) {
+    if (!areValidIds(areaIds)) return null;
+
+    const userAreas = await Promise.all(
+      areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userId)),
+    );
+    existingAreas = userAreas.filter((area): area is AreaSelectType =>
+      Boolean(area),
+    );
+  }
+
+  const areasFilter = existingAreas.length
+    ? inArray(
+        ProjectTable.areaId,
+        existingAreas.map((area) => area.id),
+      )
     : undefined;
 
   const timeRangeFilter = and(
@@ -393,6 +418,7 @@ const readCachedTasksAction = async (
     statusFilter,
     timeRangeFilter,
     milestoneFilter,
+    areasFilter,
   );
 
   const baseFetchTasks = db
@@ -402,12 +428,22 @@ const readCachedTasksAction = async (
     })
     .from(TaskTable)
     .where(whereQuery)
-    .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
     .orderBy(sortByMap[sortBy]);
 
+  const joinedFetchTasks =
+    projectsFilter || areasFilter
+      ? baseFetchTasks.innerJoin(
+          ProjectTable,
+          eq(ProjectTable.id, TaskTable.projectId),
+        )
+      : baseFetchTasks.leftJoin(
+          ProjectTable,
+          eq(ProjectTable.id, TaskTable.projectId),
+        );
+
   const fetchTasks = allTasks
-    ? baseFetchTasks
-    : baseFetchTasks.offset(offset).limit(PAGE_SIZE);
+    ? joinedFetchTasks
+    : joinedFetchTasks.offset(offset).limit(PAGE_SIZE);
 
   const tasks = await fetchTasks;
 
@@ -440,10 +476,6 @@ const readCachedTasksAction = async (
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalSelectedTasks.count;
   const clientKey = JSON.stringify({
-    context: {
-      selectedDay,
-      projectIds: projectIds ? [...projectIds].sort() : null,
-    },
     filters: {
       ...filterOptions,
       priorities: [...filterOptions.priorities].sort(),
@@ -470,31 +502,24 @@ const readCachedTasksAction = async (
     },
   };
 };
-export const readTasksAction = async (
-  selectedDay: Date | null,
-  projectIds: string[],
-  filterOptions: {
-    search: string;
-    sortBy: DayTasksSortByOption;
-    priorities: TaskPriority[];
-    statuses: TaskStatus[];
-    dateTimeStartRange: Date | null;
-    dateTimeEndRange: Date | null;
-    page: number;
-    unassignedOnly?: boolean;
-    allTasks?: boolean;
-  },
-) => {
+export const readTasksAction = async (filterOptions: {
+  search: string;
+  sortBy: DayTasksSortByOption;
+  priorities: TaskPriority[];
+  statuses: TaskStatus[];
+  dateTimeStartRange: Date | null;
+  dateTimeEndRange: Date | null;
+  page: number;
+  unassignedOnly?: boolean;
+  allTasks?: boolean;
+  projectIds?: string[];
+  areaIds?: string[];
+  selectedDay?: Date | null;
+}) => {
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) return null;
 
-  return readCachedTasksAction(
-    userId,
-    selectedDay,
-    projectIds,
-    user.timeZone,
-    filterOptions,
-  );
+  return readCachedTasksAction(userId, user.timeZone, filterOptions);
 };
 export type ReadTasksActionReturnType = UnwrapAsync<typeof readTasksAction>;
 
