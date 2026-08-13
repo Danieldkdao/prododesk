@@ -13,6 +13,8 @@ import {
   UserIcon,
 } from "lucide-react";
 import { ActivitySortByOption } from "./activity-params";
+import { ProjectSelectType } from "@/db/schema";
+import { formatDistanceToNow } from "date-fns";
 
 export const formatActivitySource = (source: ActivitySource) => {
   switch (source) {
@@ -101,4 +103,25 @@ export const formatActivitySortByOption = (option: ActivitySortByOption) => {
         `Unknown activity sort by option: ${option satisfies never}`,
       );
   }
+};
+
+export const formatActivityMessage = ({
+  message,
+  source,
+  createdAt,
+  project,
+}: {
+  message: string;
+  source: ActivitySource;
+  createdAt: Date;
+  project?: ProjectSelectType;
+}) => {
+  const sourceLabel = formatActivitySource(source).label;
+  const formattedMessage = message.at(0)?.toLowerCase() + message.slice(1);
+  const timeAgo = formatDistanceToNow(createdAt, {
+    includeSeconds: true,
+    addSuffix: true,
+  });
+  const finalMessage = `${sourceLabel} ${formattedMessage} ${project ? `in project "${project.name}"` : ""} ${timeAgo}`;
+  return finalMessage;
 };

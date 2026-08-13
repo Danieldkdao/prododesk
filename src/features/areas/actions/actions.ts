@@ -2,6 +2,7 @@
 
 import { db } from "@/db/db";
 import {
+  ActivityTable,
   AreaTable,
   Color,
   DocumentTable,
@@ -30,6 +31,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  lte,
   or,
   SQL,
   sql,
@@ -60,66 +62,98 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
     END
   `;
 
-  const [area, tasks, documents, projectCounts, taskCounts] = await Promise.all(
-    [
-      db.query.AreaTable.findFirst({
-        where: and(eq(AreaTable.id, areaId), eq(AreaTable.userId, userId)),
-        with: {
-          projects: {
-            where: and(
-              eq(ProjectTable.userId, userId),
-              eq(ProjectTable.status, "active"),
-              eq(ProjectTable.isArchived, false),
-            ),
-            orderBy: [asc(projectRank), desc(ProjectTable.updatedAt)],
-            limit: 4,
-          },
-        },
-      }),
-      db
-        .select()
-        .from(TaskTable)
-        .innerJoin(ProjectTable, eq(TaskTable.projectId, ProjectTable.id))
-        .where(
-          and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)),
-        )
-        .orderBy(asc(priorityRank), desc(TaskTable.updatedAt))
-        .limit(5),
-      db
-        .select()
-        .from(DocumentTable)
-        .innerJoin(ProjectTable, eq(ProjectTable.id, DocumentTable.projectId))
-        .where(
-          and(
-            eq(DocumentTable.userId, userId),
-            eq(ProjectTable.id, DocumentTable.projectId),
+  const [
+    area,
+    tasks,
+    documents,
+    activity,
+    projectCounts,
+    taskCounts,
+    [overdueTasks],
+  ] = await Promise.all([
+    db.query.AreaTable.findFirst({
+      where: and(eq(AreaTable.id, areaId), eq(AreaTable.userId, userId)),
+      with: {
+        projects: {
+          where: and(
+            eq(ProjectTable.userId, userId),
+            eq(ProjectTable.status, "active"),
+            eq(ProjectTable.isArchived, false),
           ),
-        )
-        .orderBy(desc(DocumentTable.updatedAt))
-        .limit(4),
-      db
-        .select({
-          status: ProjectTable.status,
-          count: count(),
-        })
-        .from(ProjectTable)
-        .where(
-          and(eq(ProjectTable.userId, userId), eq(ProjectTable.areaId, areaId)),
-        )
-        .groupBy(ProjectTable.status),
-      db
-        .select({
-          status: TaskTable.status,
-          count: count(),
-        })
-        .from(TaskTable)
-        .innerJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
-        .where(
-          and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)),
-        )
-        .groupBy(TaskTable.status),
-    ],
-  );
+          orderBy: [asc(projectRank), desc(ProjectTable.updatedAt)],
+          limit: 4,
+        },
+      },
+    }),
+    db
+      .select({
+        ...getTableColumns(TaskTable),
+        project: getTableColumns(ProjectTable),
+      })
+      .from(TaskTable)
+      .innerJoin(ProjectTable, eq(TaskTable.projectId, ProjectTable.id))
+      .where(and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)))
+      .orderBy(asc(priorityRank), desc(TaskTable.updatedAt))
+      .limit(5),
+    db
+      .select({
+        ...getTableColumns(DocumentTable),
+        project: getTableColumns(ProjectTable),
+      })
+      .from(DocumentTable)
+      .innerJoin(ProjectTable, eq(ProjectTable.id, DocumentTable.projectId))
+      .where(
+        and(
+          eq(DocumentTable.userId, userId),
+          eq(ProjectTable.id, DocumentTable.projectId),
+        ),
+      )
+      .orderBy(desc(DocumentTable.updatedAt))
+      .limit(4),
+    db
+      .select({
+        ...getTableColumns(ActivityTable),
+        project: getTableColumns(ProjectTable),
+      })
+      .from(ActivityTable)
+      .innerJoin(ProjectTable, eq(ProjectTable.id, ActivityTable.projectId))
+      .where(
+        or(eq(ActivityTable.areaId, areaId), eq(ProjectTable.areaId, areaId)),
+      )
+      .limit(5),
+    db
+      .select({
+        status: ProjectTable.status,
+        count: count(),
+      })
+      .from(ProjectTable)
+      .where(
+        and(eq(ProjectTable.userId, userId), eq(ProjectTable.areaId, areaId)),
+      )
+      .groupBy(ProjectTable.status),
+    db
+      .select({
+        status: TaskTable.status,
+        count: count(),
+      })
+      .from(TaskTable)
+      .innerJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+      .where(and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)))
+      .groupBy(TaskTable.status),
+    db
+      .select({
+        count: count(),
+      })
+      .from(TaskTable)
+      .innerJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+      .where(
+        and(
+          eq(TaskTable.userId, userId),
+          eq(ProjectTable.areaId, areaId),
+          lte(TaskTable.dueAt, new Date()),
+        ),
+      ),
+  ]);
 
   if (!area) return null;
 
@@ -127,8 +161,10 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
     ...area,
     tasks,
     documents,
+    activity,
     projectCounts,
     taskCounts,
+    overdueTaskCount: overdueTasks.count,
   };
 };
 export const readAreaAction = async (areaId: string) => {
