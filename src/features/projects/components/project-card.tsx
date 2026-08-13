@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { TaskDialog } from "@/features/tasks/components/task-dialog";
 import { formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow, parse, startOfDay } from "date-fns";
@@ -7,7 +9,6 @@ import {
   ArchiveIcon,
   ArrowRightIcon,
   CalendarDaysIcon,
-  CalendarIcon,
   CircleDashedIcon,
   ClockIcon,
   DotIcon,
@@ -17,25 +18,19 @@ import {
   ShapesIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { Fragment } from "react/jsx-runtime";
 import { ReadProjectsActionReturnType } from "../actions/actions";
 import { formatProjectStatus } from "../lib/formatters";
 import { ProjectDialog } from "./project-dialog";
 import { ProjectOptions } from "./project-options";
-import { Progress } from "@/components/ui/progress";
-import { Fragment } from "react/jsx-runtime";
-import { TaskDialog } from "@/features/tasks/components/task-dialog";
 
 export const ProjectCard = ({
   project,
 }: {
   project: ReadProjectsActionReturnType["projects"][number];
 }) => {
-  const {
-    text: projectStatusText,
-    icon: ProjectStatusIcon,
-    bgColor,
-    textColor,
-  } = formatProjectStatus(project.status);
+  const { text: projectStatusText, icon: ProjectStatusIcon } =
+    formatProjectStatus(project.status);
   const { borderLeft, bgLight, text, bg } = formatColor(project.color);
 
   const today = startOfDay(new Date());

@@ -1,11 +1,12 @@
 import { db, DbTransaction } from "@/db/db";
-import { TaskTable, TaskInsertType, TaskSelectType } from "@/db/schema";
-import { revalidateTaskCache } from "./cache/tasks";
-import { and, eq, SQL } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth/helpers";
-import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
-import { revalidateMilestoneCache } from "@/features/milestones/server/cache/milestones";
+import { TaskInsertType, TaskSelectType, TaskTable } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
+import { revalidateMilestoneCache } from "@/features/milestones/server/cache/milestones";
+import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
+import { getCurrentUser } from "@/lib/auth/helpers";
+import { and, eq, SQL } from "drizzle-orm";
+import { revalidateTaskCache } from "./cache/tasks";
+import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 
 export const confirmUserTaskOwnership = async (
   taskId: string,
@@ -32,6 +33,12 @@ export const insertTaskDb = async (
   tx?: DbTransaction,
 ) => {
   try {
+    const existingProject = taskData.projectId
+      ? await confirmUserProjectOwnership(taskData.projectId)
+      : null;
+    if (taskData.projectId && !existingProject)
+      throw new Error("No existing project found.");
+
     const insertedTask = await db.transaction(async (pgtx) => {
       const [insertedTask] = await (tx ?? pgtx)
         .insert(TaskTable)
@@ -57,10 +64,12 @@ export const insertTaskDb = async (
       return insertedTask;
     });
 
-    revalidateTaskCache(insertedTask.userId, insertedTask.id);
-    if (insertedTask?.projectId) {
-      revalidateProjectCache(insertedTask.userId, insertedTask.projectId);
-    }
+    revalidateTaskCache(
+      insertedTask.userId,
+      insertedTask.id,
+      insertedTask.projectId,
+      existingProject?.areaId,
+    );
 
     return insertedTask;
   } catch (error) {
@@ -81,6 +90,19 @@ export const updateTaskDb = async (
   if (!existingTask) return null;
 
   try {
+    const oldProject = existingTask.projectId
+      ? await confirmUserProjectOwnership(existingTask.projectId)
+      : null;
+
+    const nextProjectId =
+      taskData.projectId === undefined
+        ? existingTask.projectId
+        : taskData.projectId;
+
+    const newProject = nextProjectId
+      ? await confirmUserProjectOwnership(nextProjectId)
+      : null;
+
     const updatedTask = await db.transaction(async (pgtx) => {
       const [updatedTask] = await (tx ?? pgtx)
         .update(TaskTable)
@@ -107,9 +129,28 @@ export const updateTaskDb = async (
     });
 
     revalidateTaskCache(updatedTask.userId, updatedTask.id);
+
+    if (oldProject) {
+      revalidateProjectCache(
+        updatedTask.userId,
+        oldProject.id,
+        oldProject.areaId,
+      );
+    }
+
+    if (newProject && newProject.id !== oldProject?.id) {
+      revalidateProjectCache(
+        updatedTask.userId,
+        newProject.id,
+        newProject.areaId,
+      );
+    }
     if (updatedTask?.projectId) {
-      revalidateProjectCache(updatedTask.userId, updatedTask.projectId);
-      revalidateMilestoneCache(updatedTask.userId, updatedTask.projectId);
+      revalidateMilestoneCache(
+        updatedTask.userId,
+        updatedTask.projectId,
+        newProject?.areaId,
+      );
     }
 
     return updatedTask;
@@ -124,6 +165,12 @@ export const deleteTaskDb = async (taskId: string, tx?: DbTransaction) => {
   if (!existingTask) return null;
 
   try {
+    const existingProject = existingTask.projectId
+      ? await confirmUserProjectOwnership(existingTask.projectId)
+      : null;
+    if (existingTask.projectId && !existingProject)
+      throw new Error("No existing project found.");
+
     const deletedTask = await db.transaction(async (pgtx) => {
       const [deletedTask] = await (tx ?? pgtx)
         .delete(TaskTable)
@@ -148,10 +195,12 @@ export const deleteTaskDb = async (taskId: string, tx?: DbTransaction) => {
       return deletedTask;
     });
 
-    revalidateTaskCache(deletedTask.userId, deletedTask.id);
-    if (deletedTask?.projectId) {
-      revalidateProjectCache(deletedTask.userId, deletedTask.projectId);
-    }
+    revalidateTaskCache(
+      deletedTask.userId,
+      deletedTask.id,
+      deletedTask.projectId,
+      existingProject?.areaId,
+    );
 
     return deletedTask;
   } catch (error) {

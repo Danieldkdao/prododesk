@@ -1,10 +1,10 @@
 "use client";
 
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ReadProjectActionReturnType } from "../actions/actions";
-import { formatColor } from "@/lib/formatters";
 import { usePathname } from "next/navigation";
+import { ReadAreaActionReturnType } from "../actions/actions";
+import { formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import {
   Select,
@@ -16,18 +16,18 @@ import {
 import {
   ActivityIcon,
   FileTextIcon,
+  FolderKanbanIcon,
   LayoutDashboardIcon,
   ListCheckIcon,
-  MilestoneIcon,
 } from "lucide-react";
 
-export const ProjectIdHeaderTabs = ({
-  project,
+export const AreaIdHeaderTabs = ({
+  area,
 }: {
-  project: ReadProjectActionReturnType;
+  area: ReadAreaActionReturnType;
 }) => {
   const pathname = usePathname();
-  const { bg, dataActiveText, afterBg, hoverText } = formatColor(project.color);
+  const { bg, dataActiveText, afterBg, hoverText } = formatColor(area.color);
 
   const tabs = [
     {
@@ -41,6 +41,23 @@ export const ProjectIdHeaderTabs = ({
       href: "",
     },
     {
+      value: "projects",
+      children: (
+        <div className="flex items-center gap-2 group">
+          <FolderKanbanIcon className="size-5" />
+          <span>Projects</span>
+          <div
+            className={cn(bg, "py-0.5 px-1 flex items-center justify-center")}
+          >
+            <span className="text-white! font-medium text-sm">
+              {area.projectCounts.reduce((a, b) => a + b.count, 0)}
+            </span>
+          </div>
+        </div>
+      ),
+      href: "/projects",
+    },
+    {
       value: "tasks",
       children: (
         <div className="flex items-center gap-2 group">
@@ -50,22 +67,12 @@ export const ProjectIdHeaderTabs = ({
             className={cn(bg, "py-0.5 px-1 flex items-center justify-center")}
           >
             <span className="text-white! font-medium text-sm">
-              {project.taskCounts.reduce((a, b) => a + b.count, 0)}
+              {area.taskCounts.reduce((a, b) => a + b.count, 0)}
             </span>
           </div>
         </div>
       ),
       href: "/tasks",
-    },
-    {
-      value: "milestones",
-      children: (
-        <div className="flex items-center gap-2">
-          <MilestoneIcon className="size-5" />
-          <span>Milestones</span>
-        </div>
-      ),
-      href: "/milestones",
     },
     {
       value: "documents",
@@ -90,7 +97,7 @@ export const ProjectIdHeaderTabs = ({
   ];
 
   const currentTab = tabs.find(
-    (tab) => `/dashboard/projects/${project.id}${tab.href}` === pathname,
+    (tab) => `/dashboard/areas/${area.id}${tab.href}` === pathname,
   );
   const tabValue = currentTab?.value;
 
@@ -111,7 +118,7 @@ export const ProjectIdHeaderTabs = ({
                   "text-base font-bold",
                 )}
                 render={
-                  <Link href={`/dashboard/projects/${project.id}${tab.href}`}>
+                  <Link href={`/dashboard/areas/${area.id}${tab.href}`}>
                     {tab.children}
                   </Link>
                 }
@@ -136,7 +143,7 @@ export const ProjectIdHeaderTabs = ({
               value={tab.value}
               className="text-base font-bold uppercase"
               render={
-                <Link href={`/dashboard/projects/${project.id}${tab.href}`}>
+                <Link href={`/dashboard/areas/${area.id}${tab.href}`}>
                   {tab.children}
                 </Link>
               }

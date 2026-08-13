@@ -1,7 +1,14 @@
 "use server";
 
 import { db } from "@/db/db";
-import { AreaTable, Color, ProjectTable, TaskTable } from "@/db/schema";
+import {
+  ActivityTable,
+  AreaTable,
+  Color,
+  DocumentTable,
+  ProjectTable,
+  TaskTable,
+} from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -24,6 +31,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  lte,
   or,
   SQL,
   sql,
@@ -36,8 +44,140 @@ import {
   insertAreaDb,
   updateAreaDb,
 } from "../server/areas";
-import { getUserAreaTag } from "../server/cache/areas";
+import { getAreaIdTag, getUserAreaTag } from "../server/cache/areas";
 import { areaSchema, AreaSchemaType } from "./schemas";
+
+const readCachedAreaAction = async (userId: string, areaId: string) => {
+  "use cache";
+  cacheTag(getAreaIdTag(areaId));
+
+  const projectRank = sql`EXTRACT(EPOCH FROM ${ProjectTable.endAt})`;
+  const priorityRank = sql`
+    CASE ${TaskTable.priority}
+      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      ELSE 5
+    END
+  `;
+
+  const [
+    area,
+    tasks,
+    documents,
+    activity,
+    projectCounts,
+    taskCounts,
+    [overdueTasks],
+  ] = await Promise.all([
+    db.query.AreaTable.findFirst({
+      where: and(eq(AreaTable.id, areaId), eq(AreaTable.userId, userId)),
+      with: {
+        projects: {
+          where: and(
+            eq(ProjectTable.userId, userId),
+            eq(ProjectTable.status, "active"),
+            eq(ProjectTable.isArchived, false),
+          ),
+          orderBy: [asc(projectRank), desc(ProjectTable.updatedAt)],
+          limit: 4,
+        },
+      },
+    }),
+    db
+      .select({
+        ...getTableColumns(TaskTable),
+        project: getTableColumns(ProjectTable),
+      })
+      .from(TaskTable)
+      .innerJoin(ProjectTable, eq(TaskTable.projectId, ProjectTable.id))
+      .where(and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)))
+      .orderBy(asc(priorityRank), desc(TaskTable.updatedAt))
+      .limit(5),
+    db
+      .select({
+        ...getTableColumns(DocumentTable),
+        project: getTableColumns(ProjectTable),
+      })
+      .from(DocumentTable)
+      .innerJoin(ProjectTable, eq(ProjectTable.id, DocumentTable.projectId))
+      .where(
+        and(
+          eq(DocumentTable.userId, userId),
+          eq(ProjectTable.id, DocumentTable.projectId),
+          eq(ProjectTable.areaId, areaId),
+        ),
+      )
+      .orderBy(desc(DocumentTable.updatedAt))
+      .limit(4),
+    db
+      .select({
+        ...getTableColumns(ActivityTable),
+        project: getTableColumns(ProjectTable),
+      })
+      .from(ActivityTable)
+      .innerJoin(ProjectTable, eq(ProjectTable.id, ActivityTable.projectId))
+      .where(
+        or(eq(ActivityTable.areaId, areaId), eq(ProjectTable.areaId, areaId)),
+      )
+      .limit(5),
+    db
+      .select({
+        status: ProjectTable.status,
+        count: count(),
+      })
+      .from(ProjectTable)
+      .where(
+        and(eq(ProjectTable.userId, userId), eq(ProjectTable.areaId, areaId)),
+      )
+      .groupBy(ProjectTable.status),
+    db
+      .select({
+        status: TaskTable.status,
+        count: count(),
+      })
+      .from(TaskTable)
+      .innerJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+      .where(and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)))
+      .groupBy(TaskTable.status),
+    db
+      .select({
+        count: count(),
+      })
+      .from(TaskTable)
+      .innerJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+      .where(
+        and(
+          eq(TaskTable.userId, userId),
+          eq(ProjectTable.areaId, areaId),
+          lte(TaskTable.dueAt, new Date()),
+        ),
+      ),
+  ]);
+
+  if (!area) return null;
+
+  return {
+    ...area,
+    tasks,
+    documents,
+    activity,
+    projectCounts,
+    taskCounts,
+    overdueTaskCount: overdueTasks.count,
+  };
+};
+export const readAreaAction = async (areaId: string) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  const existingArea = await confirmUserAreaOwnership(areaId);
+  if (!existingArea) return null;
+
+  return readCachedAreaAction(userId, existingArea.id);
+};
+export type ReadAreaActionReturnType = UnwrapAsync<typeof readAreaAction>;
 
 const readCachedAreasAction = async (
   userId: string,

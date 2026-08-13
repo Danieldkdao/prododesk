@@ -1,6 +1,7 @@
 import { ColorPicker } from "@/components/color-picker";
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmojiPickerPopover } from "@/components/ui/emoji-picker-popover";
 import {
   Field,
@@ -10,6 +11,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { LoadingSwap } from "@/components/ui/loading-swap";
 import { PopoverCalendar } from "@/components/ui/popover-calendar";
 import {
   Select,
@@ -24,14 +26,12 @@ import { AreaCommandSelect } from "@/features/areas/components/area-command-sele
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addDays, parse, subDays } from "date-fns";
 import { SmilePlusIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { createProjectAction, updateProjectAction } from "../actions/actions";
 import { projectSchema, ProjectSchemaType } from "../actions/schemas";
 import { formatProjectStatus } from "../lib/formatters";
-import { LoadingSwap } from "@/components/ui/loading-swap";
-import { createProjectAction, updateProjectAction } from "../actions/actions";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ProjectFormDefaultValues } from "../lib/types";
 
 export const ProjectForm = ({

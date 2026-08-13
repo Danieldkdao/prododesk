@@ -62,10 +62,18 @@ const revalidateProjectTasksCache = async (projectId: string) => {
       eq(TaskTable.userId, userId),
       eq(TaskTable.projectId, projectId),
     ),
+    with: {
+      project: true,
+    },
   });
   if (existingProjectTasks.length) {
     existingProjectTasks.forEach((task) => {
-      revalidateTaskCache(task.userId, task.id);
+      revalidateTaskCache(
+        task.userId,
+        task.id,
+        task.projectId,
+        task.project?.areaId,
+      );
     });
   }
 };
@@ -101,7 +109,11 @@ export const insertProjectDb = async (
       return insertedProject;
     });
 
-    revalidateProjectCache(insertedProject.userId, insertedProject.id);
+    revalidateProjectCache(
+      insertedProject.userId,
+      insertedProject.id,
+      insertedProject.areaId,
+    );
 
     return insertedProject;
   } catch (error) {
@@ -155,7 +167,20 @@ export const updateProjectDb = async (
     });
 
     revalidateProjectTasksCache(updatedProject.id);
-    revalidateProjectCache(updatedProject.userId, updatedProject.id);
+
+    revalidateProjectCache(
+      updatedProject.userId,
+      updatedProject.id,
+      existingProject.areaId,
+    );
+
+    if (updatedProject.areaId !== existingProject.areaId) {
+      revalidateProjectCache(
+        updatedProject.userId,
+        updatedProject.id,
+        updatedProject.areaId,
+      );
+    }
 
     return updatedProject;
   } catch (error) {
@@ -191,7 +216,6 @@ export const deleteProjectDb = async (
           subject: "project",
           subjectId: deletedProject.id,
           subjectLabel: deletedProject.name,
-          projectId: deletedProject.id,
           message: `Deleted project "${deletedProject.name}"`,
         },
         tx ?? pgtx,
@@ -202,7 +226,11 @@ export const deleteProjectDb = async (
     });
 
     revalidateProjectTasksCache(deletedProject.id);
-    revalidateProjectCache(deletedProject.userId, deletedProject.id);
+    revalidateProjectCache(
+      deletedProject.userId,
+      deletedProject.id,
+      deletedProject.areaId,
+    );
 
     return deletedProject;
   } catch (error) {

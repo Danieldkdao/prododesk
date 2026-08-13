@@ -404,8 +404,11 @@ export const moveMilestoneAction = async (
         ),
       );
 
-    revalidateMilestoneCache(userId, existingProject.id);
-    revalidateProjectCache(userId, existingProject.id);
+    revalidateMilestoneCache(
+      userId,
+      existingProject.id,
+      existingProject.areaId,
+    );
 
     return {
       error: false,

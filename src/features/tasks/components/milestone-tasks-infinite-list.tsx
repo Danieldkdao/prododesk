@@ -35,9 +35,10 @@ export const MilestoneTasksInfiniteList = ({
 
   const fetchTasks = useCallback(
     (nextPage: number) => {
-      return readTasksAction(null, [projectId], {
+      return readTasksAction({
         ...defaultDayTasksParamsOptions,
         search: filters.search,
+        projectIds: [projectId],
         page: nextPage,
         unassignedOnly: true,
       });

@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ProjectSelectType } from "@/db/schema";
+import { AreaSelectType } from "@/db/schema";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
@@ -14,35 +14,28 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { ReactElement, useState } from "react";
-import { DeleteProjectButton } from "./delete-project-button";
-import { ProjectDialog } from "./project-dialog";
-import { ToggleProjectArchiveStatusButton } from "./toggle-project-archive-status-button";
+import { AreaDialog } from "./area-dialog";
+import { DeleteAreaButton } from "./delete-area-button";
+import { ToggleAreaArchiveStatusButton } from "./toggle-area-archive-status-button";
 
-export const ProjectOptions = ({
+export const AreaOptions = ({
+  area,
   children,
-  project,
-  className,
 }: {
+  area: AreaSelectType;
   children: ReactElement;
-  project: ProjectSelectType & {
-    area?: { name: string; icon?: string | null } | null;
-  };
-  className?: string;
 }) => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
 
   return (
     <>
-      <ProjectDialog
+      <AreaDialog
+        existingArea={area}
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
-        existingProject={project}
-        defaultValues={{
-          area: project.area,
-        }}
       />
       <DropdownMenu>
-        <DropdownMenuTrigger className={className} render={children} />
+        <DropdownMenuTrigger render={children} />
         <DropdownMenuContent>
           <DropdownMenuItem onClick={() => setUpdateDialogOpen(true)}>
             <EditIcon />
@@ -51,13 +44,13 @@ export const ProjectOptions = ({
           <DropdownMenuItem
             nativeButton
             render={
-              <ToggleProjectArchiveStatusButton
-                projectId={project.id}
-                newArchiveStatus={!project.isArchived}
-                className="w-full h-auto py-2 px-3.5 justify-start bg-transparent"
+              <ToggleAreaArchiveStatusButton
+                areaId={area.id}
+                newArchiveStatus={!area.isArchived}
                 variant="ghost"
+                className="w-full h-auto py-2 px-3.5 justify-start"
               >
-                {project.isArchived ? (
+                {area.isArchived ? (
                   <>
                     <ArchiveRestoreIcon />
                     Restore
@@ -68,22 +61,23 @@ export const ProjectOptions = ({
                     Archive
                   </>
                 )}
-              </ToggleProjectArchiveStatusButton>
+              </ToggleAreaArchiveStatusButton>
             }
-          />
+          ></DropdownMenuItem>
           <DropdownMenuItem
             nativeButton
             variant="destructive"
             render={
-              <DeleteProjectButton
-                projectId={project.id}
+              <DeleteAreaButton
+                areaId={area.id}
+                variant="destructive"
                 className="w-full h-auto py-2 px-3.5 justify-start bg-transparent focus:bg-destructive/10 dark:focus:bg-destructive/20"
               >
                 <Trash2Icon />
                 Delete
-              </DeleteProjectButton>
+              </DeleteAreaButton>
             }
-          />
+          ></DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </>

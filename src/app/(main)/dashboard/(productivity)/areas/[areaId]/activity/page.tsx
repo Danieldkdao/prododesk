@@ -1,40 +1,38 @@
 import { ErrorState } from "@/components/error-state";
 import { readActivityAction } from "@/features/activity/actions/actions";
 import { ActivityFilters } from "@/features/activity/components/activity-filters";
-import { ActivityProjectSectionSkeleton } from "@/features/activity/components/activity-project-section-skeleton";
 import { ActivityListTable } from "@/features/activity/components/activity-list-table";
+import { ActivityProjectSectionSkeleton } from "@/features/activity/components/activity-project-section-skeleton";
 import { loadActivitySearchParams } from "@/features/activity/lib/activity-params";
-import { DEFAULT_PAGE } from "@/lib/constants";
 import { ParamsId, SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
 
-type ProjectIdActivityParams = ParamsId<"projectId"> & SearchParamsType;
+type AreaIdActivityParams = ParamsId<"areaId"> & SearchParamsType;
 
-const ProjectIdActivityPage = (props: ProjectIdActivityParams) => {
+const AreaIdActivityPage = (props: AreaIdActivityParams) => {
   return (
-    <Suspense fallback={<ActivityProjectSectionSkeleton />}>
-      <ProjectIdActivitySuspense {...props} />
+    <Suspense fallback={<ActivityProjectSectionSkeleton showProject />}>
+      <AreaIdActivitySuspense {...props} />
     </Suspense>
   );
 };
 
-const ProjectIdActivitySuspense = async ({
+const AreaIdActivitySuspense = async ({
   params,
   searchParams,
-}: ProjectIdActivityParams) => {
-  const { projectId } = await params;
-
+}: AreaIdActivityParams) => {
+  const { areaId } = await params;
   const filters = await loadActivitySearchParams(searchParams);
 
   const response = await readActivityAction({
     ...filters,
-    projectIds: [projectId],
+    areaIds: [areaId],
   });
   if (!response) {
     return (
       <ErrorState
         title="An error occurred"
-        description="We were unable to load your project activity. Try refreshing the page or checking the URL."
+        description="We were unable to load your activity in this area. Try refreshing the page or checking the URL."
       />
     );
   }
@@ -42,11 +40,15 @@ const ProjectIdActivitySuspense = async ({
   const { metadata } = response;
 
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div className="flex flex-col gap-4">
       <ActivityFilters />
-      <ActivityListTable key={metadata.clientKey} response={response} />
+      <ActivityListTable
+        key={metadata.clientKey}
+        response={response}
+        showProject
+      />
     </div>
   );
 };
 
-export default ProjectIdActivityPage;
+export default AreaIdActivityPage;

@@ -3,7 +3,7 @@ import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import { Button } from "@/components/ui/button";
 import { readProjectsAction } from "@/features/projects/actions/actions";
 import { ProjectDialog } from "@/features/projects/components/project-dialog";
-import { ProjectsFilters } from "@/features/projects/components/projects-filters";
+import { ProjectFilters } from "@/features/projects/components/project-filters";
 import { ProjectsInfiniteList } from "@/features/projects/components/projects-infinite-list";
 import { ProjectsSkeleton } from "@/features/projects/components/projects-skeleton";
 import { loadProjectsSearchParams } from "@/features/projects/lib/projects-params";
@@ -46,7 +46,7 @@ const ProjectsSuspense = async ({ searchParams }: SearchParamsType) => {
 
   return (
     <div className="w-full flex flex-col gap-8">
-      <ProjectsFilters />
+      <ProjectFilters />
       <ProjectsInfiniteList
         key={metadata.clientKey}
         initialProjects={projects}

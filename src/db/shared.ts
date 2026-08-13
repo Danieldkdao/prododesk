@@ -91,6 +91,7 @@ export const activitySubjects = [
   "task",
   "milestone",
   "document",
+  "area",
 ] as const;
 export type ActivitySubject = (typeof activitySubjects)[number];
 export const activitySubjectEnum = pgEnum(

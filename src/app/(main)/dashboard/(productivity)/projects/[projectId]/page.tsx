@@ -1,4 +1,5 @@
 import { ErrorState } from "@/components/error-state";
+import { OverviewSuspenseEmptyData } from "@/components/overview-suspense-empty-data";
 import { ArrowRightIcon } from "@/components/tiptap/tiptap-icons/arrow-right-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -22,15 +23,13 @@ import {
 } from "@/components/ui/table";
 import { MilestoneStatus, TaskStatus } from "@/db/shared";
 import { CreateDocumentButton } from "@/features/documents/components/create-document-button";
+import { OverviewDocumentsTable } from "@/features/documents/overview-documents-table";
 import { MilestoneDialog } from "@/features/milestones/components/milestone-dialog";
 import { formatMilestoneStatus } from "@/features/milestones/lib/formatters";
 import { readProjectAction } from "@/features/projects/actions/actions";
 import { formatProjectStatus } from "@/features/projects/lib/formatters";
+import { OverviewTasksTable } from "@/features/tasks/components/overview-tasks-table";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
-import {
-  formatTaskPriority,
-  formatTaskStatus,
-} from "@/features/tasks/lib/formatters";
 import { formatColor } from "@/lib/formatters";
 import { ParamsId } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -40,14 +39,13 @@ import {
   FileIcon,
   FileTextIcon,
   ListCheckIcon,
-  LucideIcon,
   MilestoneIcon,
   PlusIcon,
   ShapesIcon,
   SquareIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { Fragment, ReactNode, Suspense } from "react";
+import { Fragment, Suspense } from "react";
 
 type ProjectIdParams = ParamsId<"projectId">;
 
@@ -253,33 +251,6 @@ const ProjectIdLoading = () => {
   );
 };
 
-const ProjectIdSuspenseEmptyData = ({
-  icon: Icon,
-  title,
-  description,
-  children,
-}: {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  children?: ReactNode;
-}) => {
-  return (
-    <Card className="border">
-      <CardContent className="h-full w-full flex items-center justify-center">
-        <div className="w-full flex flex-col items-center justify-center gap-2">
-          <Icon className="size-15" />
-          <h2 className="text-3xl font-semibold text-center">{title}</h2>
-          <p className="text-muted-foreground text-lg text-center max-w-150">
-            {description}
-          </p>
-          <div className="max-w-150 w-full">{children}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
 const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
   const { projectId } = await params;
 
@@ -445,61 +416,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
               <CardTitle className="text-xl font-semibold">Next Work</CardTitle>
             </CardHeader>
             <CardContent className="px-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Task</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead className="text-center">Due</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tasks.map((task) => {
-                    const {
-                      label: taskStatusLabel,
-                      icon: TaskStatusIcon,
-                      textColor: taskStatusTextColor,
-                    } = formatTaskStatus(task.status);
-                    const {
-                      label: taskPriorityLabel,
-                      icon: TaskPriorityIcon,
-                      textColor: taskPriorityTextColor,
-                    } = formatTaskPriority(task.priority);
-
-                    return (
-                      <TableRow key={task.id}>
-                        <TableCell className="font-medium text-base">
-                          {task.name}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <TaskStatusIcon
-                              className={cn("size-5", taskStatusTextColor)}
-                            />
-                            <span className="text-base font-medium">
-                              {taskStatusLabel}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <TaskPriorityIcon
-                              className={cn("size-5", taskPriorityTextColor)}
-                            />
-                            <span className="text-base font-medium">
-                              {taskPriorityLabel}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center text-base">
-                          {task.dueAt ? format(task.dueAt, "PP") : "-"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <OverviewTasksTable tasks={tasks} />
             </CardContent>
             <CardFooter className="px-7">
               <Link
@@ -507,7 +424,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
                 className={cn(
                   buttonVariants({
                     variant: "ghost",
-                    className: "pl-0 hover:bg-tranparent",
+                    className: "pl-0 hover:bg-transparent",
                   }),
                 )}
               >
@@ -517,7 +434,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
             </CardFooter>
           </Card>
         ) : (
-          <ProjectIdSuspenseEmptyData
+          <OverviewSuspenseEmptyData
             icon={ListCheckIcon}
             title="No Tasks"
             description="You haven't created any tasks yet. Create a new task to
@@ -529,7 +446,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
                 New Task
               </Button>
             </TaskDialog>
-          </ProjectIdSuspenseEmptyData>
+          </OverviewSuspenseEmptyData>
         )}
         {milestones.length ? (
           <Card className="border py-5 gap-4">
@@ -611,7 +528,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
                 className={cn(
                   buttonVariants({
                     variant: "ghost",
-                    className: "pl-0 hover:bg-tranparent",
+                    className: "pl-0 hover:bg-transparent",
                   }),
                 )}
               >
@@ -621,7 +538,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
             </CardFooter>
           </Card>
         ) : (
-          <ProjectIdSuspenseEmptyData
+          <OverviewSuspenseEmptyData
             icon={MilestoneIcon}
             title="No Open Milestones"
             description="You have no milestones that are currently open right now.
@@ -633,7 +550,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
                 New Milestone
               </Button>
             </MilestoneDialog>
-          </ProjectIdSuspenseEmptyData>
+          </OverviewSuspenseEmptyData>
         )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[9fr_11fr] gap-4">
@@ -645,25 +562,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-7">
-              <Table>
-                <TableBody>
-                  {documents.map((document) => (
-                    <TableRow key={document.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <FileIcon className="size-5" />
-                          <span className="text-base font-medium">
-                            {document.name}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-base text-right">
-                        Updated {format(document.updatedAt, "PP p")}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <OverviewDocumentsTable documents={documents} />
             </CardContent>
             <CardFooter className="px-7">
               <Link
@@ -671,7 +570,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
                 className={cn(
                   buttonVariants({
                     variant: "ghost",
-                    className: "pl-0 hover:bg-tranparent",
+                    className: "pl-0 hover:bg-transparent",
                   }),
                 )}
               >
@@ -681,7 +580,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
             </CardFooter>
           </Card>
         ) : (
-          <ProjectIdSuspenseEmptyData
+          <OverviewSuspenseEmptyData
             icon={FileTextIcon}
             title="No Documents"
             description="You haven't created any documents yet. Create your first one to get started."
@@ -690,7 +589,7 @@ const ProjectIdSuspense = async ({ params }: ProjectIdParams) => {
               <PlusIcon />
               New Document
             </CreateDocumentButton>
-          </ProjectIdSuspenseEmptyData>
+          </OverviewSuspenseEmptyData>
         )}
         <Card className="border py-5 gap-4">
           <CardHeader className="px-7">

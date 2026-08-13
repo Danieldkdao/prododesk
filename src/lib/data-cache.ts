@@ -19,6 +19,10 @@ export const getProjectResourceTag = (projectId: string, tag: CacheTag) => {
   return `project:${projectId}:${tag}` as const;
 };
 
+export const getAreaResourceTag = (areaId: string, tag: CacheTag) => {
+  return `area:${areaId}:${tag}` as const;
+};
+
 export const getIdTag = (id: string, tag: CacheTag) => {
   return `${tag}:${id}` as const;
 };

@@ -10,7 +10,11 @@ import {
 } from "@/components/ui/table";
 import { PAGE_SIZE } from "@/lib/constants";
 
-export const ActivityProjectSectionSkeleton = () => {
+export const ActivityProjectSectionSkeleton = ({
+  showProject = false,
+}: {
+  showProject?: boolean;
+}) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex w-full items-center gap-2">
@@ -20,6 +24,7 @@ export const ActivityProjectSectionSkeleton = () => {
       <Table>
         <TableHeader>
           <TableRow>
+            {showProject && <TableHead>Project</TableHead>}
             <TableHead>Message</TableHead>
             <TableHead>Source</TableHead>
             <TableHead>Action</TableHead>
@@ -30,6 +35,16 @@ export const ActivityProjectSectionSkeleton = () => {
         <TableBody>
           {Array.from({ length: PAGE_SIZE }).map((_, index) => (
             <TableRow key={index}>
+              {showProject && (
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="size-5 shrink-0" />
+                    <Skeleton
+                      className={index % 2 === 0 ? "h-5 w-28" : "h-5 w-36"}
+                    />
+                  </div>
+                </TableCell>
+              )}
               <TableCell>
                 <Skeleton
                   className={

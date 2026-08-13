@@ -34,8 +34,9 @@ const ProjectIdMilestonesSuspense = async ({
     ...filters,
     page: DEFAULT_PAGE,
   });
-  const tasksResponse = await readTasksAction(null, [projectId], {
+  const tasksResponse = await readTasksAction({
     ...defaultDayTasksParamsOptions,
+    projectIds: [projectId],
     search,
     page: DEFAULT_PAGE,
     unassignedOnly: true,

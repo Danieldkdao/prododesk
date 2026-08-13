@@ -1,16 +1,17 @@
 import { relations } from "drizzle-orm";
 import {
-    boolean,
-    integer,
-    pgTable,
-    text,
-    timestamp,
-    varchar,
+  boolean,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { colorEnum } from "../shared";
 import { ProjectTable } from "./project";
 import { user } from "./user";
+import { ActivityTable } from "./activity";
 
 export const AreaTable = pgTable("areas", {
   id,
@@ -37,4 +38,5 @@ export const areaRelations = relations(AreaTable, ({ one, many }) => ({
     references: [user.id],
   }),
   projects: many(ProjectTable),
+  activity: many(ActivityTable),
 }));

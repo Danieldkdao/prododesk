@@ -18,6 +18,15 @@ import { defaultDayTasksParamsOptions } from "../lib/tasks-params";
 import { Task } from "./task";
 import { TaskDialog } from "./task-dialog";
 import { ProjectSelectType } from "@/db/schema";
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TaskTableRow } from "./task-table-row";
+import { AreaProjectTaskSkeleton } from "./area-project-tasks-skeleton";
 
 export const ProjectTasksInfiniteList = ({
   project,
@@ -34,9 +43,10 @@ export const ProjectTasksInfiniteList = ({
 
   const fetchTasks = useCallback(
     (nextPage: number) => {
-      return readTasksAction(null, [project.id], {
+      return readTasksAction({
         ...tasksFilters,
         page: nextPage,
+        projectIds: [project.id],
       });
     },
     [tasksFilters, project.id],
@@ -91,9 +101,30 @@ export const ProjectTasksInfiniteList = ({
           </AlertDescription>
         </Alert>
       )}
-      {tasks.map((task, index) => (
-        <Task key={task.id} task={task} includeDay index={index} />
-      ))}
+      {tasks.length ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Task</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Priority</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Scheduled At</TableHead>
+              <TableHead>Due At</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tasks.map((task) => (
+              <TaskTableRow key={task.id} task={task} />
+            ))}
+            {isPending &&
+              Array.from({ length: 8 }).map((_, index) => (
+                <AreaProjectTaskSkeleton key={index} />
+              ))}
+          </TableBody>
+        </Table>
+      ) : null}
       {isPending && (
         <div className="w-full flex items-center justify-center">
           <Loader2Icon className="text-primary animate-spin" />

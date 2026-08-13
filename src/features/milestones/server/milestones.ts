@@ -4,12 +4,12 @@ import {
   MilestoneSelectType,
   MilestoneTable,
 } from "@/db/schema";
-import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
+import { insertActivityDb } from "@/features/activity/server/activity";
+import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { SQLMap } from "@/lib/types";
 import { and, eq, SQL } from "drizzle-orm";
 import { revalidateMilestoneCache } from "./cache/milestones";
-import { SQLMap } from "@/lib/types";
-import { insertActivityDb } from "@/features/activity/server/activity";
 
 export const confirmUserMilestoneOwnership = async (
   milestoneId: string,
@@ -34,6 +34,13 @@ export const insertMilestoneDb = async (
   tx?: DbTransaction,
 ) => {
   try {
+    const existingProject =
+      milestone.projectId && typeof milestone.projectId === "string"
+        ? await confirmUserProjectOwnership(milestone.projectId)
+        : null;
+    if (milestone.projectId && !existingProject)
+      throw new Error("No existing project found.");
+
     const insertedMilestone = await db.transaction(async (pgtx) => {
       const [insertedMilestone] = await (tx ?? pgtx)
         .insert(MilestoneTable)
@@ -61,10 +68,7 @@ export const insertMilestoneDb = async (
     revalidateMilestoneCache(
       insertedMilestone.userId,
       insertedMilestone.projectId,
-    );
-    revalidateProjectCache(
-      insertedMilestone.userId,
-      insertedMilestone.projectId,
+      existingProject?.areaId,
     );
 
     return insertedMilestone;
@@ -84,6 +88,11 @@ export const updateMilestoneDb = async (
 ) => {
   const existingMilestone = await confirmUserMilestoneOwnership(milestoneId);
   if (!existingMilestone) return null;
+
+  const existingProject = existingMilestone.projectId
+    ? await confirmUserProjectOwnership(existingMilestone.projectId)
+    : null;
+  if (existingMilestone.projectId && !existingProject) return null;
 
   try {
     const updatedMilestone = await db.transaction(async (pgtx) => {
@@ -119,8 +128,8 @@ export const updateMilestoneDb = async (
     revalidateMilestoneCache(
       updatedMilestone.userId,
       updatedMilestone.projectId,
+      existingProject?.areaId,
     );
-    revalidateProjectCache(updatedMilestone.userId, updatedMilestone.projectId);
 
     return updatedMilestone;
   } catch (error) {
@@ -135,6 +144,11 @@ export const deleteMilestoneDb = async (
 ) => {
   const existingMilestone = await confirmUserMilestoneOwnership(milestoneId);
   if (!existingMilestone) return null;
+
+  const existingProject = existingMilestone.projectId
+    ? await confirmUserProjectOwnership(existingMilestone.projectId)
+    : null;
+  if (existingMilestone.projectId && !existingProject) return null;
 
   try {
     const deletedMilestone = await db.transaction(async (pgtx) => {
@@ -169,8 +183,8 @@ export const deleteMilestoneDb = async (
     revalidateMilestoneCache(
       deletedMilestone.userId,
       deletedMilestone.projectId,
+      existingProject?.areaId,
     );
-    revalidateProjectCache(deletedMilestone.userId, deletedMilestone.projectId);
 
     return deletedMilestone;
   } catch (error) {

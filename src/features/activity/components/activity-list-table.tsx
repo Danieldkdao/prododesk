@@ -11,16 +11,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ReadProjectActivityActionReturnType } from "../actions/actions";
+import { ReadActivityActionReturnType } from "../actions/actions";
 import { useActivityParams } from "../hooks/use-activity-params";
-import { ActivityProjectTableRow } from "./activity-project-table-row";
+import { ActivityTableRow } from "./activity-table-row";
 import { DEFAULT_PAGE, PAGE_SIZE } from "@/lib/constants";
 import { NotFound } from "@/components/not-found";
 
-export const ActivityProjectTable = ({
+export const ActivityListTable = ({
   response,
+  showProject = false,
 }: {
-  response: ReadProjectActivityActionReturnType;
+  response: ReadActivityActionReturnType;
+  showProject?: boolean;
 }) => {
   const [filters, setFilters] = useActivityParams();
 
@@ -46,7 +48,8 @@ export const ActivityProjectTable = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Message</TableHead>
+            {showProject && <TableHead>Project</TableHead>}
+            <TableHead>Activity</TableHead>
             <TableHead>Source</TableHead>
             <TableHead>Action</TableHead>
             <TableHead>Subject</TableHead>
@@ -55,7 +58,11 @@ export const ActivityProjectTable = ({
         </TableHeader>
         <TableBody>
           {activity.map((a) => (
-            <ActivityProjectTableRow key={a.id} activity={a} />
+            <ActivityTableRow
+              key={a.id}
+              activity={a}
+              showProject={showProject}
+            />
           ))}
         </TableBody>
       </Table>
@@ -88,7 +95,7 @@ export const ActivityProjectTable = ({
   ) : (
     <NotFound
       title="No activity found"
-      description="We were unable to find any activity in this project that match the selected filters. Try changing the filters or update this project."
+      description="We were unable to find any activity that match the selected filters. Try changing the filters or update this project."
     >
       <Button onClick={resetFilters} className="w-full">
         Reset filters

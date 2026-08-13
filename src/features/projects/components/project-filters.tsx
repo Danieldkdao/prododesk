@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/popover";
 import { useProjectsParams } from "../hooks/use-projects-params";
 import { Button } from "@/components/ui/button";
-import { FilterIcon } from "lucide-react";
+import { FilterIcon, PlusIcon } from "lucide-react";
 import { SearchInput } from "@/features/tasks/components/search-input";
 import {
   Select,
@@ -35,8 +35,11 @@ import { Color, colors, ProjectStatus, projectStatuses } from "@/db/shared";
 import { formatColor } from "@/lib/formatters";
 import { PopoverCalendar } from "@/components/ui/popover-calendar";
 import { addDays, subDays } from "date-fns";
+import { ProjectDialog } from "./project-dialog";
+import { AreaSelectType } from "@/db/schema";
+import { TooltipWrapper } from "@/components/tooltip-wrapper";
 
-export const ProjectsFilters = () => {
+export const ProjectFilters = ({ area }: { area?: AreaSelectType }) => {
   const today = new Date();
   const [filters, setFilters] = useProjectsParams();
 
@@ -153,6 +156,15 @@ export const ProjectsFilters = () => {
           </div>
         </PopoverContent>
       </Popover>
+      {area && (
+        <ProjectDialog defaultValues={{ area }}>
+          <TooltipWrapper content="New project">
+            <Button size="icon">
+              <PlusIcon />
+            </Button>
+          </TooltipWrapper>
+        </ProjectDialog>
+      )}
     </div>
   );
 };
