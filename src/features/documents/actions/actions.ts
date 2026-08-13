@@ -86,6 +86,8 @@ const readCachedDocumentsAction = async (
     existingProjectIds = existingProjects
       .filter((project): project is ProjectSelectType => Boolean(project))
       .map((project) => project.id);
+
+    if (existingProjectIds.length !== projectIds.length) return null;
   }
 
   const projectsFilter = existingProjectIds.length
@@ -101,6 +103,8 @@ const readCachedDocumentsAction = async (
     existingAreaIds = existingAreas
       .filter((area): area is AreaSelectType => Boolean(area))
       .map((area) => area.id);
+
+    if (existingAreaIds.length !== areaIds.length) return null;
   }
 
   const areasFilter = existingAreaIds.length

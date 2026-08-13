@@ -106,6 +106,7 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
         and(
           eq(DocumentTable.userId, userId),
           eq(ProjectTable.id, DocumentTable.projectId),
+          eq(ProjectTable.areaId, areaId),
         ),
       )
       .orderBy(desc(DocumentTable.updatedAt))

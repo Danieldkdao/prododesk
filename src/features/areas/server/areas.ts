@@ -77,7 +77,7 @@ export const insertAreaDb = async (areaData: SQLMap<AreaInsertType>) => {
       return insertedArea;
     });
 
-    revalidateAreaProjectsCache(insertedArea.id);
+    await revalidateAreaProjectsCache(insertedArea.id);
     revalidateAreaCache(insertedArea.userId, insertedArea.id);
 
     return insertedArea;
@@ -127,7 +127,7 @@ export const updateAreaDb = async (
       return updatedArea;
     });
 
-    revalidateAreaProjectsCache(updatedArea.id);
+    await revalidateAreaProjectsCache(updatedArea.id);
     revalidateAreaCache(updatedArea.userId, updatedArea.id);
 
     return updatedArea;
@@ -161,7 +161,6 @@ export const deleteAreaDb = async (areaId: string) => {
           subject: "area",
           subjectLabel: deletedArea.name,
           subjectId: deletedArea.id,
-          areaId: deletedArea.id,
           message: `Deleted area "${deletedArea.name}"`,
         },
         tx,
@@ -171,7 +170,7 @@ export const deleteAreaDb = async (areaId: string) => {
       return deletedArea;
     });
 
-    revalidateAreaProjectsCache(deletedArea.id);
+    await revalidateAreaProjectsCache(deletedArea.id);
     revalidateAreaCache(deletedArea.userId, deletedArea.id);
 
     return deletedArea;

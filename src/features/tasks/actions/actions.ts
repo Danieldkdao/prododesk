@@ -358,6 +358,8 @@ const readCachedTasksAction = async (
     existingProjects = userProjects.filter(
       (project): project is ProjectSelectType => Boolean(project),
     );
+
+    if (existingProjects.length !== projectIds.length) return null;
   }
 
   const projectsFilter = existingProjects.length
@@ -367,7 +369,7 @@ const readCachedTasksAction = async (
       )
     : undefined;
 
-  let existingAreas: AreaSelectType[] = [];
+  let existingAreaIds: string[] = [];
 
   if (areaIds?.length) {
     if (!areValidIds(areaIds)) return null;
@@ -375,16 +377,15 @@ const readCachedTasksAction = async (
     const userAreas = await Promise.all(
       areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userId)),
     );
-    existingAreas = userAreas.filter((area): area is AreaSelectType =>
-      Boolean(area),
-    );
+    existingAreaIds = userAreas
+      .filter((area): area is AreaSelectType => Boolean(area))
+      .map((area) => area.id);
+
+    if (existingAreaIds.length !== areaIds.length) return null;
   }
 
-  const areasFilter = existingAreas.length
-    ? inArray(
-        ProjectTable.areaId,
-        existingAreas.map((area) => area.id),
-      )
+  const areasFilter = existingAreaIds.length
+    ? inArray(ProjectTable.areaId, existingAreaIds)
     : undefined;
 
   const timeRangeFilter = and(

@@ -28,6 +28,7 @@ import { cacheTag } from "next/cache";
 import {
   getAreaActivityTag,
   getProjectActivityTag,
+  getUserActivityTag,
 } from "../server/cache/activity";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
@@ -50,16 +51,13 @@ const readCachedActivityAction = async (
 ) => {
   "use cache";
 
-  if (filterOptions.projectIds?.length) {
-    filterOptions.projectIds.forEach((projectId) => {
-      cacheTag(getProjectActivityTag(projectId));
-    });
-  }
-  if (filterOptions.areaIds?.length) {
-    filterOptions.areaIds?.forEach((areaId) => {
-      cacheTag(getAreaActivityTag(areaId));
-    });
-  }
+  cacheTag(getUserActivityTag(userId));
+  filterOptions.projectIds?.forEach((projectId) => {
+    cacheTag(getProjectActivityTag(projectId));
+  });
+  filterOptions.areaIds?.forEach((areaId) => {
+    cacheTag(getAreaActivityTag(areaId));
+  });
 
   const {
     search,
@@ -109,6 +107,8 @@ const readCachedActivityAction = async (
     existingProjectIds = existingProjects
       .filter((project): project is ProjectSelectType => Boolean(project))
       .map((project) => project.id);
+
+    if (existingProjectIds.length !== projectIds.length) return null;
   }
 
   const projectsFilter = existingProjectIds.length
@@ -124,6 +124,8 @@ const readCachedActivityAction = async (
     existingAreaIds = existingAreas
       .filter((area): area is AreaSelectType => Boolean(area))
       .map((area) => area.id);
+
+    if (existingAreaIds.length !== areaIds.length) return null;
   }
 
   const areasFilter = existingAreaIds.length

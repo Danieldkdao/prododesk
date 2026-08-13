@@ -29,7 +29,6 @@ const ProjectIdActivitySuspense = async ({
   const response = await readActivityAction({
     ...filters,
     projectIds: [projectId],
-    page: DEFAULT_PAGE,
   });
   if (!response) {
     return (

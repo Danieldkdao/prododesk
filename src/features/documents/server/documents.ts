@@ -4,11 +4,12 @@ import {
   DocumentSelectType,
   DocumentTable,
 } from "@/db/schema";
+import { insertActivityDb } from "@/features/activity/server/activity";
+import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { and, eq, SQL } from "drizzle-orm";
 import { revalidateDocumentCache } from "./cache/documents";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
-import { insertActivityDb } from "@/features/activity/server/activity";
 
 export const confirmUserDocumentOwnership = async (
   documentId: string,
@@ -36,6 +37,12 @@ export const insertDocumentDb = async (
   tx?: DbTransaction,
 ) => {
   try {
+    const existingProject = document.projectId
+      ? await confirmUserProjectOwnership(document.projectId)
+      : null;
+    if (document.projectId && !existingProject)
+      throw new Error("No existing project found.");
+
     const insertedDocument = await db.transaction(async (pgtx) => {
       const [insertedDocument] = await (tx ?? pgtx)
         .insert(DocumentTable)
@@ -62,13 +69,12 @@ export const insertDocumentDb = async (
       return insertedDocument;
     });
 
-    revalidateDocumentCache(insertedDocument.userId, insertedDocument.id);
-    if (insertedDocument.projectId) {
-      revalidateProjectCache(
-        insertedDocument.userId,
-        insertedDocument.projectId,
-      );
-    }
+    revalidateDocumentCache(
+      insertedDocument.userId,
+      insertedDocument.id,
+      insertedDocument.projectId,
+      existingProject?.areaId,
+    );
 
     return insertedDocument;
   } catch (error) {
@@ -86,6 +92,19 @@ export const updateDocumentDb = async (
   if (!existingDocument) return null;
 
   try {
+    const oldDocument = existingDocument.projectId
+      ? await confirmUserProjectOwnership(existingDocument.projectId)
+      : null;
+
+    const nextDocumentId =
+      document.projectId === undefined
+        ? existingDocument.projectId
+        : document.projectId;
+
+    const newDocument = nextDocumentId
+      ? await confirmUserProjectOwnership(nextDocumentId)
+      : null;
+
     const updatedDocument = await db.transaction(async (pgtx) => {
       const [updatedDocument] = await (tx ?? pgtx)
         .update(DocumentTable)
@@ -119,8 +138,21 @@ export const updateDocumentDb = async (
     });
 
     revalidateDocumentCache(updatedDocument.userId, updatedDocument.id);
-    if (updatedDocument.projectId) {
-      revalidateProjectCache(updatedDocument.userId, updatedDocument.projectId);
+
+    if (oldDocument) {
+      revalidateProjectCache(
+        updatedDocument.userId,
+        oldDocument.id,
+        oldDocument.areaId,
+      );
+    }
+
+    if (newDocument && newDocument.id !== oldDocument?.id) {
+      revalidateProjectCache(
+        updatedDocument.userId,
+        newDocument.id,
+        newDocument.areaId,
+      );
     }
 
     return updatedDocument;
@@ -138,6 +170,12 @@ export const deleteDocumentDb = async (
   if (!existingDocument) return null;
 
   try {
+    const existingProject = existingDocument.projectId
+      ? await confirmUserProjectOwnership(existingDocument.projectId)
+      : null;
+    if (existingDocument.projectId && !existingProject)
+      throw new Error("No existing project found.");
+
     const deletedDocument = await db.transaction(async (pgtx) => {
       const [deletedDocument] = await (tx ?? pgtx)
         .delete(DocumentTable)
@@ -167,10 +205,12 @@ export const deleteDocumentDb = async (
       return deletedDocument;
     });
 
-    revalidateDocumentCache(deletedDocument.userId, deletedDocument.id);
-    if (deletedDocument.projectId) {
-      revalidateDocumentCache(deletedDocument.id, deletedDocument.projectId);
-    }
+    revalidateDocumentCache(
+      deletedDocument.userId,
+      deletedDocument.id,
+      deletedDocument.projectId,
+      existingProject?.areaId,
+    );
 
     return deletedDocument;
   } catch (error) {

@@ -1,3 +1,5 @@
+import { revalidateAreaCache } from "@/features/areas/server/cache/areas";
+import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 import {
   getAreaResourceTag,
   getProjectResourceTag,
@@ -25,8 +27,11 @@ export const revalidateActivityCache = (
   revalidateTag(getUserActivityTag(userId), { expire: 0 });
   if (projectId) {
     revalidateTag(getProjectActivityTag(projectId), { expire: 0 });
+    revalidateProjectCache(userId, projectId, areaId);
   }
+
   if (areaId) {
     revalidateTag(getAreaActivityTag(areaId), { expire: 0 });
+    revalidateAreaCache(userId, areaId);
   }
 };

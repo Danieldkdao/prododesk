@@ -43,7 +43,9 @@ export const AreaProjectTasksSkeleton = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            <AreaProjectTaskSkeleton hasProject={hasProject} />
+            {Array.from({ length: 8 }).map((_, index) => (
+              <AreaProjectTaskSkeleton key={index} hasProject={hasProject} />
+            ))}
           </TableBody>
         </Table>
       </div>
@@ -54,13 +56,10 @@ export const AreaProjectTasksSkeleton = ({
 export const AreaProjectTaskSkeleton = ({
   hasProject = false,
 }: SkeletonProps) => {
-  return Array.from({ length: 8 }).map((_, index) => (
-    <TableRow key={index}>
+  return (
+    <TableRow>
       <TableCell>
-        <Skeleton
-          className="h-5"
-          style={{ width: `${120 + (index % 3) * 24}px` }}
-        />
+        <Skeleton className="h-5 w-36" />
       </TableCell>
       <TableCell>
         <Skeleton className="h-6 w-20" />
@@ -69,10 +68,7 @@ export const AreaProjectTaskSkeleton = ({
         <Skeleton className="h-6 w-16" />
       </TableCell>
       <TableCell>
-        <Skeleton
-          className="h-4"
-          style={{ width: `${150 + (index % 4) * 18}px` }}
-        />
+        <Skeleton className="h-4 w-42" />
       </TableCell>
       <TableCell>
         <Skeleton className="h-4 w-28" />
@@ -89,5 +85,5 @@ export const AreaProjectTaskSkeleton = ({
         <Skeleton className="size-8" />
       </TableCell>
     </TableRow>
-  ));
+  );
 };
