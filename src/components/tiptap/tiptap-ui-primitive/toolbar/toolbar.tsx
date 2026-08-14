@@ -3,7 +3,7 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { Separator } from "@/components/tiptap/tiptap-ui-primitive/separator";
 import "@/components/tiptap/tiptap-ui-primitive/toolbar/toolbar.scss";
-import { cn } from "@/lib/tiptap-utils";
+import { cn } from "@/components/tiptap/lib/tiptap-utils";
 import { useMenuNavigation } from "@/hooks/use-menu-navigation";
 import { useComposedRef } from "@/hooks/use-composed-ref";
 

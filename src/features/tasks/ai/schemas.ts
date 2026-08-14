@@ -1,62 +1,9 @@
 import { taskPriorities, taskStatuses } from "@/db/shared";
+import {
+  isoDatetimeFormatInstructions,
+  approvalReasonSchema,
+} from "@/services/ai/tools/helpers";
 import z from "zod";
-
-export const approvalReasonSchema = z
-  .string()
-  .trim()
-  .min(20, {
-    error: "The approval reason must provide meaningful detail.",
-  })
-  .max(500)
-  .describe(
-    "A detailed, user-facing explanation of why this action is necessary, exactly what will change, and which tasks will be affected. Never use a vague statement.",
-  );
-
-export const searchWebToolSchema = z.object({
-  query: z
-    .string()
-    .min(1)
-    .max(400, { error: "Query cannot be longer than 400 characters." })
-    .superRefine((query, ctx) => {
-      if (query.split(" ").length > 50) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["query"],
-          message: "Query cannot be longer than 50 words.",
-        });
-      }
-    })
-    .describe("The search query. No more than 400 characters and 50 words."),
-});
-export const searchWebToolValidationSchema = z.object({
-  results: z.array(
-    z.object({
-      id: z.url(),
-      title: z.string(),
-      url: z.url(),
-      publishedDate: z.string().optional(),
-      image: z.string().optional(),
-      favicon: z.string().optional(),
-    }),
-  ),
-});
-
-export const scrapeWebpageToolSchema = z.object({
-  url: z
-    .url()
-    .describe(
-      "The URL of the webpage you would like to scrape. Must start with 'https://'",
-    ),
-});
-export const scrapeWebpageToolValidationSchema = z.object({
-  success: z.boolean(),
-  data: z.object({
-    markdown: z.string(),
-  }),
-});
-
-const isoDatetimeFormatInstructions =
-  "Strict ISO 8601 string format: YYYY-MM-DDTHH:mm:ssZ (e.g., '2026-07-27T21:44:00Z'). Must include a capital 'T' separator and a trailing 'Z' for UTC timezone.";
 
 export const createTasksToolSchema = z.object({
   tasks: z
@@ -174,11 +121,19 @@ export const updateTasksStatusToolSchema = z.object({
   approvalReason: approvalReasonSchema,
 });
 
-export const deleteTaskToolSchema = z.object({
-  id: z.uuid().describe("The ID of the task that you would like to update."),
+export const updateTasksPriorityToolSchema = z.object({
+  taskIds: z
+    .array(z.uuid())
+    .min(1)
+    .max(100)
+    .describe("The array of task IDs you would like to update."),
+  priority: z
+    .enum(taskPriorities)
+    .describe("The NEW priority that the tasks will be updated to."),
   approvalReason: approvalReasonSchema,
 });
 
-export const runIdContextSchema = z.object({
-  runId: z.uuid(),
+export const deleteTaskToolSchema = z.object({
+  id: z.uuid().describe("The ID of the task to delete."),
+  approvalReason: approvalReasonSchema,
 });

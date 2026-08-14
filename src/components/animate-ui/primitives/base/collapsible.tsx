@@ -4,7 +4,7 @@ import * as React from "react";
 import { Collapsible as CollapsiblePrimitive } from "@base-ui-components/react/collapsible";
 import { AnimatePresence, motion, type HTMLMotionProps } from "motion/react";
 
-import { getStrictContext } from "@/lib/get-strict-context";
+import { getStrictContext } from "@/components/tiptap/lib/get-strict-context";
 import { useControlledState } from "@/hooks/use-controlled-state";
 import { cn } from "@/lib/utils";
 

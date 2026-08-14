@@ -3,7 +3,7 @@
 import { forwardRef, useCallback } from "react";
 
 // --- Lib ---
-import { parseShortcutKeys } from "@/lib/tiptap-utils";
+import { parseShortcutKeys } from "@/components/tiptap/lib/tiptap-utils";
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor";
@@ -11,8 +11,8 @@ import { useTiptapEditor } from "@/hooks/use-tiptap-editor";
 // --- Tiptap UI ---
 import type { UseImageUploadConfig } from "@/components/tiptap/tiptap-ui/image-upload-button";
 import {
-    IMAGE_UPLOAD_SHORTCUT_KEY,
-    useImageUpload,
+  IMAGE_UPLOAD_SHORTCUT_KEY,
+  useImageUpload,
 } from "@/components/tiptap/tiptap-ui/image-upload-button";
 
 // --- UI Primitives ---

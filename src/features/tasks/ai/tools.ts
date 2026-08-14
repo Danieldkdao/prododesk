@@ -1,4 +1,3 @@
-import { envServer } from "@/data/env/server";
 import { db } from "@/db/db";
 import { TaskTable } from "@/db/schema";
 import {
@@ -6,120 +5,28 @@ import {
   upsertToolExecutionDb,
   updateToolExecutionDb,
 } from "@/features/chats/server/tool-executions";
+import { getCurrentUser } from "@/lib/auth/helpers";
+import { runIdContextSchema } from "@/services/ai/tools/helpers";
+import { tool } from "ai";
+import { parseISO } from "date-fns";
+import { and, eq, inArray, ilike, lte, gte } from "drizzle-orm";
+import { format } from "date-fns";
 import {
   createTaskAction,
-  deleteTaskAction,
-  updateTasksStatusAction,
   updateTaskAction,
-} from "@/features/tasks/actions/actions";
-import { getCurrentUser } from "@/lib/auth/helpers";
-import { tool } from "ai";
-import { format, parseISO } from "date-fns";
-import { and, eq, gte, ilike, inArray, lte } from "drizzle-orm";
-import z from "zod";
+  updateTasksStatusAction,
+  deleteTaskAction,
+} from "../actions/actions";
+import { formatTaskStatus } from "../lib/formatters";
 import {
-  runIdContextSchema,
-  createTasksToolSchema,
-  deleteTaskToolSchema,
   readTasksToolSchema,
-  scrapeWebpageToolSchema,
-  scrapeWebpageToolValidationSchema,
-  searchWebToolSchema,
-  searchWebToolValidationSchema,
-  updateTasksStatusToolSchema,
+  createTasksToolSchema,
   updateTaskToolSchema,
+  updateTasksStatusToolSchema,
+  deleteTaskToolSchema,
 } from "./schemas";
-import { ChatToolSet, ToolName } from "./tool-contracts";
-import removeMd from "remove-markdown";
-import { formatTaskStatus } from "@/features/tasks/lib/formatters";
 
-const searchWebTool = tool({
-  description: "Searches the web and returns search results.",
-  inputSchema: searchWebToolSchema,
-  execute: async ({ query }, { abortSignal }) => {
-    const userId = await getCurrentUser();
-    if (!userId)
-      throw new Error(
-        "This user is not authenticated. Tell them they need to sign in first.",
-      );
-
-    const response = await fetch(
-      "https://ai.hackclub.com/proxy/v1/exa/search",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${envServer.HACK_CLUB_AI_API_KEY}`,
-        },
-        body: JSON.stringify({ query, numResults: 5 }),
-        signal: abortSignal,
-      },
-    );
-    const unparsedData = await response.json();
-    const { data, success } =
-      searchWebToolValidationSchema.safeParse(unparsedData);
-    if (!success) throw new Error("Invalid response data. Please try again.");
-
-    return data.results
-      .map(
-        (result) => `
-      ID: ${result.id}
-      TITLE: ${result.title}
-      URL: ${result.url}\n\n
-      `,
-      )
-      .join("");
-  },
-});
-
-const scrapeWebpageTool = tool({
-  description: "Scrapes given webpage and returns clean information.",
-  inputSchema: scrapeWebpageToolSchema,
-  execute: async ({ url }, { abortSignal }) => {
-    const userId = await getCurrentUser();
-    if (!userId)
-      throw new Error(
-        "This user is not authenticated. Tell them they need to sign in first.",
-      );
-
-    const response = await fetch("https://api.firecrawl.dev/v2/scrape", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${envServer.FIRECRAWL_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url,
-        formats: [{ type: "markdown" }],
-        onlyMainContent: true,
-        minAge: 123,
-        waitFor: 0,
-        skipTlsVerification: true,
-        parsers: ["pdf"],
-        actions: [{ type: "wait", milliseconds: 2 }],
-        location: { country: "US", languages: ["en-US"] },
-        removeBase64Images: true,
-        blockAds: true,
-        proxy: "auto",
-        storeInCache: true,
-        lockdown: false,
-        redactPII: false,
-        zeroDataRetention: false,
-      }),
-      signal: abortSignal,
-    });
-    const unparsedData = await response.json();
-    const { data, success } =
-      scrapeWebpageToolValidationSchema.safeParse(unparsedData);
-    if (!success) throw new Error("Invalid response data. Please try again.");
-
-    const normalText = removeMd(data.data.markdown);
-
-    return normalText;
-  },
-});
-
-const readTasksTool = tool({
+export const readTasksTool = tool({
   description: "Allows you to read the user's tasks.",
   inputSchema: readTasksToolSchema,
   execute: async (
@@ -169,7 +76,7 @@ const readTasksTool = tool({
   },
 });
 
-const createTasksTool = tool({
+export const createTasksTool = tool({
   description: "Allows you to create new tasks for the user.",
   inputSchema: createTasksToolSchema,
   contextSchema: runIdContextSchema,
@@ -242,7 +149,7 @@ const createTasksTool = tool({
   },
 });
 
-const updateTaskTool = tool({
+export const updateTaskTool = tool({
   description: "Allows you to update ONE of the user's tasks.",
   inputSchema: updateTaskToolSchema,
   contextSchema: runIdContextSchema,
@@ -308,7 +215,7 @@ const updateTaskTool = tool({
   },
 });
 
-const updateTasksStatusTool = tool({
+export const updateTasksStatusTool = tool({
   description: "Allows you to mark tasks as complete/uncomplete.",
   inputSchema: updateTasksStatusToolSchema,
   contextSchema: runIdContextSchema,
@@ -367,7 +274,7 @@ const updateTasksStatusTool = tool({
   },
 });
 
-const deleteTaskTool = tool({
+export const deleteTaskTool = tool({
   description: "Allows you to delete ONE of the user's tasks.",
   inputSchema: deleteTaskToolSchema,
   contextSchema: runIdContextSchema,
@@ -426,23 +333,10 @@ const deleteTaskTool = tool({
   },
 });
 
-const getCurrentTimeTool = tool({
-  description: "Allows you to get the current system time.",
-  inputSchema: z.object({}),
-  execute: async () => {
-    const date = new Date();
-    return format(date, "PPPPpppp");
-  },
-});
-
-export const tools = {
-  searchWeb: searchWebTool,
-  scrapeWebpage: scrapeWebpageTool,
+export const taskTools = {
   readTasks: readTasksTool,
   createTasks: createTasksTool,
   updateTask: updateTaskTool,
-  deleteTask: deleteTaskTool,
-  getCurrentTime: getCurrentTimeTool,
   updateTasksStatus: updateTasksStatusTool,
-} satisfies ChatToolSet;
-export const toolNames = Object.keys(tools) as ToolName[];
+  deleteTask: deleteTaskTool,
+};

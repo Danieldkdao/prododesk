@@ -1,24 +1,24 @@
 import { db } from "@/db/db";
 import { ChatMessageTable, ChatRunTable, MessagePartTable } from "@/db/schema";
 import {
-    findChatMessageDb,
-    insertChatMessageDb,
-    upsertChatMessageDb,
+  findChatMessageDb,
+  insertChatMessageDb,
+  upsertChatMessageDb,
 } from "@/features/chats/server/chat-messages";
 import {
-    findChatRunDb,
-    insertChatRunDb,
-    updateChatRunDb,
-    upsertChatRunDb,
+  findChatRunDb,
+  insertChatRunDb,
+  updateChatRunDb,
+  upsertChatRunDb,
 } from "@/features/chats/server/chat-runs";
 import { confirmChatOwnership } from "@/features/chats/server/chats";
 import { insertMessagePartDb } from "@/features/chats/server/message-parts";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
-    GENERAL_ERROR_MESSAGE,
-    INVALID_DATA_ERROR_MESSAGE,
-    NOT_FOUND_ERROR_MESSAGE,
-    UNAUTHED_ERROR_MESSAGE,
+  GENERAL_ERROR_MESSAGE,
+  INVALID_DATA_ERROR_MESSAGE,
+  NOT_FOUND_ERROR_MESSAGE,
+  UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { APIError } from "@/lib/errors";
 import { COMPACT_AFTER_TOKENS, estimateTokens } from "@/services/ai/helpers";
@@ -28,13 +28,13 @@ import { CHAT_INSTRUCTIONS } from "@/services/ai/prompts";
 import { tools } from "@/services/ai/tools";
 import { CustomUIMessage } from "@/services/ai/types";
 import {
-    consumeStream,
-    createAgentUIStreamResponse,
-    createUIMessageStream,
-    createUIMessageStreamResponse,
-    isToolUIPart,
-    pruneMessages,
-    ToolLoopAgent,
+  consumeStream,
+  createAgentUIStreamResponse,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  isToolUIPart,
+  pruneMessages,
+  ToolLoopAgent,
 } from "ai";
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";

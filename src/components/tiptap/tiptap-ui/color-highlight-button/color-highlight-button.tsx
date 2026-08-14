@@ -3,7 +3,7 @@
 import { forwardRef, useCallback, useMemo } from "react";
 
 // --- Lib ---
-import { parseShortcutKeys } from "@/lib/tiptap-utils";
+import { parseShortcutKeys } from "@/components/tiptap/lib/tiptap-utils";
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor";
