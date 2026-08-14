@@ -16,6 +16,7 @@ import {
   updateTaskAction,
   updateTasksStatusAction,
   deleteTaskAction,
+  updateTasksPriorityAction,
 } from "../actions/actions";
 import { formatTaskStatus } from "../lib/formatters";
 import {
@@ -24,9 +25,11 @@ import {
   updateTaskToolSchema,
   updateTasksStatusToolSchema,
   deleteTaskToolSchema,
+  updateTasksPriorityToolSchema,
 } from "./schemas";
+import { GENERAL_ERROR_MESSAGE } from "@/lib/constants";
 
-export const readTasksTool = tool({
+const readTasksTool = tool({
   description: "Allows you to read the user's tasks.",
   inputSchema: readTasksToolSchema,
   execute: async (
@@ -76,7 +79,7 @@ export const readTasksTool = tool({
   },
 });
 
-export const createTasksTool = tool({
+const createTasksTool = tool({
   description: "Allows you to create new tasks for the user.",
   inputSchema: createTasksToolSchema,
   contextSchema: runIdContextSchema,
@@ -136,7 +139,7 @@ export const createTasksTool = tool({
       console.error(error);
       const errorMessage = Error.isError(error)
         ? error.message
-        : "Something went wrong. Please try again.";
+        : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
@@ -149,7 +152,7 @@ export const createTasksTool = tool({
   },
 });
 
-export const updateTaskTool = tool({
+const updateTaskTool = tool({
   description: "Allows you to update ONE of the user's tasks.",
   inputSchema: updateTaskToolSchema,
   contextSchema: runIdContextSchema,
@@ -202,7 +205,7 @@ export const updateTaskTool = tool({
       console.error(error);
       const errorMessage = Error.isError(error)
         ? error.message
-        : "Something went wrong. Please try again.";
+        : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
@@ -215,8 +218,8 @@ export const updateTaskTool = tool({
   },
 });
 
-export const updateTasksStatusTool = tool({
-  description: "Allows you to mark tasks as complete/uncomplete.",
+const updateTasksStatusTool = tool({
+  description: "Allows you to update multiple tasks' statuses.",
   inputSchema: updateTasksStatusToolSchema,
   contextSchema: runIdContextSchema,
   execute: async (
@@ -236,7 +239,7 @@ export const updateTasksStatusTool = tool({
       const insertedToolExecution = await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
-        toolName: "toggleTasksCompletionStatus",
+        toolName: "updateTasksStatus",
       });
       if (!insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
@@ -256,16 +259,16 @@ export const updateTasksStatusTool = tool({
       });
 
       if (isSuccess) return output;
-      else throw new Error(output);
+      throw new Error(output);
     } catch (error) {
       console.error(error);
       const errorMessage = Error.isError(error)
         ? error.message
-        : "Something went wrong. Please try again.";
+        : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
-        toolName: "toggleTasksCompletionStatus",
+        toolName: "updateTasksStatus",
         output: errorMessage,
         status: "failed",
       });
@@ -274,7 +277,63 @@ export const updateTasksStatusTool = tool({
   },
 });
 
-export const deleteTaskTool = tool({
+const updateTasksPriorityTool = tool({
+  description: "Allows you to update multiple tasks' priorities.",
+  inputSchema: updateTasksPriorityToolSchema,
+  contextSchema: runIdContextSchema,
+  execute: async (
+    { taskIds, priority },
+    { context, toolCallId, abortSignal },
+  ) => {
+    try {
+      const existingToolExecution = await findToolExecutionDb(
+        context.runId,
+        toolCallId,
+      );
+      if (existingToolExecution?.status === "pending")
+        return "This execution is pending.";
+      if (existingToolExecution?.status === "completed")
+        return JSON.stringify(existingToolExecution.output) || "No output.";
+
+      const insertedToolExecution = await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "updateTasksPriority",
+      });
+      if (!insertedToolExecution)
+        throw new Error("Failed to execute tool. Please try again.");
+
+      abortSignal?.throwIfAborted();
+      const response = await updateTasksPriorityAction(taskIds, priority);
+
+      const isSuccess = !response.error;
+      const output = response.message;
+
+      await updateToolExecutionDb(context.runId, toolCallId, {
+        output,
+        status: isSuccess ? "completed" : "failed",
+      });
+
+      if (isSuccess) return output;
+      throw new Error(output);
+    } catch (error) {
+      console.error(error);
+      const errorMessage = Error.isError(error)
+        ? error.message
+        : GENERAL_ERROR_MESSAGE;
+      await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "updateTasksPriority",
+        output: errorMessage,
+        status: "failed",
+      });
+      throw new Error(errorMessage);
+    }
+  },
+});
+
+const deleteTaskTool = tool({
   description: "Allows you to delete ONE of the user's tasks.",
   inputSchema: deleteTaskToolSchema,
   contextSchema: runIdContextSchema,
@@ -320,7 +379,7 @@ export const deleteTaskTool = tool({
       console.error(error);
       const errorMessage = Error.isError(error)
         ? error.message
-        : "Something went wrong. Please try again.";
+        : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
@@ -338,5 +397,6 @@ export const taskTools = {
   createTasks: createTasksTool,
   updateTask: updateTaskTool,
   updateTasksStatus: updateTasksStatusTool,
+  updateTasksPriority: updateTasksPriorityTool,
   deleteTask: deleteTaskTool,
 };

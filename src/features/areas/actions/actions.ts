@@ -42,6 +42,7 @@ import {
   confirmUserAreaOwnership,
   deleteAreaDb,
   insertAreaDb,
+  readAreasDb,
   updateAreaDb,
 } from "../server/areas";
 import { getAreaIdTag, getUserAreaTag } from "../server/cache/areas";
@@ -192,84 +193,12 @@ const readCachedAreasAction = async (
   "use cache";
   cacheTag(getUserAreaTag(userId));
 
-  const { search, sortBy, archiveStatus, colors, page } = filterOptions;
+  const response = await readAreasDb({ ...filterOptions, userId });
+  if (!response) return null;
 
-  const offset = (page - 1) * PAGE_SIZE;
+  const page = filterOptions.page;
 
-  const searchTerm = `%${search.trim()}%`;
-  const searchFilter = search.trim()
-    ? or(
-        ilike(AreaTable.name, searchTerm),
-        ilike(AreaTable.description, searchTerm),
-      )
-    : undefined;
-
-  const sortByMap: Record<AreasSortByOption, SQL<unknown>> = {
-    recently_created: desc(AreaTable.createdAt),
-    oldest: asc(AreaTable.createdAt),
-    recently_updated: desc(AreaTable.updatedAt),
-    position: asc(AreaTable.position),
-  };
-
-  const archiveStatusMap: Record<
-    ArchiveStatusFilterOption,
-    SQL<unknown> | undefined
-  > = {
-    all: undefined,
-    active: and(eq(AreaTable.isArchived, false), isNull(AreaTable.archivedAt)),
-    archived: and(
-      eq(AreaTable.isArchived, true),
-      isNotNull(AreaTable.archivedAt),
-    ),
-  };
-
-  const colorsFilter = colors.length
-    ? inArray(AreaTable.color, colors)
-    : undefined;
-
-  const whereQuery = and(
-    eq(AreaTable.userId, userId),
-    searchFilter,
-    archiveStatusMap[archiveStatus],
-    colorsFilter,
-  );
-
-  const areas = await db
-    .select({
-      ...getTableColumns(AreaTable),
-      activeProjectCount: sql<number>`(
-        SELECT COUNT(*)::int
-        FROM ${ProjectTable} pt
-        WHERE pt.area_id = "areas"."id"
-          AND pt.is_archived = FALSE
-          AND pt.status = 'active'
-      )`,
-      projectCount: sql<number>`(
-        SELECT COUNT(*)::int
-        FROM ${ProjectTable} pt
-        WHERE pt.area_id = "areas"."id"
-      )`,
-      taskCount: sql<number>`(
-        SELECT COUNT(*)::int
-        FROM ${TaskTable} tt
-        INNER JOIN ${ProjectTable} pt
-          ON tt.project_id = pt.id
-        WHERE pt.area_id = "areas"."id"
-      )`,
-      completeTaskCount: sql<number>`(
-        SELECT COUNT(*)::int
-        FROM ${TaskTable} tt
-        INNER JOIN ${ProjectTable} pt
-          ON tt.project_id = pt.id
-        WHERE pt.area_id = "areas"."id"
-          AND tt.status = 'completed'
-      )`,
-    })
-    .from(AreaTable)
-    .where(whereQuery)
-    .orderBy(sortByMap[sortBy])
-    .offset(offset)
-    .limit(PAGE_SIZE);
+  const { areas, whereQuery } = response;
 
   const [totalAreas] = await db
     .select({
@@ -353,7 +282,7 @@ export const createAreaAction = async (unsafeData: AreaSchemaType) => {
 
 export const updateAreaAction = async (
   areaId: string,
-  areaData: AreaSchemaType,
+  areaData: Partial<AreaSchemaType>,
 ) => {
   if (!areValidIds(areaId)) {
     return {
@@ -378,7 +307,7 @@ export const updateAreaAction = async (
     };
   }
 
-  const { success, data } = areaSchema.safeParse(areaData);
+  const { success, data } = areaSchema.partial().safeParse(areaData);
   if (!success) {
     return {
       error: true,
