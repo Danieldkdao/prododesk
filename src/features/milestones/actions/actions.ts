@@ -14,19 +14,7 @@ import {
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
 import { format } from "date-fns";
-import {
-  and,
-  asc,
-  between,
-  count,
-  eq,
-  gte,
-  ilike,
-  inArray,
-  lte,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, between, count, eq, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import {
   getProjectMilestoneTag,
@@ -36,6 +24,7 @@ import {
   confirmUserMilestoneOwnership,
   deleteMilestoneDb,
   insertMilestoneDb,
+  readMilestonesDb,
   updateMilestoneDb,
 } from "../server/milestones";
 import { milestoneSchema, MilestoneSchemaType } from "./schemas";
@@ -44,7 +33,7 @@ const readCachedProjectMilestonesAction = async (
   userId: string,
   projectId: string,
   filterOptions: {
-    milestoneSearch: string;
+    search: string;
     statuses: MilestoneStatus[];
     dueAtOnAfter: Date | null;
     dueAtOnBefore: Date | null;
@@ -54,53 +43,16 @@ const readCachedProjectMilestonesAction = async (
   "use cache";
   cacheTag(getProjectMilestoneTag(projectId));
 
-  const { milestoneSearch, statuses, dueAtOnAfter, dueAtOnBefore, page } =
-    filterOptions;
+  const page = filterOptions.page;
 
-  const offset = (page - 1) * PAGE_SIZE;
-
-  const searchTerm = `%${milestoneSearch.trim()}%`;
-  const searchFilter = milestoneSearch.trim()
-    ? or(
-        ilike(MilestoneTable.name, searchTerm),
-        ilike(MilestoneTable.description, searchTerm),
-      )
-    : undefined;
-
-  const statusesFilter = statuses.length
-    ? inArray(MilestoneTable.status, statuses)
-    : undefined;
-
-  const dueAtFilter = and(
-    dueAtOnAfter
-      ? gte(MilestoneTable.dueAt, format(dueAtOnAfter, "yyyy-MM-dd"))
-      : undefined,
-    dueAtOnBefore
-      ? lte(MilestoneTable.dueAt, format(dueAtOnBefore, "yyyy-MM-dd"))
-      : undefined,
-  );
-
-  const whereQuery = and(
-    eq(MilestoneTable.userId, userId),
-    eq(MilestoneTable.projectId, projectId),
-    searchFilter,
-    statusesFilter,
-    dueAtFilter,
-  );
-
-  const milestones = await db.query.MilestoneTable.findMany({
-    where: whereQuery,
-    orderBy: asc(MilestoneTable.position),
-    with: {
-      tasks: {
-        with: {
-          project: true,
-        },
-      },
-    },
-    offset,
-    limit: PAGE_SIZE,
+  const response = await readMilestonesDb({
+    ...filterOptions,
+    projectIds: [projectId],
+    userId,
   });
+  if (!response) return null;
+
+  const { milestones, whereQuery } = response;
 
   const [totalMilestones] = await db
     .select({ count: count() })
@@ -130,7 +82,7 @@ const readCachedProjectMilestonesAction = async (
 export const readProjectMilestonesAction = async (
   projectId: string,
   filterOptions: {
-    milestoneSearch: string;
+    search: string;
     statuses: MilestoneStatus[];
     dueAtOnAfter: Date | null;
     dueAtOnBefore: Date | null;
@@ -205,7 +157,7 @@ export const createMilestoneAction = async (
 
 export const updateMilestoneAction = async (
   milestoneId: string,
-  unsafeData: MilestoneSchemaType,
+  unsafeData: Partial<MilestoneSchemaType>,
 ) => {
   if (!areValidIds(milestoneId)) {
     return {
@@ -230,7 +182,7 @@ export const updateMilestoneAction = async (
     };
   }
 
-  const { data, success } = milestoneSchema.safeParse(unsafeData);
+  const { data, success } = milestoneSchema.partial().safeParse(unsafeData);
   if (!success) {
     return {
       error: true,
@@ -350,9 +302,11 @@ export const moveMilestoneAction = async (
     };
   }
 
-  const existingMilestone = await confirmUserMilestoneOwnership(milestoneId, [
-    eq(MilestoneTable.projectId, existingProject.id),
-  ]);
+  const existingMilestone = await confirmUserMilestoneOwnership(
+    milestoneId,
+    userId,
+    [eq(MilestoneTable.projectId, existingProject.id)],
+  );
   if (!existingMilestone) {
     return {
       error: true,

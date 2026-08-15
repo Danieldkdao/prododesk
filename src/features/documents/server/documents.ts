@@ -88,7 +88,7 @@ export const readDocumentsDb = async (filterOptions: {
 
   let offset: number | null = null;
   if (page) {
-    offset = (page - 1) * PAGE_SIZE;
+    offset = (page - 1) * limit;
   }
 
   const sortByMap: Record<DocumentsSortByOption, SQL<unknown>> = {

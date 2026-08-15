@@ -21,5 +21,11 @@ export const toolNames = [
   "createDocument",
   "updateDocument",
   "deleteDocument",
+  "readMilestones",
+  "createMilestones",
+  "updateMilestone",
+  "updateMilestonesStatus",
+  "moveMilestone",
+  "deleteMilestone",
 ] as const;
 export type ToolName = (typeof toolNames)[number];

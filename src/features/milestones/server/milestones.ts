@@ -2,31 +2,174 @@ import { db, DbTransaction } from "@/db/db";
 import {
   MilestoneInsertType,
   MilestoneSelectType,
+  MilestoneStatus,
   MilestoneTable,
+  ProjectSelectType,
+  ProjectTable,
 } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { SQLMap } from "@/lib/types";
-import { and, eq, SQL } from "drizzle-orm";
+import { and, asc, eq, gte, ilike, inArray, lte, or, SQL } from "drizzle-orm";
 import { revalidateMilestoneCache } from "./cache/milestones";
+import { PAGE_SIZE } from "@/lib/constants";
+import { format } from "date-fns";
+import { areValidIds } from "@/lib/utils";
 
 export const confirmUserMilestoneOwnership = async (
   milestoneId: string,
+  userId?: string,
   additionalFilters?: SQL<unknown>[],
 ) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
+  let userIdToUse: string | null = null;
+  if (userId) {
+    userIdToUse = userId;
+  } else {
+    const { userId } = await getCurrentUser();
+    if (!userId) return null;
+    userIdToUse = userId;
+  }
+  if (!userIdToUse) return null;
 
   return (
     db.query.MilestoneTable.findFirst({
       where: and(
         eq(MilestoneTable.id, milestoneId),
-        eq(MilestoneTable.userId, userId),
+        eq(MilestoneTable.userId, userIdToUse),
         ...(additionalFilters || []),
       ),
     }) ?? null
   );
+};
+
+export const readMilestonesDb = async (filterOptions: {
+  projectIds?: string[];
+  milestoneIds?: string[];
+  search?: string;
+  statuses?: MilestoneStatus[];
+  dueAtOnAfter?: Date | null;
+  dueAtOnBefore?: Date | null;
+  userId?: string;
+  limit?: number;
+  page?: number;
+}) => {
+  const {
+    projectIds,
+    milestoneIds,
+    search,
+    statuses,
+    dueAtOnAfter,
+    dueAtOnBefore,
+    userId,
+    limit = PAGE_SIZE,
+    page,
+  } = filterOptions;
+
+  let userIdToUse: string | null = null;
+  if (userId) {
+    userIdToUse = userId;
+  } else {
+    const { userId } = await getCurrentUser();
+    if (!userId) return null;
+
+    userIdToUse = userId;
+  }
+  if (!userIdToUse) return null;
+
+  let offset: number | null = null;
+  if (page) {
+    offset = (page - 1) * limit;
+  }
+
+  const searchTerm = `%${search?.trim()}%`;
+  const searchFilter = search?.trim()
+    ? or(
+        ilike(MilestoneTable.name, searchTerm),
+        ilike(MilestoneTable.description, searchTerm),
+      )
+    : undefined;
+
+  const statusesFilter = statuses?.length
+    ? inArray(MilestoneTable.status, statuses)
+    : undefined;
+
+  const dueAtFilter = and(
+    dueAtOnAfter
+      ? gte(MilestoneTable.dueAt, format(dueAtOnAfter, "yyyy-MM-dd"))
+      : undefined,
+    dueAtOnBefore
+      ? lte(MilestoneTable.dueAt, format(dueAtOnBefore, "yyyy-MM-dd"))
+      : undefined,
+  );
+
+  let existingMilestoneIds: string[] = [];
+  if (milestoneIds?.length) {
+    if (!areValidIds(milestoneIds)) return null;
+
+    const existingMilestones = await Promise.all(
+      milestoneIds.map((milestoneId) =>
+        confirmUserMilestoneOwnership(milestoneId, userIdToUse),
+      ),
+    );
+    existingMilestoneIds = existingMilestones
+      .filter((milestone): milestone is MilestoneSelectType =>
+        Boolean(milestone),
+      )
+      .map((milestone) => milestone.id);
+    if (existingMilestoneIds.length !== milestoneIds.length) return null;
+  }
+
+  const milestonesFilter = existingMilestoneIds.length
+    ? inArray(MilestoneTable.id, existingMilestoneIds)
+    : undefined;
+
+  let existingProjectIds: string[] = [];
+  if (projectIds?.length) {
+    if (!areValidIds(projectIds)) return null;
+
+    const existingProjects = await Promise.all(
+      projectIds.map((projectId) =>
+        confirmUserProjectOwnership(projectId, userIdToUse),
+      ),
+    );
+    existingProjectIds = existingProjects
+      .filter((project): project is ProjectSelectType => Boolean(project))
+      .map((project) => project.id);
+    if (existingProjectIds.length !== projectIds.length) return null;
+  }
+
+  const projectsFilter = existingProjectIds.length
+    ? inArray(ProjectTable.id, existingProjectIds)
+    : undefined;
+
+  const whereQuery = and(
+    eq(MilestoneTable.userId, userIdToUse),
+    milestonesFilter,
+    projectsFilter,
+    searchFilter,
+    statusesFilter,
+    dueAtFilter,
+  );
+
+  const milestones = await db.query.MilestoneTable.findMany({
+    where: whereQuery,
+    orderBy: asc(MilestoneTable.position),
+    with: {
+      tasks: {
+        with: {
+          project: true,
+        },
+      },
+    },
+    offset: offset ?? undefined,
+    limit,
+  });
+
+  return {
+    milestones,
+    whereQuery,
+  };
 };
 
 export const insertMilestoneDb = async (

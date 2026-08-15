@@ -104,7 +104,7 @@ export const readAreasDb = async (filterOptions: {
 
   let offset: number | null = null;
   if (page !== null && page !== undefined) {
-    offset = (page - 1) * PAGE_SIZE;
+    offset = (page - 1) * limit;
   }
 
   const searchTerm = `%${search?.trim()}%`;
