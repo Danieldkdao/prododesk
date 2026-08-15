@@ -15,7 +15,7 @@ const metadataSchema = z.object({
 });
 
 type Metadata = z.infer<typeof metadataSchema>;
-type ChatTools = InferUITools<typeof tools>;
+export type ChatTools = InferUITools<typeof tools>;
 export type ChatDataParts = {
   "chat-sync-required": {
     chatId: string;
@@ -23,3 +23,4 @@ export type ChatDataParts = {
 };
 
 export type CustomUIMessage = UIMessage<Metadata, ChatDataParts, ChatTools>;
+export type MessagePart = CustomUIMessage["parts"][number];

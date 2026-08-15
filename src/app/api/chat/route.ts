@@ -26,6 +26,7 @@ import { COMPACT_AFTER_TOKENS, estimateTokens } from "@/services/ai/helpers";
 import { ModelId } from "@/services/ai/model-ids";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { CHAT_INSTRUCTIONS } from "@/services/ai/prompts";
+import { toolApprovalMap, ToolName } from "@/services/ai/tool-contracts";
 import { tools } from "@/services/ai/tools";
 import { CustomUIMessage } from "@/services/ai/types";
 import {
@@ -205,41 +206,21 @@ export const POST = async (req: Request) => {
       instructions: CHAT_INSTRUCTIONS(selectedModel),
       temperature: 0.4,
       tools,
-      toolsContext: {
-        createTasks: {
-          runId,
-        },
-        updateTask: {
-          runId,
-        },
-        deleteTask: {
-          runId,
-        },
-        updateTasksStatus: {
-          runId,
-        },
-      },
-      toolApproval: {
-        createTasks: "user-approval",
-        deleteTask: "user-approval",
-        updateTask: "user-approval",
-        updateTasksStatus: "user-approval",
-      },
+      toolsContext: Object.fromEntries(
+        Object.entries(toolApprovalMap)
+          .filter(([, requiresApproval]) => requiresApproval)
+          .map(([toolName]) => [toolName, { runId }]),
+      ) as Record<ToolName, { runId: string }>,
+      toolApproval: Object.fromEntries(
+        Object.entries(toolApprovalMap)
+          .filter(([, requiresApproval]) => requiresApproval)
+          .map(([toolName]) => [toolName, "user-approval"]),
+      ),
       timeout: {
         totalMs: 120_000,
         stepMs: 60_000,
         chunkMs: 30_000,
         toolMs: 15_000,
-        tools: {
-          searchWebMs: 30_000,
-          scrapeWebpageMs: 60_000,
-          readTasksMs: 10_000,
-          createTasksMs: 30_000,
-          updateTaskMs: 20_000,
-          deleteTaskMs: 15_000,
-          updateTasksStatusMs: 30_000,
-          getCurrentTimeMs: 2_000,
-        },
       },
       prepareStep: ({ messages }) => {
         if (estimateTokens(messages) > COMPACT_AFTER_TOKENS) {

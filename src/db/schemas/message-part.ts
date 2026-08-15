@@ -1,8 +1,10 @@
-import { MessagePart } from "@/services/ai/tool-contracts";
 import { relations } from "drizzle-orm";
 import { integer, jsonb, pgTable, unique, uuid } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { ChatMessageTable } from "./chat-message";
+import { UIMessage } from "ai";
+
+type StoredMessagePart = UIMessage["parts"][number];
 
 export const MessagePartTable = pgTable(
   "message_parts",
@@ -11,7 +13,7 @@ export const MessagePartTable = pgTable(
     messageId: uuid("message_id")
       .references(() => ChatMessageTable.id, { onDelete: "cascade" })
       .notNull(),
-    part: jsonb("part").$type<MessagePart>().notNull(),
+    part: jsonb("part").$type<StoredMessagePart>().notNull(),
     order: integer("order").notNull(),
     createdAt,
     updatedAt,

@@ -1,4 +1,4 @@
-import { Tool, tool } from "ai";
+import { InferUITools, Tool, tool, UIMessagePart } from "ai";
 import { format } from "date-fns";
 import z from "zod";
 
@@ -20,7 +20,7 @@ const getCurrentTimeTool = tool({
   },
 });
 
-export const tools: Record<ToolName, Tool> = {
+export const tools = {
   ...webSearchTools,
   ...taskTools,
   ...areaTools,
@@ -29,4 +29,4 @@ export const tools: Record<ToolName, Tool> = {
   ...milestoneTools,
   ...activityTools,
   getCurrentTime: getCurrentTimeTool,
-};
+} satisfies Record<ToolName, Tool>;
