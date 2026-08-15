@@ -10,8 +10,15 @@ import {
   TaskSelectType,
   TaskTable,
 } from "@/db/schema";
+import { insertActivityDb } from "@/features/activity/server/activity";
+import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+import { revalidateTaskCache } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { PAGE_SIZE } from "@/lib/constants";
+import { ArchiveStatusFilterOption } from "@/lib/params";
 import { SQLMap } from "@/lib/types";
+import { areValidIds } from "@/lib/utils";
+import { format } from "date-fns";
 import {
   and,
   asc,
@@ -30,15 +37,8 @@ import {
   sql,
 } from "drizzle-orm";
 import { ProjectSchemaType } from "../actions/schemas";
-import { revalidateProjectCache } from "./cache/projects";
-import { format } from "date-fns";
-import { revalidateTaskCache } from "@/features/tasks/server/cache/tasks";
-import { insertActivityDb } from "@/features/activity/server/activity";
 import { ProjectsSortByOption } from "../lib/projects-params";
-import { ArchiveStatusFilterOption } from "@/lib/params";
-import { PAGE_SIZE } from "@/lib/constants";
-import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
-import { PgSelect } from "drizzle-orm/pg-core";
+import { revalidateProjectCache } from "./cache/projects";
 
 export const confirmUserProjectOwnership = async (
   projectId: string,
@@ -116,7 +116,7 @@ export const readProjectsDb = async (filterOptions: {
   projectIds?: string[];
   areaIds?: string[];
   userId?: string;
-  pageSize?: number;
+  limit?: number;
 }) => {
   const {
     search,
@@ -130,7 +130,7 @@ export const readProjectsDb = async (filterOptions: {
     projectIds,
     areaIds,
     userId,
-    pageSize = PAGE_SIZE,
+    limit = PAGE_SIZE,
   } = filterOptions;
   let userIdToUse: string | null = null;
   if (userId) {
@@ -198,6 +198,8 @@ export const readProjectsDb = async (filterOptions: {
 
   let areas: AreaSelectType[] = [];
   if (areaIds?.length) {
+    if (!areValidIds(areaIds)) return null;
+
     const existingAreas = await Promise.all(
       areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userIdToUse)),
     );
@@ -218,6 +220,8 @@ export const readProjectsDb = async (filterOptions: {
 
   let existingProjectIds: string[] = [];
   if (projectIds?.length) {
+    if (!areValidIds(projectIds)) return null;
+
     const existingProjects = await Promise.all(
       projectIds.map((projectId) =>
         confirmUserProjectOwnership(projectId, userId),
@@ -258,7 +262,7 @@ export const readProjectsDb = async (filterOptions: {
     END
   `;
 
-  let query: PgSelect = db
+  let query = db
     .select({
       ...getTableColumns(ProjectTable),
       area: getTableColumns(AreaTable),
@@ -302,7 +306,7 @@ export const readProjectsDb = async (filterOptions: {
     query = query.offset(offset).$dynamic();
   }
 
-  const projects = await query.limit(pageSize);
+  const projects = await query.limit(limit);
 
   return {
     projects,

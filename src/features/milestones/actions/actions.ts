@@ -25,7 +25,6 @@ import {
   inArray,
   lte,
   or,
-  SQL,
   sql,
 } from "drizzle-orm";
 import { cacheTag } from "next/cache";
@@ -40,7 +39,6 @@ import {
   updateMilestoneDb,
 } from "../server/milestones";
 import { milestoneSchema, MilestoneSchemaType } from "./schemas";
-import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 
 const readCachedProjectMilestonesAction = async (
   userId: string,
@@ -266,6 +264,13 @@ export const updateMilestoneStatusAction = async (
   milestoneId: string,
   newStatus: MilestoneStatus,
 ) => {
+  if (!areValidIds(milestoneId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {

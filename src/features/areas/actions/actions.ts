@@ -170,6 +170,8 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
   };
 };
 export const readAreaAction = async (areaId: string) => {
+  if (!areValidIds(areaId)) return null;
+
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 

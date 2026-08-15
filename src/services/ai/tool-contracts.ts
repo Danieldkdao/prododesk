@@ -16,5 +16,10 @@ export const toolNames = [
   "updateProject",
   "setProjectArchived",
   "deleteProject",
+  "readDocuments",
+  "readDocument",
+  "createDocument",
+  "updateDocument",
+  "deleteDocument",
 ] as const;
 export type ToolName = (typeof toolNames)[number];

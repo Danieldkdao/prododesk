@@ -21,6 +21,7 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { APIError } from "@/lib/errors";
+import { areValidIds } from "@/lib/utils";
 import { COMPACT_AFTER_TOKENS, estimateTokens } from "@/services/ai/helpers";
 import { ModelId } from "@/services/ai/model-ids";
 import { openrouter } from "@/services/ai/models/openrouter";
@@ -66,9 +67,13 @@ export const POST = async (req: Request) => {
     return NextResponse.json(INVALID_DATA_ERROR_MESSAGE, { status: 400 });
   }
 
+  if (!areValidIds(chatId)) {
+    return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 404 });
+  }
+
   const confirmation = await confirmChatOwnership(chatId);
   if (!confirmation) {
-    return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 403 });
+    return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 404 });
   }
 
   try {

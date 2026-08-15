@@ -1,7 +1,8 @@
 "use server";
 
+import { db } from "@/db/db";
+import { DocumentTable, ProjectTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
-import { documentSchema, DocumentSchemaType } from "./schemas";
 import {
   GENERAL_ERROR_MESSAGE,
   INVALID_DATA_ERROR_MESSAGE,
@@ -9,41 +10,23 @@ import {
   PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
-import {
-  confirmUserDocumentOwnership,
-  deleteDocumentDb,
-  insertDocumentDb,
-  updateDocumentDb,
-} from "../server/documents";
+import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
+import { and, count, eq } from "drizzle-orm";
 import { cacheTag } from "next/cache";
+import { DocumentsSortByOption } from "../lib/documents-params";
 import {
   getDocumentIdTag,
   getUserDocumentTag,
 } from "../server/cache/documents";
-import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import {
-  AreaSelectType,
-  DocumentTable,
-  ProjectSelectType,
-  ProjectTable,
-} from "@/db/schema";
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  getTableColumns,
-  ilike,
-  inArray,
-  or,
-  SQL,
-} from "drizzle-orm";
-import { db } from "@/db/db";
-import { UnwrapAsync } from "@/lib/types";
-import { DocumentsSortByOption } from "../lib/documents-params";
-import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+  confirmUserDocumentOwnership,
+  deleteDocumentDb,
+  insertDocumentDb,
+  readDocumentsDb,
+  updateDocumentDb,
+} from "../server/documents";
+import { documentSchema, DocumentSchemaType } from "./schemas";
 
 const readCachedDocumentsAction = async (
   userId: string,
@@ -58,77 +41,12 @@ const readCachedDocumentsAction = async (
   "use cache";
   cacheTag(getUserDocumentTag(userId));
 
-  const { search, sortBy, projectIds, areaIds, page } = filterOptions;
+  const page = filterOptions.page;
 
-  const offset = (page - 1) * PAGE_SIZE;
+  const response = await readDocumentsDb({ ...filterOptions, userId });
+  if (!response) return null;
 
-  const sortByMap: Record<DocumentsSortByOption, SQL<unknown>> = {
-    oldest: asc(DocumentTable.createdAt),
-    recently_created: desc(DocumentTable.createdAt),
-    recently_updated: desc(DocumentTable.updatedAt),
-  };
-
-  const searchTerm = `%${search.trim()}%`;
-  const searchQuery = or(
-    ilike(DocumentTable.name, searchTerm),
-    ilike(DocumentTable.content, searchTerm),
-    ilike(ProjectTable.name, searchTerm),
-  );
-
-  let existingProjectIds: string[] = [];
-  if (projectIds?.length) {
-    if (!areValidIds(projectIds)) return null;
-    const existingProjects = await Promise.all(
-      projectIds.map((projectId) =>
-        confirmUserProjectOwnership(projectId, userId),
-      ),
-    );
-    existingProjectIds = existingProjects
-      .filter((project): project is ProjectSelectType => Boolean(project))
-      .map((project) => project.id);
-
-    if (existingProjectIds.length !== projectIds.length) return null;
-  }
-
-  const projectsFilter = existingProjectIds.length
-    ? inArray(DocumentTable.projectId, existingProjectIds)
-    : undefined;
-
-  let existingAreaIds: string[] = [];
-  if (areaIds?.length) {
-    if (!areValidIds(areaIds)) return null;
-    const existingAreas = await Promise.all(
-      areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userId)),
-    );
-    existingAreaIds = existingAreas
-      .filter((area): area is AreaSelectType => Boolean(area))
-      .map((area) => area.id);
-
-    if (existingAreaIds.length !== areaIds.length) return null;
-  }
-
-  const areasFilter = existingAreaIds.length
-    ? inArray(ProjectTable.areaId, existingAreaIds)
-    : undefined;
-
-  const whereQuery = and(
-    eq(DocumentTable.userId, userId),
-    projectsFilter,
-    areasFilter,
-    searchQuery,
-  );
-
-  const documents = await db
-    .select({
-      ...getTableColumns(DocumentTable),
-      project: getTableColumns(ProjectTable),
-    })
-    .from(DocumentTable)
-    .leftJoin(ProjectTable, eq(ProjectTable.id, DocumentTable.projectId))
-    .where(whereQuery)
-    .orderBy(sortByMap[sortBy])
-    .offset(offset)
-    .limit(PAGE_SIZE);
+  const { documents, whereQuery } = response;
 
   const [totalDocuments] = await db
     .select({ count: count() })
@@ -249,7 +167,7 @@ export const createDocumentAction = async (unsafeData?: DocumentSchemaType) => {
 
 export const updateDocumentAction = async (
   documentId: string,
-  unsafeData: DocumentSchemaType,
+  unsafeData: Partial<DocumentSchemaType>,
 ) => {
   if (!areValidIds(documentId)) {
     return {
@@ -274,7 +192,7 @@ export const updateDocumentAction = async (
     };
   }
 
-  const { success, data } = documentSchema.safeParse(unsafeData);
+  const { success, data } = documentSchema.partial().safeParse(unsafeData);
   if (!success) {
     return {
       error: true,

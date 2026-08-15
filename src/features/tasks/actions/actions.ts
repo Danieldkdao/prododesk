@@ -93,6 +93,13 @@ export const updateTaskAction = async (
   taskId: string,
   unsafeData: TaskSchemaType,
 ) => {
+  if (!areValidIds(taskId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -179,6 +186,13 @@ export const updateTaskMilestoneAction = async (
 };
 
 export const deleteTaskAction = async (taskId: string) => {
+  if (!areValidIds(taskId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {

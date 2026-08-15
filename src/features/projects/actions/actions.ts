@@ -64,7 +64,7 @@ const readCachedProjectsAction = async (
     cacheTag(getUserProjectTag(userId));
   }
 
-  const response = await readProjectsDb(filterOptions);
+  const response = await readProjectsDb({ ...filterOptions, userId });
   if (!response) return null;
 
   const { projects, whereQuery, areas } = response;
@@ -203,6 +203,8 @@ const readCachedProjectAction = async (userId: string, projectId: string) => {
     : null;
 };
 export const readProjectAction = cache(async (projectId: string) => {
+  if (!areValidIds(projectId)) return null;
+
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 

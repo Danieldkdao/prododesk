@@ -10,7 +10,10 @@ import {
 import { insertActivityDb } from "@/features/activity/server/activity";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { PAGE_SIZE } from "@/lib/constants";
+import { ArchiveStatusFilterOption } from "@/lib/params";
 import { SQLMap } from "@/lib/types";
+import { areValidIds } from "@/lib/utils";
 import {
   and,
   asc,
@@ -25,11 +28,8 @@ import {
   sql,
   SQL,
 } from "drizzle-orm";
-import { revalidateAreaCache } from "./cache/areas";
 import { AreasSortByOption } from "../lib/areas-params";
-import { ArchiveStatusFilterOption } from "@/lib/params";
-import { PAGE_SIZE } from "@/lib/constants";
-import { PgSelect } from "drizzle-orm/pg-core";
+import { revalidateAreaCache } from "./cache/areas";
 
 export const confirmUserAreaOwnership = async (
   areaId: string,
@@ -144,6 +144,8 @@ export const readAreasDb = async (filterOptions: {
 
   let existingAreaIds: string[] = [];
   if (areaIds?.length) {
+    if (!areValidIds(areaIds)) return null;
+
     const existingAreas = await Promise.all(
       areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userIdToUse)),
     );
@@ -165,7 +167,7 @@ export const readAreasDb = async (filterOptions: {
     areasFilter,
   );
 
-  let query: PgSelect = db
+  let query = db
     .select({
       ...getTableColumns(AreaTable),
       activeProjectCount: sql<number>`(

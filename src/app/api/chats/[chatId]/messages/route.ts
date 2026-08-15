@@ -4,8 +4,10 @@ import { confirmChatOwnership } from "@/features/chats/server/chats";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   NO_PERMISSION_DATA_MESSAGE,
+  NOT_FOUND_ERROR_MESSAGE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
+import { areValidIds } from "@/lib/utils";
 import { CustomUIMessage } from "@/services/ai/types";
 import { asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -15,6 +17,13 @@ export const GET = async (
   ctx: RouteContext<"/api/chats/[chatId]/messages">,
 ) => {
   const { chatId } = await ctx.params;
+
+  if (!areValidIds(chatId)) {
+    return NextResponse.json(
+      { error: NOT_FOUND_ERROR_MESSAGE },
+      { status: 404 },
+    );
+  }
 
   const { userId } = await getCurrentUser();
   if (!userId)
