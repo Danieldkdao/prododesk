@@ -27,5 +27,6 @@ export const toolNames = [
   "updateMilestonesStatus",
   "moveMilestone",
   "deleteMilestone",
+  "readActivity",
 ] as const;
 export type ToolName = (typeof toolNames)[number];

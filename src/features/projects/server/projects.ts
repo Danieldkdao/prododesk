@@ -302,7 +302,7 @@ export const readProjectsDb = async (filterOptions: {
   if (sortBy) {
     query = query.orderBy(sortByMap[sortBy]).$dynamic();
   }
-  if (offset !== undefined && offset !== null) {
+  if (offset) {
     query = query.offset(offset).$dynamic();
   }
 
