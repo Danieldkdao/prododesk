@@ -53,7 +53,12 @@ export const readTasksToolSchema = z
       .describe(
         `An optional after filter that allows you get tasks AFTER or AT a provided datetime. ${isoDatetimeFormatInstructions}`,
       ),
-    search: z.string().nullish(),
+    search: z
+      .string()
+      .optional()
+      .describe(
+        "An optional search query that allows you search by project name, task name, or task description.",
+      ),
     statuses: z
       .array(z.enum(taskStatuses))
       .describe(
@@ -64,6 +69,14 @@ export const readTasksToolSchema = z
       .describe(
         "An array of priorities that allows you to filter the tasks by priority. It is required but you can just pass in an empty array.",
       ),
+    areaIds: z
+      .array(z.uuid())
+      .default([])
+      .describe("Narrow down the search with an array of area IDs."),
+    projectIds: z
+      .array(z.uuid())
+      .default([])
+      .describe("Narrow down the search with an array of project IDs."),
   })
   .superRefine((data, ctx) => {
     if (data.after && data.before && data.after <= data.before) {

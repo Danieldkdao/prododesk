@@ -1,5 +1,3 @@
-import { db } from "@/db/db";
-import { TaskTable } from "@/db/schema";
 import {
   findToolExecutionDb,
   updateToolExecutionDb,
@@ -9,8 +7,7 @@ import { getCurrentUser } from "@/lib/auth/helpers";
 import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
 import { tool } from "ai";
-import { format, parseISO } from "date-fns";
-import { and, eq, gte, ilike, inArray, lte } from "drizzle-orm";
+import { parseISO } from "date-fns";
 import {
   createTaskAction,
   deleteTaskAction,
@@ -18,7 +15,7 @@ import {
   updateTasksPriorityAction,
   updateTasksStatusAction,
 } from "../actions/actions";
-import { formatTaskStatus } from "../lib/formatters";
+import { readTasksDb } from "../server/tasks";
 import {
   createTasksToolSchema,
   deleteTaskToolSchema,
@@ -31,47 +28,20 @@ import {
 const readTasksTool = tool({
   description: "Allows you to read the user's tasks.",
   inputSchema: readTasksToolSchema,
-  execute: async (
-    { before, after, statuses, priorities, search },
-    { abortSignal },
-  ) => {
-    abortSignal?.throwIfAborted();
-
+  execute: async ({ before, after, ...filterOptions }, { abortSignal }) => {
     const { userId } = await getCurrentUser();
     if (!userId) throw new Error(UNAUTHED_ERROR_MESSAGE);
 
-    const tasks = await db
-      .select()
-      .from(TaskTable)
-      .where(
-        and(
-          eq(TaskTable.userId, userId),
-          before ? lte(TaskTable.scheduledAt, parseISO(before)) : undefined,
-          after ? gte(TaskTable.scheduledAt, parseISO(after)) : undefined,
-          statuses.length ? inArray(TaskTable.status, statuses) : undefined,
-          priorities.length
-            ? inArray(TaskTable.priority, priorities)
-            : undefined,
-          search?.trim()
-            ? ilike(TaskTable.name, `%${search.trim()}%`)
-            : undefined,
-        ),
-      );
+    abortSignal?.throwIfAborted();
 
-    return tasks
-      .map(
-        (task) =>
-          `ID: ${task.id}\n
-           NAME: ${task.name}\n
-           DESCRIPTION: ${task.description}\n
-           EMOJI: ${task.emoji}\n
-           PRIORITY: ${task.priority}\n
-           STATUS: ${formatTaskStatus(task.status)}\n
-           SCHEDULED AT: ${task.scheduledAt ? format(task.scheduledAt, "PPpp") : "NONE"}\n
-           DUE AT: ${task.dueAt ? format(task.dueAt, "PPpp") : "NONE"}\n
-           CREATED AT: ${format(task.createdAt, "PPpp")}`,
-      )
-      .join("\n\n");
+    const response = await readTasksDb({
+      ...filterOptions,
+      dateTimeStartRange: after ? parseISO(after) : undefined,
+      dateTimeEndRange: before ? parseISO(before) : undefined,
+    });
+    if (!response) throw new Error(GENERAL_ERROR_MESSAGE);
+
+    return JSON.stringify(response.tasks);
   },
 });
 

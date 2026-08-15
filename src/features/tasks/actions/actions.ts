@@ -1,16 +1,8 @@
 "use server";
 
 import { db } from "@/db/db";
-import {
-  AreaSelectType,
-  ProjectSelectType,
-  ProjectTable,
-  TaskPriority,
-  TaskStatus,
-  TaskTable,
-} from "@/db/schema";
+import { ProjectTable, TaskPriority, TaskStatus, TaskTable } from "@/db/schema";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
-import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -26,23 +18,7 @@ import {
   getLocalMonthBounds,
 } from "@/lib/utils";
 import { format, isValid } from "date-fns";
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  getTableColumns,
-  gte,
-  ilike,
-  inArray,
-  isNull,
-  lte,
-  ne,
-  or,
-  sql,
-  SQL,
-} from "drizzle-orm";
+import { and, asc, count, eq, gte, lte, ne } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { DayTasksSortByOption } from "../lib/tasks-params";
 import { getUserTaskTag } from "../server/cache/tasks";
@@ -50,10 +26,10 @@ import {
   confirmUserTaskOwnership,
   deleteTaskDb,
   insertTaskDb,
+  readTasksDb,
   updateTaskDb,
 } from "../server/tasks";
 import { taskSchema, TaskSchemaType } from "./schemas";
-import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 
 export const createTaskAction = async (unsafeData: TaskSchemaType) => {
   const { userId } = await getCurrentUser();
@@ -305,152 +281,12 @@ const readCachedTasksAction = async (
   "use cache";
   cacheTag(getUserTaskTag(userId));
 
-  const {
-    search,
-    sortBy,
-    priorities,
-    statuses,
-    dateTimeStartRange,
-    dateTimeEndRange,
-    page,
-    unassignedOnly = false,
-    allTasks = false,
-    projectIds,
-    areaIds,
-    selectedDay,
-  } = filterOptions;
+  const { page, selectedDay } = filterOptions;
 
-  const offset = (page - 1) * PAGE_SIZE;
+  const response = await readTasksDb({ ...filterOptions, userId, timeZone });
+  if (!response) return null;
 
-  const searchTerm = `%${search.trim()}%`;
-
-  const priorityRank = sql`
-    CASE ${TaskTable.priority}
-      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      ELSE 5
-    END
-  `;
-
-  const searchFilter = search.trim()
-    ? or(
-        ilike(TaskTable.name, searchTerm),
-        ilike(TaskTable.description, searchTerm),
-        ilike(ProjectTable.name, searchTerm),
-      )
-    : undefined;
-
-  const priorityFilter = priorities.length
-    ? inArray(TaskTable.priority, priorities)
-    : undefined;
-
-  const sortByMap: Record<DayTasksSortByOption, SQL<unknown>> = {
-    name_a_z: asc(sql`lower(${TaskTable.name})`),
-    name_z_a: desc(sql`lower(${TaskTable.name})`),
-    oldest: asc(TaskTable.createdAt),
-    priority: asc(priorityRank),
-    recently_created: desc(TaskTable.createdAt),
-  };
-
-  const statusFilter = statuses.length
-    ? inArray(TaskTable.status, statuses)
-    : undefined;
-
-  let existingProjects: ProjectSelectType[] = [];
-
-  if (projectIds?.length) {
-    if (!areValidIds(projectIds)) return null;
-
-    const userProjects = await Promise.all(
-      projectIds.map((projectId) =>
-        confirmUserProjectOwnership(projectId, userId),
-      ),
-    );
-
-    existingProjects = userProjects.filter(
-      (project): project is ProjectSelectType => Boolean(project),
-    );
-
-    if (existingProjects.length !== projectIds.length) return null;
-  }
-
-  const projectsFilter = existingProjects.length
-    ? inArray(
-        TaskTable.projectId,
-        existingProjects.map((project) => project.id),
-      )
-    : undefined;
-
-  let existingAreaIds: string[] = [];
-
-  if (areaIds?.length) {
-    if (!areValidIds(areaIds)) return null;
-
-    const userAreas = await Promise.all(
-      areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userId)),
-    );
-    existingAreaIds = userAreas
-      .filter((area): area is AreaSelectType => Boolean(area))
-      .map((area) => area.id);
-
-    if (existingAreaIds.length !== areaIds.length) return null;
-  }
-
-  const areasFilter = existingAreaIds.length
-    ? inArray(ProjectTable.areaId, existingAreaIds)
-    : undefined;
-
-  const timeRangeFilter = and(
-    dateTimeStartRange
-      ? gte(TaskTable.scheduledAt, dateTimeStartRange)
-      : undefined,
-    dateTimeEndRange ? lte(TaskTable.scheduledAt, dateTimeEndRange) : undefined,
-  );
-
-  let dayFilter;
-
-  if (selectedDay) {
-    const { startUtc, endUtc } = getLocalDayBounds(selectedDay, timeZone);
-
-    dayFilter = and(
-      gte(TaskTable.scheduledAt, startUtc),
-      lte(TaskTable.scheduledAt, endUtc),
-    );
-  }
-
-  const milestoneFilter = unassignedOnly
-    ? isNull(TaskTable.milestoneId)
-    : undefined;
-
-  const whereQuery = and(
-    eq(TaskTable.userId, userId),
-    dayFilter,
-    searchFilter,
-    priorityFilter,
-    projectsFilter,
-    statusFilter,
-    timeRangeFilter,
-    milestoneFilter,
-    areasFilter,
-  );
-
-  const baseFetchTasks = db
-    .select({
-      ...getTableColumns(TaskTable),
-      project: getTableColumns(ProjectTable),
-    })
-    .from(TaskTable)
-    .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
-    .where(whereQuery)
-    .orderBy(sortByMap[sortBy]);
-
-  const fetchTasks = allTasks
-    ? baseFetchTasks
-    : baseFetchTasks.offset(offset).limit(PAGE_SIZE);
-
-  const tasks = await fetchTasks;
+  const { tasks, projects, dayFilter, whereQuery } = response;
 
   const [totalSelectedTasks] = await db
     .select({
@@ -502,7 +338,7 @@ const readCachedTasksAction = async (
       hasNextPage,
       allTasksCompleted,
       day: selectedDay ? format(selectedDay, "yyyy-MM-dd") : null,
-      projects: existingProjects ?? null,
+      projects,
       clientKey,
     },
   };

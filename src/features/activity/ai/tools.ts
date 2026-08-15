@@ -12,6 +12,8 @@ const readActivityTool = tool({
     const { userId } = await getCurrentUser();
     if (!userId) throw new Error(UNAUTHED_ERROR_MESSAGE);
 
+    abortSignal?.throwIfAborted();
+
     const response = await readActivityDb({
       ...filterOptions,
       after: after ? parseISO(after) : undefined,
