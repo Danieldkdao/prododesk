@@ -1,18 +1,44 @@
 import { db, DbTransaction } from "@/db/db";
 import {
+  AreaSelectType,
+  AreaTable,
+  Color,
   ProjectInsertType,
   ProjectSelectType,
+  ProjectStatus,
   ProjectTable,
+  TaskSelectType,
   TaskTable,
 } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { SQLMap } from "@/lib/types";
-import { and, eq } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  ne,
+  or,
+  SQL,
+  sql,
+} from "drizzle-orm";
 import { ProjectSchemaType } from "../actions/schemas";
 import { revalidateProjectCache } from "./cache/projects";
 import { format } from "date-fns";
 import { revalidateTaskCache } from "@/features/tasks/server/cache/tasks";
 import { insertActivityDb } from "@/features/activity/server/activity";
+import { ProjectsSortByOption } from "../lib/projects-params";
+import { ArchiveStatusFilterOption } from "@/lib/params";
+import { PAGE_SIZE } from "@/lib/constants";
+import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+import { PgSelect } from "drizzle-orm/pg-core";
 
 export const confirmUserProjectOwnership = async (
   projectId: string,
@@ -76,6 +102,213 @@ const revalidateProjectTasksCache = async (projectId: string) => {
       );
     });
   }
+};
+
+export const readProjectsDb = async (filterOptions: {
+  search?: string;
+  sortBy?: ProjectsSortByOption;
+  colors?: Color[];
+  statuses?: ProjectStatus[];
+  archiveStatus?: ArchiveStatusFilterOption;
+  dateTimeStartRange?: Date | null;
+  dateTimeEndRange?: Date | null;
+  page?: number;
+  projectIds?: string[];
+  areaIds?: string[];
+  userId?: string;
+  pageSize?: number;
+}) => {
+  const {
+    search,
+    sortBy,
+    colors,
+    statuses,
+    archiveStatus,
+    dateTimeStartRange,
+    dateTimeEndRange,
+    page,
+    projectIds,
+    areaIds,
+    userId,
+    pageSize = PAGE_SIZE,
+  } = filterOptions;
+  let userIdToUse: string | null = null;
+  if (userId) {
+    userIdToUse = userId;
+  } else {
+    const { userId } = await getCurrentUser();
+    if (!userId) return null;
+
+    userIdToUse = userId;
+  }
+
+  if (!userIdToUse) return null;
+
+  let offset: number | null = null;
+  if (page) {
+    offset = (page - 1) * PAGE_SIZE;
+  }
+
+  const searchTerm = `%${search?.trim()}%`;
+  const searchFilter = search?.trim()
+    ? or(
+        ilike(ProjectTable.name, searchTerm),
+        ilike(ProjectTable.outcome, searchTerm),
+        ilike(AreaTable.name, searchTerm),
+        ilike(AreaTable.description, searchTerm),
+      )
+    : undefined;
+
+  const sortByMap: Record<ProjectsSortByOption, SQL<unknown>> = {
+    oldest: asc(ProjectTable.createdAt),
+    recently_created: desc(ProjectTable.createdAt),
+    recently_updated: desc(ProjectTable.updatedAt),
+  };
+
+  const archiveStatusMap: Record<
+    ArchiveStatusFilterOption,
+    SQL<unknown> | undefined
+  > = {
+    all: undefined,
+    active: and(
+      eq(ProjectTable.isArchived, false),
+      isNull(ProjectTable.archivedAt),
+    ),
+    archived: and(
+      eq(ProjectTable.isArchived, true),
+      isNotNull(ProjectTable.archivedAt),
+    ),
+  };
+
+  const colorsFilter = colors?.length
+    ? inArray(ProjectTable.color, colors)
+    : undefined;
+  const statusesFilter = statuses?.length
+    ? inArray(ProjectTable.status, statuses)
+    : undefined;
+
+  const dateTimeRangeFilter = and(
+    dateTimeStartRange
+      ? gte(ProjectTable.startAt, format(dateTimeStartRange, "yyyy-MM-dd"))
+      : undefined,
+    dateTimeEndRange
+      ? lte(ProjectTable.endAt, format(dateTimeEndRange, "yyyy-MM-dd"))
+      : undefined,
+  );
+
+  let areas: AreaSelectType[] = [];
+  if (areaIds?.length) {
+    const existingAreas = await Promise.all(
+      areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userIdToUse)),
+    );
+    if (!existingAreas.every(Boolean)) {
+      return null;
+    }
+    areas = existingAreas.filter((area): area is AreaSelectType =>
+      Boolean(area),
+    );
+  }
+
+  const areaFilters = areas.length
+    ? inArray(
+        ProjectTable.areaId,
+        areas.map((area) => area.id),
+      )
+    : undefined;
+
+  let existingProjectIds: string[] = [];
+  if (projectIds?.length) {
+    const existingProjects = await Promise.all(
+      projectIds.map((projectId) =>
+        confirmUserProjectOwnership(projectId, userId),
+      ),
+    );
+    existingProjectIds = existingProjects
+      .filter((project): project is ProjectSelectType => Boolean(project))
+      .map((project) => project.id);
+    if (existingProjectIds.length !== projectIds.length) return null;
+  }
+
+  const projectsFilter = existingProjectIds.length
+    ? inArray(ProjectTable.id, existingProjectIds)
+    : undefined;
+
+  const archiveFilter = archiveStatus
+    ? archiveStatusMap[archiveStatus]
+    : undefined;
+
+  const whereQuery = and(
+    eq(ProjectTable.userId, userIdToUse),
+    searchFilter,
+    colorsFilter,
+    statusesFilter,
+    dateTimeRangeFilter,
+    archiveFilter,
+    areaFilters,
+    projectsFilter,
+  );
+
+  const priorityRank = sql`
+    CASE ${TaskTable.priority}
+      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
+      ELSE 5
+    END
+  `;
+
+  let query: PgSelect = db
+    .select({
+      ...getTableColumns(ProjectTable),
+      area: getTableColumns(AreaTable),
+      taskCount: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${TaskTable} tt
+        WHERE tt.project_id = ${ProjectTable.id}
+      )`,
+      completeTaskCount: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${TaskTable} tt
+        WHERE tt.project_id = ${ProjectTable.id}
+          AND tt.status = 'completed'
+      )`,
+      nextTask: sql<TaskSelectType | null>`(
+        ${db
+          .select({ task: sql`row_to_json(tasks.*)` })
+          .from(TaskTable)
+          .where(
+            and(
+              ne(TaskTable.status, "completed"),
+              eq(TaskTable.projectId, ProjectTable.id),
+            ),
+          )
+          .orderBy(asc(priorityRank))
+          .limit(1)}
+      )`.mapWith((val) => {
+        if (!val) return null;
+        return typeof val === "string" ? JSON.parse(val) : val;
+      }),
+    })
+    .from(ProjectTable)
+    .where(whereQuery)
+    .leftJoin(AreaTable, eq(AreaTable.id, ProjectTable.areaId))
+    .$dynamic();
+
+  if (sortBy) {
+    query = query.orderBy(sortByMap[sortBy]).$dynamic();
+  }
+  if (offset !== undefined && offset !== null) {
+    query = query.offset(offset).$dynamic();
+  }
+
+  const projects = await query.limit(pageSize);
+
+  return {
+    projects,
+    areas,
+    whereQuery,
+  };
 };
 
 export const insertProjectDb = async (

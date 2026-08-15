@@ -11,5 +11,10 @@ export const toolNames = [
   "updateArea",
   "setAreaArchived",
   "deleteArea",
+  "readProjects",
+  "createProject",
+  "updateProject",
+  "setProjectArchived",
+  "deleteProject",
 ] as const;
 export type ToolName = (typeof toolNames)[number];

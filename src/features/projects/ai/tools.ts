@@ -1,56 +1,54 @@
 import { tool } from "ai";
-import { readAreasDb } from "../server/areas";
 import {
-  createAreaToolSchema,
-  deleteAreaToolSchema,
-  readAreasToolSchema,
-  setAreaArchivedToolSchema,
-  updateAreaToolSchema,
+  createProjectToolSchema,
+  deleteProjectToolSchema,
+  readProjectsToolSchema,
+  setProjectArchivedToolSchema,
+  updateProjectToolSchema,
 } from "./schemas";
+import { getCurrentUser } from "@/lib/auth/helpers";
+import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
+import { readProjectsDb } from "../server/projects";
+import { parseISO } from "date-fns";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
 import {
   findToolExecutionDb,
   updateToolExecutionDb,
   upsertToolExecutionDb,
 } from "@/features/chats/server/tool-executions";
-import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
 import {
-  createAreaAction,
-  deleteAreaAction,
-  toggleAreaArchiveStatusAction,
-  updateAreaAction,
+  createProjectAction,
+  deleteProjectAction,
+  toggleProjectArchiveStatusAction,
+  updateProjectAction,
 } from "../actions/actions";
-import { getCurrentUser } from "@/lib/auth/helpers";
 
-const readAreasTool = tool({
-  description: "Allows you to read the current user's areas.",
-  inputSchema: readAreasToolSchema,
-  execute: async (
-    { areaIds, includeArchived, search, limit },
-    { abortSignal },
-  ) => {
+const readProjectsTool = tool({
+  description: "Allows you to read the user's projects.",
+  inputSchema: readProjectsToolSchema,
+  execute: async (filterOptions, { abortSignal }) => {
     const { userId } = await getCurrentUser();
     if (!userId) throw new Error(UNAUTHED_ERROR_MESSAGE);
 
     abortSignal?.throwIfAborted();
-
-    const response = await readAreasDb({
-      areaIds,
-      archiveStatus: includeArchived ? "all" : "active",
-      search,
-      limit,
+    const response = await readProjectsDb({
+      ...filterOptions,
+      archiveStatus: filterOptions.includeArchived ? "all" : "active",
+      dateTimeEndRange: filterOptions.startBefore
+        ? parseISO(filterOptions.startBefore)
+        : undefined,
     });
     if (!response) throw new Error(GENERAL_ERROR_MESSAGE);
 
-    return JSON.stringify(response.areas);
+    return JSON.stringify(response.projects);
   },
 });
 
-const createAreaTool = tool({
-  description: "Allows you to create an area in the user's workspace.",
-  inputSchema: createAreaToolSchema,
+const createProjectTool = tool({
+  description: "Allows you to create a new project for the user.",
+  inputSchema: createProjectToolSchema,
   contextSchema: runIdContextSchema,
-  execute: async (areaDetails, { context, toolCallId, abortSignal }) => {
+  execute: async (project, { toolCallId, context, abortSignal }) => {
     try {
       const existingToolExecution = await findToolExecutionDb(
         context.runId,
@@ -64,13 +62,17 @@ const createAreaTool = tool({
       const insertedToolExecution = await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
-        toolName: "createArea",
+        toolName: "createProject",
       });
       if (!insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await createAreaAction(areaDetails);
+      const response = await createProjectAction({
+        ...project,
+        startAt: project.startAt ? parseISO(project.startAt) : undefined,
+        endAt: project.endAt ? parseISO(project.endAt) : undefined,
+      });
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -90,7 +92,7 @@ const createAreaTool = tool({
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
-        toolName: "createArea",
+        toolName: "createProject",
         output: errorMessage,
         status: "failed",
       });
@@ -99,12 +101,12 @@ const createAreaTool = tool({
   },
 });
 
-const updateAreaTool = tool({
-  description: "Allows you to update one of the user's areas.",
-  inputSchema: updateAreaToolSchema,
+const updateProjectTool = tool({
+  description: "Allows you to update one of the current user's projects.",
+  inputSchema: updateProjectToolSchema,
   contextSchema: runIdContextSchema,
   execute: async (
-    { areaId, changes },
+    { projectId, changes },
     { context, toolCallId, abortSignal },
   ) => {
     try {
@@ -120,14 +122,17 @@ const updateAreaTool = tool({
       const insertedToolExecution = await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
-        toolName: "updateArea",
+        toolName: "updateProject",
       });
-      if (!insertedToolExecution)
+      if (insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-
-      const response = await updateAreaAction(areaId, changes);
+      const response = await updateProjectAction(projectId, {
+        ...changes,
+        startAt: changes.startAt ? parseISO(changes.startAt) : undefined,
+        endAt: changes.endAt ? parseISO(changes.endAt) : undefined,
+      });
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -147,21 +152,22 @@ const updateAreaTool = tool({
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
-        toolName: "updateArea",
+        toolName: "updateProject",
         output: errorMessage,
         status: "failed",
       });
+      throw new Error(errorMessage);
     }
   },
 });
 
-const setAreaArchivedTool = tool({
+const setProjectArchivedTool = tool({
   description:
-    "Allows you to change the archive status for one of the user's areas.",
-  inputSchema: setAreaArchivedToolSchema,
+    "Allows you to update the archive status of the user's projects.",
+  inputSchema: setProjectArchivedToolSchema,
   contextSchema: runIdContextSchema,
   execute: async (
-    { areaId, archived },
+    { projectId, archived },
     { context, toolCallId, abortSignal },
   ) => {
     try {
@@ -177,65 +183,15 @@ const setAreaArchivedTool = tool({
       const insertedToolExecution = await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
-        toolName: "setAreaArchived",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      abortSignal?.throwIfAborted();
-      const response = await toggleAreaArchiveStatusAction(areaId, archived);
-
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = Error.isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "setAreaArchived",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
-    }
-  },
-});
-
-const deleteAreaTool = tool({
-  description: "Allows you to delete one of the user's areas.",
-  inputSchema: deleteAreaToolSchema,
-  contextSchema: runIdContextSchema,
-  execute: async ({ areaId }, { context, toolCallId, abortSignal }) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "deleteArea",
+        toolName: "setProjectArchived",
       });
       if (!insertedToolExecution) throw new Error("Failed to execute tool.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteAreaAction(areaId);
+      const response = await toggleProjectArchiveStatusAction(
+        projectId,
+        archived,
+      );
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -255,18 +211,71 @@ const deleteAreaTool = tool({
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
-        toolName: "deleteArea",
+        toolName: "setProjectArchived",
         output: errorMessage,
         status: "failed",
       });
+      throw new Error(errorMessage);
     }
   },
 });
 
-export const areaTools = {
-  readAreas: readAreasTool,
-  createArea: createAreaTool,
-  updateArea: updateAreaTool,
-  setAreaArchived: setAreaArchivedTool,
-  deleteArea: deleteAreaTool,
+const deleteProjectTool = tool({
+  description: "Allows you to delete one of the current user's projects.",
+  inputSchema: deleteProjectToolSchema,
+  contextSchema: runIdContextSchema,
+  execute: async ({ projectId }, { context, toolCallId, abortSignal }) => {
+    try {
+      const existingToolExecution = await findToolExecutionDb(
+        context.runId,
+        toolCallId,
+      );
+      if (existingToolExecution?.status === "pending")
+        return "This tool execution is pending.";
+      if (existingToolExecution?.status === "completed")
+        return JSON.stringify(existingToolExecution.output) || "No output.";
+
+      const insertedToolExecution = await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "deleteProject",
+      });
+      if (!insertedToolExecution) throw new Error("Failed to execute tool.");
+
+      abortSignal?.throwIfAborted();
+      const response = await deleteProjectAction(projectId);
+
+      const isSuccess = !response.error;
+      const output = response.message;
+
+      await updateToolExecutionDb(context.runId, toolCallId, {
+        output,
+        status: isSuccess ? "completed" : "failed",
+      });
+
+      if (isSuccess) return output;
+      throw new Error(output);
+    } catch (error) {
+      console.error(error);
+      const errorMessage = Error.isError(error)
+        ? error.message
+        : GENERAL_ERROR_MESSAGE;
+      await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "deleteProject",
+        output: errorMessage,
+        status: "failed",
+      });
+      throw new Error(errorMessage);
+    }
+  },
+});
+
+export const projectTools = {
+  readProjects: readProjectsTool,
+  createProject: createProjectTool,
+  updateProject: updateProjectTool,
+  setProjectArchived: setProjectArchivedTool,
+  deleteProject: deleteProjectTool,
 };

@@ -2,32 +2,31 @@ import { db } from "@/db/db";
 import { TaskTable } from "@/db/schema";
 import {
   findToolExecutionDb,
-  upsertToolExecutionDb,
   updateToolExecutionDb,
+  upsertToolExecutionDb,
 } from "@/features/chats/server/tool-executions";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
 import { tool } from "ai";
-import { parseISO } from "date-fns";
-import { and, eq, inArray, ilike, lte, gte } from "drizzle-orm";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { and, eq, gte, ilike, inArray, lte } from "drizzle-orm";
 import {
   createTaskAction,
-  updateTaskAction,
-  updateTasksStatusAction,
   deleteTaskAction,
+  updateTaskAction,
   updateTasksPriorityAction,
+  updateTasksStatusAction,
 } from "../actions/actions";
 import { formatTaskStatus } from "../lib/formatters";
 import {
-  readTasksToolSchema,
   createTasksToolSchema,
-  updateTaskToolSchema,
-  updateTasksStatusToolSchema,
   deleteTaskToolSchema,
+  readTasksToolSchema,
+  updateTaskToolSchema,
   updateTasksPriorityToolSchema,
+  updateTasksStatusToolSchema,
 } from "./schemas";
-import { GENERAL_ERROR_MESSAGE } from "@/lib/constants";
 
 const readTasksTool = tool({
   description: "Allows you to read the user's tasks.",
@@ -39,10 +38,7 @@ const readTasksTool = tool({
     abortSignal?.throwIfAborted();
 
     const { userId } = await getCurrentUser();
-    if (!userId)
-      throw new Error(
-        "This user is not authenticated. Tell them they need to sign in.",
-      );
+    if (!userId) throw new Error(UNAUTHED_ERROR_MESSAGE);
 
     const tasks = await db
       .select()

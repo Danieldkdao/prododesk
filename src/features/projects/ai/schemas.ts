@@ -50,6 +50,10 @@ export const createProjectToolSchema = z.object({
     .describe("The project icon, optional emoji."),
   color: z.enum(colors).describe("The project color."),
   status: z.enum(projectStatuses).describe("The project status."),
+  isArchived: z
+    .boolean()
+    .default(false)
+    .describe("Whether the project is archived or not."),
   areaId: z
     .uuid()
     .nullish()

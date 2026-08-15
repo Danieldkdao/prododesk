@@ -6,6 +6,7 @@ import { taskTools } from "@/features/tasks/ai/tools";
 import { webSearchTools } from "@/features/web-search/ai/tools";
 import { ToolName } from "../tool-contracts";
 import { areaTools } from "@/features/areas/ai/tools";
+import { projectTools } from "@/features/projects/ai/tools";
 
 const getCurrentTimeTool = tool({
   description: "Allows you to get the current system time.",
@@ -20,5 +21,6 @@ export const tools: Record<ToolName, Tool> = {
   ...webSearchTools,
   ...taskTools,
   ...areaTools,
+  ...projectTools,
   getCurrentTime: getCurrentTimeTool,
 };
