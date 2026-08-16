@@ -1,5 +1,6 @@
 import { db, DbTransaction } from "@/db/db";
 import {
+  ActivitySource,
   AreaSelectType,
   AreaTable,
   Color,
@@ -15,6 +16,7 @@ import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 import { revalidateTaskCache } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
+import { runMutationCacheInvalidation } from "@/lib/data-cache";
 import { ArchiveStatusFilterOption } from "@/lib/params";
 import { SQLMap } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
@@ -43,6 +45,7 @@ import { revalidateProjectCache } from "./cache/projects";
 export const confirmUserProjectOwnership = async (
   projectId: string,
   existingUserId?: string,
+  tx?: DbTransaction,
 ) => {
   let userIdToUse;
   if (existingUserId) {
@@ -55,7 +58,7 @@ export const confirmUserProjectOwnership = async (
 
   if (!userIdToUse) return null;
 
-  const [existingProject] = await db
+  const [existingProject] = await (tx ?? db)
     .select()
     .from(ProjectTable)
     .where(
@@ -79,10 +82,10 @@ export const parseProjectData = (
   };
 };
 
-const revalidateProjectTasksCache = async (projectId: string) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return;
-
+const revalidateProjectTasksCache = async (
+  userId: string,
+  projectId: string,
+) => {
   const existingProjectTasks = await db.query.TaskTable.findMany({
     where: and(
       eq(TaskTable.userId, userId),
@@ -149,13 +152,13 @@ export const readProjectsDb = async (filterOptions: {
     offset = (page - 1) * limit;
   }
 
-  const searchTerm = `%${search?.trim()}%`;
-  const searchFilter = search?.trim()
+  const normalizedSearch = search?.trim();
+  const searchFilter = normalizedSearch
     ? or(
-        ilike(ProjectTable.name, searchTerm),
-        ilike(ProjectTable.outcome, searchTerm),
-        ilike(AreaTable.name, searchTerm),
-        ilike(AreaTable.description, searchTerm),
+        ilike(ProjectTable.name, `%${normalizedSearch}%`),
+        ilike(ProjectTable.outcome, `%${normalizedSearch}%`),
+        ilike(AreaTable.name, `%${normalizedSearch}%`),
+        ilike(AreaTable.description, `%${normalizedSearch}%`),
       )
     : undefined;
 
@@ -317,11 +320,12 @@ export const readProjectsDb = async (filterOptions: {
 
 export const insertProjectDb = async (
   projectData: ProjectInsertType,
+  source: ActivitySource = "user",
   tx?: DbTransaction,
 ) => {
   try {
-    const insertedProject = await db.transaction(async (pgtx) => {
-      const [insertedProject] = await (tx ?? pgtx)
+    const insertProject = async (pgtx: DbTransaction) => {
+      const [insertedProject] = await pgtx
         .insert(ProjectTable)
         .values(projectData)
         .returning();
@@ -330,7 +334,7 @@ export const insertProjectDb = async (
 
       const insertedActivity = await insertActivityDb(
         {
-          source: "user",
+          source,
           subject: "project",
           action: "create",
           subjectId: insertedProject.id,
@@ -338,19 +342,25 @@ export const insertProjectDb = async (
           projectId: insertedProject.id,
           message: `Started project "${insertedProject.name}"`,
         },
-        tx ?? pgtx,
+        pgtx,
       );
 
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
       return insertedProject;
-    });
+    };
 
-    revalidateProjectCache(
-      insertedProject.userId,
-      insertedProject.id,
-      insertedProject.areaId,
-    );
+    const insertedProject = tx
+      ? await insertProject(tx)
+      : await db.transaction(insertProject);
+
+    await runMutationCacheInvalidation(source === "ai", () => {
+      revalidateProjectCache(
+        insertedProject.userId,
+        insertedProject.id,
+        insertedProject.areaId,
+      );
+    });
 
     return insertedProject;
   } catch (error) {
@@ -367,14 +377,19 @@ export const updateProjectDb = async (
       "id" | "userId" | "createdAt" | "updatedAt"
     >
   >,
+  source: ActivitySource = "user",
   tx?: DbTransaction,
 ) => {
   try {
-    const existingProject = await confirmUserProjectOwnership(projectId);
+    const existingProject = await confirmUserProjectOwnership(
+      projectId,
+      undefined,
+      tx,
+    );
     if (!existingProject) return null;
 
-    const updatedProject = await db.transaction(async (pgtx) => {
-      const [updatedProject] = await (tx ?? pgtx)
+    const updateProject = async (pgtx: DbTransaction) => {
+      const [updatedProject] = await pgtx
         .update(ProjectTable)
         .set(projectData)
         .where(
@@ -388,36 +403,44 @@ export const updateProjectDb = async (
 
       const insertedActivity = await insertActivityDb(
         {
-          source: "user",
+          source,
           subject: "project",
-          action: "create",
+          action: "update",
           subjectId: updatedProject.id,
           subjectLabel: updatedProject.name,
           projectId: updatedProject.id,
           message: `Updated project "${updatedProject.name}"`,
         },
-        tx ?? pgtx,
+        pgtx,
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
       return updatedProject;
-    });
+    };
 
-    revalidateProjectTasksCache(updatedProject.id);
+    const updatedProject = tx
+      ? await updateProject(tx)
+      : await db.transaction(updateProject);
 
-    revalidateProjectCache(
-      updatedProject.userId,
-      updatedProject.id,
-      existingProject.areaId,
-    );
-
-    if (updatedProject.areaId !== existingProject.areaId) {
+    await runMutationCacheInvalidation(source === "ai", async () => {
+      await revalidateProjectTasksCache(
+        updatedProject.userId,
+        updatedProject.id,
+      );
       revalidateProjectCache(
         updatedProject.userId,
         updatedProject.id,
-        updatedProject.areaId,
+        existingProject.areaId,
       );
-    }
+
+      if (updatedProject.areaId !== existingProject.areaId) {
+        revalidateProjectCache(
+          updatedProject.userId,
+          updatedProject.id,
+          updatedProject.areaId,
+        );
+      }
+    });
 
     return updatedProject;
   } catch (error) {
@@ -428,14 +451,19 @@ export const updateProjectDb = async (
 
 export const deleteProjectDb = async (
   projectId: string,
+  source: ActivitySource = "user",
   tx?: DbTransaction,
 ) => {
-  const existingProject = await confirmUserProjectOwnership(projectId);
+  const existingProject = await confirmUserProjectOwnership(
+    projectId,
+    undefined,
+    tx,
+  );
   if (!existingProject) return null;
 
   try {
-    const deletedProject = await db.transaction(async (pgtx) => {
-      const [deletedProject] = await (tx ?? pgtx)
+    const deleteProject = async (pgtx: DbTransaction) => {
+      const [deletedProject] = await pgtx
         .delete(ProjectTable)
         .where(
           and(
@@ -448,26 +476,35 @@ export const deleteProjectDb = async (
 
       const insertedActivity = await insertActivityDb(
         {
-          source: "user",
-          action: "create",
+          source,
+          action: "delete",
           subject: "project",
           subjectId: deletedProject.id,
           subjectLabel: deletedProject.name,
           message: `Deleted project "${deletedProject.name}"`,
         },
-        tx ?? pgtx,
+        pgtx,
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
       return deletedProject;
-    });
+    };
 
-    revalidateProjectTasksCache(deletedProject.id);
-    revalidateProjectCache(
-      deletedProject.userId,
-      deletedProject.id,
-      deletedProject.areaId,
-    );
+    const deletedProject = tx
+      ? await deleteProject(tx)
+      : await db.transaction(deleteProject);
+
+    await runMutationCacheInvalidation(source === "ai", async () => {
+      await revalidateProjectTasksCache(
+        deletedProject.userId,
+        deletedProject.id,
+      );
+      revalidateProjectCache(
+        deletedProject.userId,
+        deletedProject.id,
+        deletedProject.areaId,
+      );
+    });
 
     return deletedProject;
   } catch (error) {

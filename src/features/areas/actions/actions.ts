@@ -2,6 +2,7 @@
 
 import { db } from "@/db/db";
 import {
+  ActivitySourceType,
   ActivityTable,
   AreaTable,
   Color,
@@ -27,13 +28,8 @@ import {
   desc,
   eq,
   getTableColumns,
-  ilike,
-  inArray,
-  isNotNull,
-  isNull,
   lte,
   or,
-  SQL,
   sql,
 } from "drizzle-orm";
 import { cacheTag } from "next/cache";
@@ -240,7 +236,10 @@ export const readAreasAction = async (filterOptions: {
 };
 export type ReadAreasActionReturnType = UnwrapAsync<typeof readAreasAction>;
 
-export const createAreaAction = async (unsafeData: AreaSchemaType) => {
+export const createAreaAction = async (
+  unsafeData: AreaSchemaType,
+  source: ActivitySourceType = "user",
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -258,15 +257,18 @@ export const createAreaAction = async (unsafeData: AreaSchemaType) => {
   }
 
   try {
-    const createdArea = await insertAreaDb({
-      ...data,
-      position: sql`(
+    const createdArea = await insertAreaDb(
+      {
+        ...data,
+        position: sql`(
           SELECT COUNT(*)
           FROM ${AreaTable} ata
           WHERE ata.user_id = ${userId}
         ) + 1`,
-      userId,
-    });
+        userId,
+      },
+      source,
+    );
     if (!createdArea) throw new Error("Failed to create area.");
 
     return {
@@ -285,6 +287,7 @@ export const createAreaAction = async (unsafeData: AreaSchemaType) => {
 export const updateAreaAction = async (
   areaId: string,
   areaData: Partial<AreaSchemaType>,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(areaId)) {
     return {
@@ -318,7 +321,7 @@ export const updateAreaAction = async (
   }
 
   try {
-    const updatedArea = await updateAreaDb(existingArea.id, data);
+    const updatedArea = await updateAreaDb(existingArea.id, data, source);
     if (!updatedArea) throw new Error("Failed to update area.");
 
     return {
@@ -337,6 +340,7 @@ export const updateAreaAction = async (
 export const toggleAreaArchiveStatusAction = async (
   areaId: string,
   newArchiveStatus: boolean,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(areaId)) {
     return {
@@ -362,10 +366,14 @@ export const toggleAreaArchiveStatusAction = async (
   }
 
   try {
-    const updatedArea = await updateAreaDb(existingArea.id, {
-      isArchived: newArchiveStatus,
-      archivedAt: new Date(),
-    });
+    const updatedArea = await updateAreaDb(
+      existingArea.id,
+      {
+        isArchived: newArchiveStatus,
+        archivedAt: newArchiveStatus ? new Date() : null,
+      },
+      source,
+    );
     if (!updatedArea) throw new Error("Failed to update area archive status.");
 
     return {
@@ -383,7 +391,10 @@ export const toggleAreaArchiveStatusAction = async (
   }
 };
 
-export const deleteAreaAction = async (areaId: string) => {
+export const deleteAreaAction = async (
+  areaId: string,
+  source: ActivitySourceType = "user",
+) => {
   if (!areValidIds(areaId)) {
     return {
       error: true,
@@ -408,7 +419,7 @@ export const deleteAreaAction = async (areaId: string) => {
   }
 
   try {
-    const deletedArea = await deleteAreaDb(existingArea.id);
+    const deletedArea = await deleteAreaDb(existingArea.id, source);
     if (!deletedArea) throw new Error("Failed to delete area.");
 
     return {

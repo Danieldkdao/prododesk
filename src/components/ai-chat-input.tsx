@@ -73,6 +73,10 @@ export const AIChatInput = ({
     return () => inputContainer.removeEventListener("input", handleInputEvent);
   }, [initialInputHeight]);
 
+  useEffect(() => {
+    if (value.trim() === "") setInputLinesChanged(false);
+  }, [value]);
+
   useLayoutEffect(() => {
     const inputContainer = inputContainerRef.current;
     if (!inputContainer) return;
@@ -81,6 +85,10 @@ export const AIChatInput = ({
 
     setInitialInputHeight(scrollHeight);
   }, []);
+
+  const submittedPrompt = value.trim();
+  const canSubmit =
+    !isPending && submittedPrompt.length > 0 && selectedModel !== null;
 
   return (
     <motion.div
@@ -106,32 +114,20 @@ export const AIChatInput = ({
           value={value}
           disabled={isPending}
           onChange={(e) => {
-            const newValue = e.target.value;
-
-            if (e.target.value === "") {
-              setInputLinesChanged(false);
-              onValueChange("");
-            }
-
-            if (e.target.value.trim() === "") return;
-
-            onValueChange(newValue);
+            onValueChange(e.currentTarget.value);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && value === "") {
-              e.preventDefault();
-              return;
-            }
-            if (
-              e.key === "Enter" &&
-              !e.shiftKey &&
-              value.trim() &&
-              selectedModel
-            ) {
-              e.preventDefault();
-              onSubmit();
-              return;
-            }
+            if (e.key !== "Enter") return;
+
+            if (e.nativeEvent.isComposing) return;
+
+            if (e.shiftKey) return;
+
+            e.preventDefault();
+
+            if (!canSubmit || e.repeat) return;
+
+            onSubmit();
           }}
           placeholder="Tell me what you need..."
         />
@@ -213,7 +209,7 @@ export const AIChatInput = ({
         <Button
           type="button"
           size="icon-sm"
-          disabled={!isPending && (!value.trim().length || !selectedModel)}
+          disabled={!canSubmit}
           onClick={isPending ? onStop : onSubmit}
         >
           {isPending ? <SquareIcon /> : <SendIcon />}

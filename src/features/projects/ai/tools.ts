@@ -68,11 +68,14 @@ const createProjectTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await createProjectAction({
-        ...project,
-        startAt: project.startAt ? parseISO(project.startAt) : undefined,
-        endAt: project.endAt ? parseISO(project.endAt) : undefined,
-      });
+      const response = await createProjectAction(
+        {
+          ...project,
+          startAt: project.startAt ? parseISO(project.startAt) : undefined,
+          endAt: project.endAt ? parseISO(project.endAt) : undefined,
+        },
+        "ai",
+      );
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -128,11 +131,15 @@ const updateProjectTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateProjectAction(projectId, {
-        ...changes,
-        startAt: changes.startAt ? parseISO(changes.startAt) : undefined,
-        endAt: changes.endAt ? parseISO(changes.endAt) : undefined,
-      });
+      const response = await updateProjectAction(
+        projectId,
+        {
+          ...changes,
+          startAt: changes.startAt ? parseISO(changes.startAt) : undefined,
+          endAt: changes.endAt ? parseISO(changes.endAt) : undefined,
+        },
+        "ai",
+      );
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -191,6 +198,7 @@ const setProjectArchivedTool = tool({
       const response = await toggleProjectArchiveStatusAction(
         projectId,
         archived,
+        "ai",
       );
 
       const isSuccess = !response.error;
@@ -243,7 +251,7 @@ const deleteProjectTool = tool({
       if (!insertedToolExecution) throw new Error("Failed to execute tool.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteProjectAction(projectId);
+      const response = await deleteProjectAction(projectId, "ai");
 
       const isSuccess = !response.error;
       const output = response.message;

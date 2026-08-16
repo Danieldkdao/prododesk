@@ -1,3 +1,5 @@
+import { after } from "next/server";
+
 type CacheTag =
   | "tasks"
   | "chats"
@@ -25,4 +27,16 @@ export const getAreaResourceTag = (areaId: string, tag: CacheTag) => {
 
 export const getIdTag = (id: string, tag: CacheTag) => {
   return `${tag}:${id}` as const;
+};
+
+export const runMutationCacheInvalidation = async (
+  deferUntilAfterResponse: boolean,
+  invalidate: () => void | Promise<void>,
+) => {
+  if (deferUntilAfterResponse) {
+    after(invalidate);
+    return;
+  }
+
+  await invalidate();
 };

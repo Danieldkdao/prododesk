@@ -2,6 +2,7 @@
 
 import { db } from "@/db/db";
 import {
+  ActivitySourceType,
   AreaTable,
   Color,
   DocumentTable,
@@ -212,7 +213,10 @@ export const readProjectAction = cache(async (projectId: string) => {
 });
 export type ReadProjectActionReturnType = UnwrapAsync<typeof readProjectAction>;
 
-export const createProjectAction = async (unsafeData: ProjectSchemaType) => {
+export const createProjectAction = async (
+  unsafeData: ProjectSchemaType,
+  source: ActivitySourceType = "user",
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -232,7 +236,7 @@ export const createProjectAction = async (unsafeData: ProjectSchemaType) => {
   const parsedData = parseProjectData(userId, data);
 
   try {
-    const createdProject = await insertProjectDb(parsedData);
+    const createdProject = await insertProjectDb(parsedData, source);
     if (!createdProject) throw new Error("Failed to create project.");
 
     return {
@@ -251,6 +255,7 @@ export const createProjectAction = async (unsafeData: ProjectSchemaType) => {
 export const updateProjectAction = async (
   projectId: string,
   unsafeData: Partial<ProjectSchemaType>,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(projectId)) {
     return {
@@ -284,11 +289,15 @@ export const updateProjectAction = async (
   }
 
   try {
-    const updatedProject = await updateProjectDb(projectId, {
-      ...data,
-      startAt: data.startAt ? format(data.startAt, "yyyy-MM-dd") : undefined,
-      endAt: data.endAt ? format(data.endAt, "yyyy-MM-dd") : undefined,
-    });
+    const updatedProject = await updateProjectDb(
+      projectId,
+      {
+        ...data,
+        startAt: data.startAt ? format(data.startAt, "yyyy-MM-dd") : undefined,
+        endAt: data.endAt ? format(data.endAt, "yyyy-MM-dd") : undefined,
+      },
+      source,
+    );
     if (!updatedProject) throw new Error("Failed to update project.");
 
     return {
@@ -307,6 +316,7 @@ export const updateProjectAction = async (
 export const toggleProjectArchiveStatusAction = async (
   projectId: string,
   newArchiveStatus: boolean,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(projectId)) {
     return {
@@ -332,10 +342,14 @@ export const toggleProjectArchiveStatusAction = async (
   }
 
   try {
-    const updatedProject = await updateProjectDb(existingProject.id, {
-      isArchived: newArchiveStatus,
-      archivedAt: new Date(),
-    });
+    const updatedProject = await updateProjectDb(
+      existingProject.id,
+      {
+        isArchived: newArchiveStatus,
+        archivedAt: newArchiveStatus ? new Date() : null,
+      },
+      source,
+    );
     if (!updatedProject)
       throw new Error("Failed to toggle project archive status.");
 
@@ -354,7 +368,10 @@ export const toggleProjectArchiveStatusAction = async (
   }
 };
 
-export const deleteProjectAction = async (projectId: string) => {
+export const deleteProjectAction = async (
+  projectId: string,
+  source: ActivitySourceType = "user",
+) => {
   if (!areValidIds(projectId)) {
     return {
       error: true,
@@ -379,7 +396,7 @@ export const deleteProjectAction = async (projectId: string) => {
   }
 
   try {
-    const deletedProject = await deleteProjectDb(existingProject.id);
+    const deletedProject = await deleteProjectDb(existingProject.id, source);
     if (!deletedProject) throw new Error("Failed to delete project.");
 
     return {

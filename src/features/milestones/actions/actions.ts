@@ -1,7 +1,11 @@
 "use server";
 
-import { db } from "@/db/db";
-import { MilestoneStatus, MilestoneTable } from "@/db/schema";
+import { db, DbTransaction } from "@/db/db";
+import {
+  ActivitySourceType,
+  MilestoneStatus,
+  MilestoneTable,
+} from "@/db/schema";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -11,6 +15,7 @@ import {
   PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
+import { runMutationCacheInvalidation } from "@/lib/data-cache";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
 import { format } from "date-fns";
@@ -109,6 +114,8 @@ export type ReadProjectMilestonesActionType = UnwrapAsync<
 
 export const createMilestoneAction = async (
   unsafeData: MilestoneSchemaType,
+  source: ActivitySourceType = "user",
+  tx?: DbTransaction,
 ) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
@@ -126,20 +133,26 @@ export const createMilestoneAction = async (
     };
   }
 
-  const { dueAt, ...rest } = data;
+  const { dueAt, position, ...rest } = data;
 
   try {
-    const createdMilestone = await insertMilestoneDb({
-      ...rest,
-      userId,
-      position: sql`(
-        SELECT COUNT(*)
+    const createdMilestone = await insertMilestoneDb(
+      {
+        ...rest,
+        userId,
+        position:
+          position ||
+          sql`(
+        SELECT COALESCE(MAX(mt.position), 0)
         FROM ${MilestoneTable} mt
         WHERE mt.user_id = ${userId}
           AND mt.project_id = ${data.projectId}
       ) + 1`,
-      dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
-    });
+        dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
+      },
+      source,
+      tx,
+    );
     if (!createdMilestone) throw new Error("Failed to create milestone.");
 
     return {
@@ -158,6 +171,7 @@ export const createMilestoneAction = async (
 export const updateMilestoneAction = async (
   milestoneId: string,
   unsafeData: Partial<MilestoneSchemaType>,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(milestoneId)) {
     return {
@@ -193,10 +207,14 @@ export const updateMilestoneAction = async (
   const { dueAt, ...rest } = data;
 
   try {
-    const updatedMilestone = await updateMilestoneDb(existingMilestone.id, {
-      ...rest,
-      dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
-    });
+    const updatedMilestone = await updateMilestoneDb(
+      existingMilestone.id,
+      {
+        ...rest,
+        dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
+      },
+      source,
+    );
     if (!updatedMilestone) throw new Error("Failed to update milestone.");
 
     return {
@@ -215,6 +233,7 @@ export const updateMilestoneAction = async (
 export const updateMilestoneStatusAction = async (
   milestoneId: string,
   newStatus: MilestoneStatus,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(milestoneId)) {
     return {
@@ -240,9 +259,11 @@ export const updateMilestoneStatusAction = async (
   }
 
   try {
-    const updatedMilestone = await updateMilestoneDb(existingMilestone.id, {
-      status: newStatus,
-    });
+    const updatedMilestone = await updateMilestoneDb(
+      existingMilestone.id,
+      { status: newStatus },
+      source,
+    );
     if (!updatedMilestone) throw new Error("Failed to update milestone.");
 
     return {
@@ -262,6 +283,7 @@ export const moveMilestoneAction = async (
   projectId: string,
   milestoneId: string,
   newPosition: number,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds([projectId, milestoneId])) {
     return {
@@ -278,7 +300,7 @@ export const moveMilestoneAction = async (
     };
   }
 
-  const existingProject = await confirmUserProjectOwnership(projectId);
+  const existingProject = await confirmUserProjectOwnership(projectId, userId);
   if (!existingProject) {
     return {
       error: true,
@@ -363,11 +385,13 @@ export const moveMilestoneAction = async (
         ),
       );
 
-    revalidateMilestoneCache(
-      userId,
-      existingProject.id,
-      existingProject.areaId,
-    );
+    await runMutationCacheInvalidation(source === "ai", () => {
+      revalidateMilestoneCache(
+        userId,
+        existingProject.id,
+        existingProject.areaId,
+      );
+    });
 
     return {
       error: false,
@@ -382,7 +406,10 @@ export const moveMilestoneAction = async (
   }
 };
 
-export const deleteMilestoneAction = async (milestoneId: string) => {
+export const deleteMilestoneAction = async (
+  milestoneId: string,
+  source: ActivitySourceType = "user",
+) => {
   if (!areValidIds(milestoneId)) {
     return {
       error: true,
@@ -407,7 +434,7 @@ export const deleteMilestoneAction = async (milestoneId: string) => {
   }
 
   try {
-    const deletedMilestone = await deleteMilestoneDb(milestoneId);
+    const deletedMilestone = await deleteMilestoneDb(milestoneId, source);
     if (!deletedMilestone) throw new Error("Failed to delete milestone.");
 
     return {

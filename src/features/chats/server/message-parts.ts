@@ -11,10 +11,14 @@ export const insertMessagePartDb = async (
   messagePart: MessagePartInsertType,
   tx?: DbTransaction,
 ) => {
-  const existingMessage = await findChatMessageDb(messagePart.messageId);
+  const existingMessage = await findChatMessageDb(messagePart.messageId, tx);
   if (!existingMessage) return null;
 
-  const existingChat = await confirmChatOwnership(existingMessage.chatId);
+  const existingChat = await confirmChatOwnership(
+    existingMessage.chatId,
+    undefined,
+    tx,
+  );
   if (!existingChat) return null;
 
   const [insertedMessagePart] = await (tx ?? db)

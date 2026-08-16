@@ -26,6 +26,10 @@ export const createTasksToolSchema = z.object({
           .describe(
             `When this task is scheduled at. Optional. ${isoDatetimeFormatInstructions}`,
           ),
+        projectId: z
+          .uuid()
+          .nullish()
+          .describe("The ID of the project associated with this task."),
         dueAt: z.iso
           .datetime()
           .nullish()

@@ -11,6 +11,7 @@ import { revalidateChatCache } from "./cache/chats";
 
 export const findChatRunDb = async (
   query: { id: string } | { chatId: string; userMessageClientId: string },
+  tx?: DbTransaction,
 ) => {
   const whereQuery =
     "id" in query
@@ -20,7 +21,7 @@ export const findChatRunDb = async (
           eq(ChatRunTable.userMessageClientId, query.userMessageClientId),
         );
 
-  return db.query.ChatRunTable.findFirst({
+  return (tx ?? db).query.ChatRunTable.findFirst({
     where: whereQuery,
   });
 };
@@ -29,7 +30,11 @@ export const insertChatRunDb = async (
   chatRun: ChatRunInsertType,
   tx?: DbTransaction,
 ) => {
-  const existingChat = await confirmChatOwnership(chatRun.chatId);
+  const existingChat = await confirmChatOwnership(
+    chatRun.chatId,
+    undefined,
+    tx,
+  );
   if (!existingChat) return null;
 
   const [insertedChatRun] = await (tx ?? db)
@@ -47,7 +52,11 @@ export const upsertChatRunDb = async (
   chatRun: ChatRunInsertType,
   tx?: DbTransaction,
 ) => {
-  const existingChat = await confirmChatOwnership(chatRun.chatId);
+  const existingChat = await confirmChatOwnership(
+    chatRun.chatId,
+    undefined,
+    tx,
+  );
   if (!existingChat) return null;
 
   const [upsertedChatRun] = await (tx ?? db)
@@ -80,10 +89,14 @@ export const updateChatRunDb = async (
   >,
   tx?: DbTransaction,
 ) => {
-  const existingChatRun = await findChatRunDb({ id: runId });
+  const existingChatRun = await findChatRunDb({ id: runId }, tx);
   if (!existingChatRun) return null;
 
-  const existingChat = await confirmChatOwnership(existingChatRun.chatId);
+  const existingChat = await confirmChatOwnership(
+    existingChatRun.chatId,
+    undefined,
+    tx,
+  );
   if (!existingChat) return null;
 
   const [updatedChatRun] = await (tx ?? db)

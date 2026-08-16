@@ -89,11 +89,14 @@ const createDocumentTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await createDocumentAction({
-        name,
-        content,
-        projectId: projectId ?? undefined,
-      });
+      const response = await createDocumentAction(
+        {
+          name,
+          content,
+          projectId: projectId ?? undefined,
+        },
+        "ai",
+      );
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -149,10 +152,14 @@ const updateDocumentTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateDocumentAction(documentId, {
-        ...changes,
-        projectId: changes.projectId ?? undefined,
-      });
+      const response = await updateDocumentAction(
+        documentId,
+        {
+          ...changes,
+          projectId: changes.projectId ?? undefined,
+        },
+        "ai",
+      );
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -205,7 +212,7 @@ const deleteDocumentTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteDocumentAction(documentId);
+      const response = await deleteDocumentAction(documentId, "ai");
 
       const isSuccess = !response.error;
       const output = response.message;

@@ -9,7 +9,7 @@ import z from "zod";
 export const readActivityToolSchema = z.object({
   areaIds: z.array(z.uuid()).default([]).describe("Filter by area IDs."),
   projectIds: z.array(z.uuid()).default([]).describe("Filter by project IDs."),
-  subjectTypes: z
+  subjects: z
     .array(z.enum(activitySubjects))
     .default([])
     .describe("Filter by subject types."),

@@ -37,11 +37,12 @@ export const updateChatDb = async (
 export const confirmChatOwnership = async (
   chatId: string,
   otherQueries?: SQL<unknown> | undefined,
+  tx?: DbTransaction,
 ) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  const [existingChat] = await db
+  const [existingChat] = await (tx ?? db)
     .select()
     .from(ChatTable)
     .where(
@@ -51,8 +52,11 @@ export const confirmChatOwnership = async (
   return existingChat ?? null;
 };
 
-export const deleteChatDb = async (chatId: string) => {
-  const [deletedChat] = await db
+export const deleteChatDb = async (
+  chatId: string,
+  tx?: DbTransaction,
+) => {
+  const [deletedChat] = await (tx ?? db)
     .delete(ChatTable)
     .where(eq(ChatTable.id, chatId))
     .returning();

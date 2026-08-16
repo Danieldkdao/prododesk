@@ -78,20 +78,25 @@ const createTasksTool = tool({
       const responses = await Promise.all(
         tasks.map((task) => {
           abortSignal?.throwIfAborted();
-          return createTaskAction({
-            ...task,
-            scheduledAt: task.scheduledAt ? parseISO(task.scheduledAt) : null,
-            dueAt: task.dueAt ? parseISO(task.dueAt) : null,
-          });
+          return createTaskAction(
+            {
+              ...task,
+              scheduledAt: task.scheduledAt ? parseISO(task.scheduledAt) : null,
+              dueAt: task.dueAt ? parseISO(task.dueAt) : null,
+            },
+            "ai",
+          );
         }),
       );
 
-      const isSuccess = responses.every((response) => !response.error);
+      const isSuccess =
+        responses.length === tasks.length &&
+        responses.every((response) => !response.error);
 
-      const output = isSuccess
-        ? "Success! Tasks created successfully!"
-        : (responses.at(0)?.message ??
-          "An error occurred. Unable to create all tasks.");
+      const output =
+        (responses.find((res) => res.error)?.message ??
+          responses.at(0)?.message) ||
+        GENERAL_ERROR_MESSAGE;
 
       await updateToolExecutionDb(
         insertedToolExecution.runId,
@@ -146,13 +151,17 @@ const updateTaskTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateTaskAction(id, {
-        ...updateFields,
-        scheduledAt: updateFields.scheduledAt
-          ? parseISO(updateFields.scheduledAt)
-          : null,
-        dueAt: updateFields.dueAt ? parseISO(updateFields.dueAt) : null,
-      });
+      const response = await updateTaskAction(
+        id,
+        {
+          ...updateFields,
+          scheduledAt: updateFields.scheduledAt
+            ? parseISO(updateFields.scheduledAt)
+            : null,
+          dueAt: updateFields.dueAt ? parseISO(updateFields.dueAt) : null,
+        },
+        "ai",
+      );
 
       const output = response.message;
 
@@ -211,7 +220,7 @@ const updateTasksStatusTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateTasksStatusAction(ids, newStatus);
+      const response = await updateTasksStatusAction(ids, newStatus, "ai");
 
       const isSuccess = !response.error;
 
@@ -270,7 +279,7 @@ const updateTasksPriorityTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateTasksPriorityAction(taskIds, priority);
+      const response = await updateTasksPriorityAction(taskIds, priority, "ai");
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -326,7 +335,7 @@ const deleteTaskTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteTaskAction(id);
+      const response = await deleteTaskAction(id, "ai");
 
       const output = response.message;
 

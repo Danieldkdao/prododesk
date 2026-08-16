@@ -1,5 +1,6 @@
 import { db, DbTransaction } from "@/db/db";
 import {
+  ActivitySource,
   AreaSelectType,
   DocumentInsertType,
   DocumentSelectType,
@@ -13,6 +14,7 @@ import { revalidateProjectCache } from "@/features/projects/server/cache/project
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
+import { runMutationCacheInvalidation } from "@/lib/data-cache";
 import { areValidIds } from "@/lib/utils";
 import {
   and,
@@ -32,6 +34,7 @@ export const confirmUserDocumentOwnership = async (
   documentId: string,
   userId?: string,
   additionalFilters?: SQL[],
+  tx?: DbTransaction,
 ) => {
   let userIdToUse: string | null = null;
   if (userId) {
@@ -43,7 +46,7 @@ export const confirmUserDocumentOwnership = async (
   }
   if (!userIdToUse) return null;
 
-  const [existingDocument] = await db
+  const [existingDocument] = await (tx ?? db)
     .select()
     .from(DocumentTable)
     .where(
@@ -97,12 +100,14 @@ export const readDocumentsDb = async (filterOptions: {
     recently_updated: desc(DocumentTable.updatedAt),
   };
 
-  const searchTerm = `%${search?.trim()}%`;
-  const searchQuery = or(
-    ilike(DocumentTable.name, searchTerm),
-    ilike(DocumentTable.content, searchTerm),
-    ilike(ProjectTable.name, searchTerm),
-  );
+  const normalizedSearch = search?.trim();
+  const searchQuery = normalizedSearch
+    ? or(
+        ilike(DocumentTable.name, `%${normalizedSearch}%`),
+        ilike(DocumentTable.content, `%${normalizedSearch}%`),
+        ilike(ProjectTable.name, `%${normalizedSearch}%`),
+      )
+    : undefined;
 
   let existingDocumentIds: string[] = [];
   if (documentIds?.length) {
@@ -193,17 +198,18 @@ export const readDocumentsDb = async (filterOptions: {
 
 export const insertDocumentDb = async (
   document: DocumentInsertType,
+  source: ActivitySource = "user",
   tx?: DbTransaction,
 ) => {
   try {
     const existingProject = document.projectId
-      ? await confirmUserProjectOwnership(document.projectId)
+      ? await confirmUserProjectOwnership(document.projectId, undefined, tx)
       : null;
     if (document.projectId && !existingProject)
       throw new Error("No existing project found.");
 
-    const insertedDocument = await db.transaction(async (pgtx) => {
-      const [insertedDocument] = await (tx ?? pgtx)
+    const insertDocument = async (pgtx: DbTransaction) => {
+      const [insertedDocument] = await pgtx
         .insert(DocumentTable)
         .values(document)
         .returning();
@@ -212,7 +218,7 @@ export const insertDocumentDb = async (
 
       const insertedActivity = await insertActivityDb(
         {
-          source: "user",
+          source,
           subject: "document",
           action: "create",
           subjectId: insertedDocument.id,
@@ -220,20 +226,26 @@ export const insertDocumentDb = async (
           projectId: insertedDocument.projectId,
           message: `Created document "${insertedDocument.name}"`,
         },
-        tx ?? pgtx,
+        pgtx,
       );
 
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
       return insertedDocument;
-    });
+    };
 
-    revalidateDocumentCache(
-      insertedDocument.userId,
-      insertedDocument.id,
-      insertedDocument.projectId,
-      existingProject?.areaId,
-    );
+    const insertedDocument = tx
+      ? await insertDocument(tx)
+      : await db.transaction(insertDocument);
+
+    await runMutationCacheInvalidation(source === "ai", () => {
+      revalidateDocumentCache(
+        insertedDocument.userId,
+        insertedDocument.id,
+        insertedDocument.projectId,
+        existingProject?.areaId,
+      );
+    });
 
     return insertedDocument;
   } catch (error) {
@@ -245,14 +257,24 @@ export const insertDocumentDb = async (
 export const updateDocumentDb = async (
   documentId: string,
   document: Pick<Partial<DocumentSelectType>, "name" | "content" | "projectId">,
+  source: ActivitySource = "user",
   tx?: DbTransaction,
 ) => {
-  const existingDocument = await confirmUserDocumentOwnership(documentId);
+  const existingDocument = await confirmUserDocumentOwnership(
+    documentId,
+    undefined,
+    undefined,
+    tx,
+  );
   if (!existingDocument) return null;
 
   try {
     const oldDocument = existingDocument.projectId
-      ? await confirmUserProjectOwnership(existingDocument.projectId)
+      ? await confirmUserProjectOwnership(
+          existingDocument.projectId,
+          undefined,
+          tx,
+        )
       : null;
 
     const nextDocumentId =
@@ -261,11 +283,11 @@ export const updateDocumentDb = async (
         : document.projectId;
 
     const newDocument = nextDocumentId
-      ? await confirmUserProjectOwnership(nextDocumentId)
+      ? await confirmUserProjectOwnership(nextDocumentId, undefined, tx)
       : null;
 
-    const updatedDocument = await db.transaction(async (pgtx) => {
-      const [updatedDocument] = await (tx ?? pgtx)
+    const updateDocument = async (pgtx: DbTransaction) => {
+      const [updatedDocument] = await pgtx
         .update(DocumentTable)
         .set(document)
         .where(
@@ -280,7 +302,7 @@ export const updateDocumentDb = async (
 
       const insertedActivity = await insertActivityDb(
         {
-          source: "user",
+          source,
           subject: "document",
           action: "update",
           subjectLabel: updatedDocument.name,
@@ -288,31 +310,37 @@ export const updateDocumentDb = async (
           projectId: updatedDocument.projectId,
           message: `Updated document "${updatedDocument.name}"`,
         },
-        tx ?? pgtx,
+        pgtx,
       );
 
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
       return updatedDocument;
+    };
+
+    const updatedDocument = tx
+      ? await updateDocument(tx)
+      : await db.transaction(updateDocument);
+
+    await runMutationCacheInvalidation(source === "ai", () => {
+      revalidateDocumentCache(updatedDocument.userId, updatedDocument.id);
+
+      if (oldDocument) {
+        revalidateProjectCache(
+          updatedDocument.userId,
+          oldDocument.id,
+          oldDocument.areaId,
+        );
+      }
+
+      if (newDocument && newDocument.id !== oldDocument?.id) {
+        revalidateProjectCache(
+          updatedDocument.userId,
+          newDocument.id,
+          newDocument.areaId,
+        );
+      }
     });
-
-    revalidateDocumentCache(updatedDocument.userId, updatedDocument.id);
-
-    if (oldDocument) {
-      revalidateProjectCache(
-        updatedDocument.userId,
-        oldDocument.id,
-        oldDocument.areaId,
-      );
-    }
-
-    if (newDocument && newDocument.id !== oldDocument?.id) {
-      revalidateProjectCache(
-        updatedDocument.userId,
-        newDocument.id,
-        newDocument.areaId,
-      );
-    }
 
     return updatedDocument;
   } catch (error) {
@@ -323,20 +351,30 @@ export const updateDocumentDb = async (
 
 export const deleteDocumentDb = async (
   documentId: string,
+  source: ActivitySource = "user",
   tx?: DbTransaction,
 ) => {
-  const existingDocument = await confirmUserDocumentOwnership(documentId);
+  const existingDocument = await confirmUserDocumentOwnership(
+    documentId,
+    undefined,
+    undefined,
+    tx,
+  );
   if (!existingDocument) return null;
 
   try {
     const existingProject = existingDocument.projectId
-      ? await confirmUserProjectOwnership(existingDocument.projectId)
+      ? await confirmUserProjectOwnership(
+          existingDocument.projectId,
+          undefined,
+          tx,
+        )
       : null;
     if (existingDocument.projectId && !existingProject)
       throw new Error("No existing project found.");
 
-    const deletedDocument = await db.transaction(async (pgtx) => {
-      const [deletedDocument] = await (tx ?? pgtx)
+    const deleteDocument = async (pgtx: DbTransaction) => {
+      const [deletedDocument] = await pgtx
         .delete(DocumentTable)
         .where(
           and(
@@ -349,7 +387,7 @@ export const deleteDocumentDb = async (
 
       const insertedActivity = await insertActivityDb(
         {
-          source: "user",
+          source,
           subject: "document",
           action: "delete",
           subjectLabel: deletedDocument.name,
@@ -357,19 +395,25 @@ export const deleteDocumentDb = async (
           projectId: deletedDocument.projectId,
           message: `Deleted document "${deletedDocument.name}"`,
         },
-        tx ?? pgtx,
+        pgtx,
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
       return deletedDocument;
-    });
+    };
 
-    revalidateDocumentCache(
-      deletedDocument.userId,
-      deletedDocument.id,
-      deletedDocument.projectId,
-      existingProject?.areaId,
-    );
+    const deletedDocument = tx
+      ? await deleteDocument(tx)
+      : await db.transaction(deleteDocument);
+
+    await runMutationCacheInvalidation(source === "ai", () => {
+      revalidateDocumentCache(
+        deletedDocument.userId,
+        deletedDocument.id,
+        deletedDocument.projectId,
+        existingProject?.areaId,
+      );
+    });
 
     return deletedDocument;
   } catch (error) {

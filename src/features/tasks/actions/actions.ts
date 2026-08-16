@@ -1,7 +1,13 @@
 "use server";
 
 import { db } from "@/db/db";
-import { ProjectTable, TaskPriority, TaskStatus, TaskTable } from "@/db/schema";
+import {
+  ActivitySourceType,
+  ProjectTable,
+  TaskPriority,
+  TaskStatus,
+  TaskTable,
+} from "@/db/schema";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -31,7 +37,10 @@ import {
 } from "../server/tasks";
 import { taskSchema, TaskSchemaType } from "./schemas";
 
-export const createTaskAction = async (unsafeData: TaskSchemaType) => {
+export const createTaskAction = async (
+  unsafeData: TaskSchemaType,
+  source: ActivitySourceType = "user",
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -49,7 +58,7 @@ export const createTaskAction = async (unsafeData: TaskSchemaType) => {
   }
 
   try {
-    const createdTask = await insertTaskDb({ ...data, userId });
+    const createdTask = await insertTaskDb({ ...data, userId }, source);
     if (!createdTask) throw new Error("Failed to create task.");
 
     return {
@@ -68,6 +77,7 @@ export const createTaskAction = async (unsafeData: TaskSchemaType) => {
 export const updateTaskAction = async (
   taskId: string,
   unsafeData: TaskSchemaType,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(taskId)) {
     return {
@@ -101,7 +111,7 @@ export const updateTaskAction = async (
   }
 
   try {
-    const updatedTask = await updateTaskDb(existingTask.id, data);
+    const updatedTask = await updateTaskDb(existingTask.id, data, source);
     if (!updatedTask) throw new Error("Failed to update task.");
 
     return {
@@ -120,6 +130,7 @@ export const updateTaskAction = async (
 export const updateTaskMilestoneAction = async (
   taskId: string,
   milestoneId: string | null,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(taskId) || (milestoneId && !areValidIds(milestoneId))) {
     return {
@@ -145,7 +156,11 @@ export const updateTaskMilestoneAction = async (
   }
 
   try {
-    const updatedTask = await updateTaskDb(existingTask.id, { milestoneId });
+    const updatedTask = await updateTaskDb(
+      existingTask.id,
+      { milestoneId },
+      source,
+    );
     if (!updatedTask) throw new Error("Failed to update task milestone.");
 
     return {
@@ -161,7 +176,10 @@ export const updateTaskMilestoneAction = async (
   }
 };
 
-export const deleteTaskAction = async (taskId: string) => {
+export const deleteTaskAction = async (
+  taskId: string,
+  source: ActivitySourceType = "user",
+) => {
   if (!areValidIds(taskId)) {
     return {
       error: true,
@@ -186,7 +204,7 @@ export const deleteTaskAction = async (taskId: string) => {
   }
 
   try {
-    const deletedTask = await deleteTaskDb(taskId);
+    const deletedTask = await deleteTaskDb(taskId, source);
     if (!deletedTask) throw new Error("Failed to delete task.");
 
     return {
@@ -367,6 +385,7 @@ export type ReadTasksActionReturnType = UnwrapAsync<typeof readTasksAction>;
 export const updateTasksStatusAction = async (
   taskId: string | string[],
   newStatus: TaskStatus,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(taskId)) {
     return {
@@ -386,14 +405,18 @@ export const updateTasksStatusAction = async (
   try {
     let updatedTask;
     if (typeof taskId === "string") {
-      updatedTask = await updateTaskDb(taskId, {
-        status: newStatus,
-      });
+      updatedTask = await updateTaskDb(
+        taskId,
+        { status: newStatus },
+        source,
+      );
       if (!updatedTask)
         throw new Error("Failed to update task completion status.");
     } else {
       const tasks = await Promise.all(
-        taskId.map((taskId) => updateTaskDb(taskId, { status: newStatus })),
+        taskId.map((taskId) =>
+          updateTaskDb(taskId, { status: newStatus }, source),
+        ),
       );
       if (!tasks.every(Boolean) || tasks.length !== taskId.length)
         throw new Error("Failed to update tasks status.");
@@ -444,6 +467,7 @@ export const updateTasksStatusAction = async (
 export const updateTasksPriorityAction = async (
   taskId: string | string[],
   newPriority: TaskPriority,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(taskId)) {
     return {
@@ -464,14 +488,20 @@ export const updateTasksPriorityAction = async (
     let update;
     if (Array.isArray(taskId)) {
       const updates = await Promise.all(
-        taskId.map((taskId) => updateTaskDb(taskId, { priority: newPriority })),
+        taskId.map((taskId) =>
+          updateTaskDb(taskId, { priority: newPriority }, source),
+        ),
       );
       if (!updates.every(Boolean))
         throw new Error("Failed to update task priorities.");
 
       update = updates[0];
     } else {
-      update = await updateTaskDb(taskId, { priority: newPriority });
+      update = await updateTaskDb(
+        taskId,
+        { priority: newPriority },
+        source,
+      );
     }
     if (!update) throw new Error("Failed to update task priority.");
 

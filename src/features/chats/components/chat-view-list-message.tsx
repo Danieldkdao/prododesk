@@ -74,12 +74,17 @@ export const ChatViewListMessage = ({
 
   const currentAction = formatCurrentAction(latestPart);
 
+  const pendingApprovals = msg.parts.filter(
+    (part) =>
+      isToolUIPart(part) &&
+      part.state === "approval-requested" &&
+      !part.approval.isAutomatic,
+  );
+  const pendingApproval = pendingApprovals[0];
+  const isAwaitingApproval = pendingApprovals.length > 0;
+
   return (
-    <MessageScrollerItem
-      messageId={msg.id}
-      scrollAnchor={msg.role === "user"}
-      className="group"
-    >
+    <MessageScrollerItem messageId={msg.id} className="group">
       <Message align={msg.role === "user" ? "end" : "start"}>
         <MessageAvatar>
           {msg.role === "user" ? (
@@ -145,36 +150,41 @@ export const ChatViewListMessage = ({
                 ) : (
                   <div className="flex flex-col gap-4">
                     <Collapsible className="space-y-4 group">
-                      <CollapsibleTrigger className="flex items-center gap-1.5 group/trigger">
-                        {latestPart &&
-                        isToolUIPart(latestPart) &&
-                        latestPart.state === "approval-requested" &&
-                        !latestPart.approval?.isAutomatic ? (
+                      <CollapsibleTrigger className="group/trigger flex items-center gap-1.5">
+                        {responseTimeMs != null &&
+                        ((!isAwaitingApproval && status === "ready") ||
+                          !isLatestMsg) ? (
                           <>
-                            <ClockIcon className="text-muted-foreground size-5" />
+                            <span className="text-lg font-medium text-muted-foreground">
+                              Worked for {formatMs(responseTimeMs)}
+                            </span>
+                            <ChevronRightIcon className="size-5 text-muted-foreground opacity-0 transition-all duration-200 group-hover:opacity-100 group-data-panel-open/trigger:rotate-90" />
+                          </>
+                        ) : pendingApproval &&
+                          isToolUIPart(pendingApproval) &&
+                          pendingApproval.state === "approval-requested" &&
+                          !pendingApproval.approval?.isAutomatic ? (
+                          <>
+                            <ClockIcon className="size-5 text-muted-foreground" />
                             <TextShimmer
                               as="span"
                               duration={2}
                               className="text-lg font-medium [--base-color:var(--muted-foreground)]"
                             >
-                              Awaiting approval
+                              {`Awaiting your approval to run ${
+                                formatToolNameForChat(
+                                  getToolName(pendingApproval) as ToolName,
+                                ).preparing
+                              }`}
                             </TextShimmer>
                           </>
                         ) : cancelledMessageIds.has(msg.id) ||
                           msg.metadata?.runStatus === "cancelled" ? (
                           <>
-                            <HandIcon className="text-muted-foreground size-5" />
-                            <span className="text-lg text-muted-foreground font-medium">
+                            <HandIcon className="size-5 text-muted-foreground" />
+                            <span className="text-lg font-medium text-muted-foreground">
                               You stopped this response
                             </span>
-                          </>
-                        ) : responseTimeMs !== undefined &&
-                          responseTimeMs !== null ? (
-                          <>
-                            <span className="text-lg font-medium text-muted-foreground">
-                              Worked for {formatMs(responseTimeMs)}
-                            </span>
-                            <ChevronRightIcon className="text-muted-foreground size-5 transition-all duration-200 group-data-panel-open/trigger:rotate-90" />
                           </>
                         ) : (
                           <>
@@ -186,6 +196,7 @@ export const ChatViewListMessage = ({
                             >
                               {currentAction.text}
                             </TextShimmer>
+                            <ChevronRightIcon className="size-5 text-muted-foreground opacity-0 transition-all duration-200 group-hover:opacity-100 group-data-panel-open/trigger:rotate-90" />
                           </>
                         )}
                       </CollapsibleTrigger>
@@ -276,18 +287,30 @@ export const ChatViewListMessage = ({
                                     </TextShimmer>
                                   );
                                 case "approval-requested":
-                                  if (part.approval.isAutomatic) {
-                                    return (
+                                  return part.approval.isAutomatic ? (
+                                    <TextShimmer
+                                      as="span"
+                                      duration={2}
+                                      className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
+                                      key={part.toolCallId}
+                                    >
+                                      {`Running ${preparing}`}
+                                    </TextShimmer>
+                                  ) : (
+                                    <div
+                                      className="flex items-center gap-2"
+                                      key={part.toolCallId}
+                                    >
+                                      <ClockIcon className="text-muted-foreground size-5" />
                                       <TextShimmer
                                         as="span"
                                         duration={2}
-                                        className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
-                                        key={part.toolCallId}
+                                        className="text-base font-medium [--base-color:var(--muted-foreground)]"
                                       >
-                                        {`Running ${preparing}`}
+                                        {`Awaiting your approval to run ${preparing}`}
                                       </TextShimmer>
-                                    );
-                                  }
+                                    </div>
+                                  );
                                 case "approval-responded":
                                   return part.approval.approved ? (
                                     <TextShimmer
@@ -436,19 +459,19 @@ export const ChatViewListMessage = ({
                           })}
                       </CollapsiblePanel>
                     </Collapsible>
-                    {latestPart &&
-                      isToolUIPart(latestPart) &&
-                      latestPart.state === "approval-requested" &&
-                      !latestPart.approval?.isAutomatic && (
+                    {pendingApproval &&
+                      isToolUIPart(pendingApproval) &&
+                      pendingApproval.state === "approval-requested" &&
+                      !pendingApproval.approval?.isAutomatic && (
                         <div className="flex flex-col gap-2">
                           <span className="text-muted-foreground font-medium text-base">
-                            {getApprovalReason(latestPart.input)}
+                            {getApprovalReason(pendingApproval)}
                           </span>
                           <div className="flex items-center gap-2">
                             <Button
                               onClick={() =>
                                 addToolApprovalResponse({
-                                  id: latestPart.approval.id,
+                                  id: pendingApproval.approval.id,
                                   approved: true,
                                 })
                               }
@@ -459,7 +482,7 @@ export const ChatViewListMessage = ({
                               variant="outline"
                               onClick={() =>
                                 addToolApprovalResponse({
-                                  id: latestPart.approval.id,
+                                  id: pendingApproval.approval.id,
                                   approved: false,
                                 })
                               }

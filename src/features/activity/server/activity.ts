@@ -27,6 +27,7 @@ import {
 import { revalidateActivityCache } from "./cache/activity";
 import { ActivitySortByOption } from "../lib/activity-params";
 import { PAGE_SIZE } from "@/lib/constants";
+import { runMutationCacheInvalidation } from "@/lib/data-cache";
 import { areValidIds } from "@/lib/utils";
 import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 
@@ -74,11 +75,13 @@ export const readActivityDb = async (filterOptions: {
     offset = (page - 1) * limit;
   }
 
-  const searchTerm = `%${search?.trim()}%`;
-  const searchFilter = or(
-    ilike(ActivityTable.message, searchTerm),
-    ilike(ProjectTable.name, searchTerm),
-  );
+  const normalizedSearch = search?.trim();
+  const searchFilter = normalizedSearch
+    ? or(
+        ilike(ActivityTable.message, `%${normalizedSearch}%`),
+        ilike(ProjectTable.name, `%${normalizedSearch}%`),
+      )
+    : undefined;
 
   const sortByMap: Record<ActivitySortByOption, SQL<unknown>> = {
     most_recent: desc(ActivityTable.createdAt),
@@ -170,7 +173,7 @@ export const readActivityDb = async (filterOptions: {
   }
 
   if (offset) {
-    query = query.offset(offset);
+    query = query.offset(offset).$dynamic();
   }
 
   const activity = await query.limit(limit);
@@ -189,7 +192,7 @@ export const insertActivityDb = async (
   if (!userId) return null;
 
   const existingProject = data.projectId
-    ? await confirmUserProjectOwnership(data.projectId)
+    ? await confirmUserProjectOwnership(data.projectId, userId, tx)
     : null;
   if (data.projectId && !existingProject) return null;
 
@@ -214,11 +217,13 @@ export const insertActivityDb = async (
     .returning();
   if (!insertedActivity) return null;
 
-  revalidateActivityCache(
-    insertedActivity.userId,
-    insertedActivity.projectId,
-    existingProject?.areaId ?? insertedActivity.areaId,
-  );
+  await runMutationCacheInvalidation(data.source === "ai", () => {
+    revalidateActivityCache(
+      insertedActivity.userId,
+      insertedActivity.projectId,
+      existingProject?.areaId ?? insertedActivity.areaId,
+    );
+  });
 
   return insertedActivity;
 };

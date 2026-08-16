@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db/db";
-import { DocumentTable, ProjectTable } from "@/db/schema";
+import { ActivitySourceType, DocumentTable, ProjectTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -117,7 +117,10 @@ export type ReadDocumentActionReturnType = UnwrapAsync<
   typeof readDocumentAction
 >;
 
-export const createDocumentAction = async (unsafeData?: DocumentSchemaType) => {
+export const createDocumentAction = async (
+  unsafeData?: DocumentSchemaType,
+  source: ActivitySourceType = "user",
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -144,11 +147,14 @@ export const createDocumentAction = async (unsafeData?: DocumentSchemaType) => {
   }
 
   try {
-    const createdDocument = await insertDocumentDb({
-      ...defaultInsertData,
-      ...(insertData ?? {}),
-      userId,
-    });
+    const createdDocument = await insertDocumentDb(
+      {
+        ...defaultInsertData,
+        ...(insertData ?? {}),
+        userId,
+      },
+      source,
+    );
     if (!createdDocument) throw new Error("Failed to create document.");
 
     return {
@@ -168,6 +174,7 @@ export const createDocumentAction = async (unsafeData?: DocumentSchemaType) => {
 export const updateDocumentAction = async (
   documentId: string,
   unsafeData: Partial<DocumentSchemaType>,
+  source: ActivitySourceType = "user",
 ) => {
   if (!areValidIds(documentId)) {
     return {
@@ -201,7 +208,7 @@ export const updateDocumentAction = async (
   }
 
   try {
-    const updatedDocument = await updateDocumentDb(documentId, data);
+    const updatedDocument = await updateDocumentDb(documentId, data, source);
     if (!updatedDocument) throw new Error("Failed to update document.");
 
     return {
@@ -217,7 +224,10 @@ export const updateDocumentAction = async (
   }
 };
 
-export const deleteDocumentAction = async (documentId: string) => {
+export const deleteDocumentAction = async (
+  documentId: string,
+  source: ActivitySourceType = "user",
+) => {
   if (!areValidIds(documentId)) {
     return {
       error: true,
@@ -242,7 +252,7 @@ export const deleteDocumentAction = async (documentId: string) => {
   }
 
   try {
-    const deletedDocument = await deleteDocumentDb(documentId);
+    const deletedDocument = await deleteDocumentDb(documentId, source);
     if (!deletedDocument) throw new Error("Failed to delete document.");
 
     return {

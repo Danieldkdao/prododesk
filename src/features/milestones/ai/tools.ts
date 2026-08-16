@@ -9,7 +9,10 @@ import {
 } from "./schemas";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
-import { readMilestonesDb } from "../server/milestones";
+import {
+  getMaxMilestonePositionDb,
+  readMilestonesDb,
+} from "../server/milestones";
 import { parseISO } from "date-fns";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
 import {
@@ -24,6 +27,7 @@ import {
   updateMilestoneAction,
   updateMilestoneStatusAction,
 } from "../actions/actions";
+import { db } from "@/db/db";
 
 const readMilestonesTool = tool({
   description: "Allows you to read the current user's milestones.",
@@ -71,17 +75,37 @@ const createMilestonesTool = tool({
       if (!insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
 
-      const responses = await Promise.all(
-        milestones.map((milestone) => {
-          abortSignal?.throwIfAborted();
-          return createMilestoneAction({
-            ...milestone,
-            dueAt: milestone.dueAt ? parseISO(milestone.dueAt) : undefined,
-          });
-        }),
-      );
+      const projectId = milestones[0]?.projectId;
+      if (!projectId) throw new Error("No project ID.");
+
+      const maxPosition = await getMaxMilestonePositionDb(projectId);
+
+      const responses = await db.transaction(async (tx) => {
+        const responses = await Promise.all(
+          milestones.map((milestone, index) => {
+            abortSignal?.throwIfAborted();
+            return createMilestoneAction(
+              {
+                ...milestone,
+                position: maxPosition + index + 1,
+                dueAt: milestone.dueAt ? parseISO(milestone.dueAt) : undefined,
+              },
+              "ai",
+              tx,
+            );
+          }),
+        );
+        if (
+          !responses.every(Boolean) ||
+          responses.filter((res) => !res.error).length !== milestones.length
+        )
+          throw new Error("Failed to insert milestones.");
+
+        return responses;
+      });
+
       const isSuccess =
-        responses.map((res) => !res.error).length === milestones.length;
+        responses.filter((res) => !res.error).length === milestones.length;
       const output =
         responses.find((res) => res.error)?.message ?? responses.at(0)?.message;
 
@@ -133,10 +157,14 @@ const updateMilestoneTool = tool({
       if (!insertedToolExecution) return null;
 
       abortSignal?.throwIfAborted();
-      const response = await updateMilestoneAction(milestoneId, {
-        ...changes,
-        dueAt: changes.dueAt ? parseISO(changes.dueAt) : undefined,
-      });
+      const response = await updateMilestoneAction(
+        milestoneId,
+        {
+          ...changes,
+          dueAt: changes.dueAt ? parseISO(changes.dueAt) : undefined,
+        },
+        "ai",
+      );
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -194,7 +222,7 @@ const updateMilestonesStatusTool = tool({
       const responses = await Promise.all(
         milestoneIds.map((milestoneId) => {
           abortSignal?.throwIfAborted();
-          return updateMilestoneStatusAction(milestoneId, status);
+          return updateMilestoneStatusAction(milestoneId, status, "ai");
         }),
       );
 
@@ -259,6 +287,7 @@ const moveMilestoneTool = tool({
         projectId,
         milestoneId,
         position,
+        "ai",
       );
       const isSuccess = !response.error;
       const output = response.message;
@@ -311,7 +340,7 @@ const deleteMilestoneTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteMilestoneAction(milestoneId);
+      const response = await deleteMilestoneAction(milestoneId, "ai");
 
       const isSuccess = !response.error;
       const output = response.message;

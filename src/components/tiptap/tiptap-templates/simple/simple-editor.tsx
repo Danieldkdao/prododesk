@@ -336,7 +336,10 @@ export function SimpleEditor({
     const currentValue = editor.getMarkdown();
 
     if (currentValue !== value) {
-      editor.commands.setContent(value || "", { emitUpdate: false });
+      editor.commands.setContent(value || "", {
+        emitUpdate: false,
+        contentType: "markdown",
+      });
     }
   }, [editor, value]);
 

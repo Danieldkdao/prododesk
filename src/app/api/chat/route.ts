@@ -43,6 +43,7 @@ import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {
   let runId: string | null = null;
+  let responseTimeMs = 0;
 
   const data: {
     id: string;
@@ -145,6 +146,7 @@ export const POST = async (req: Request) => {
           throw new APIError("This message is already being processed.", 409);
         case "awaiting-approval":
           runId = existingChatRun.id;
+          responseTimeMs = existingChatRun.responseTimeMs;
           break;
         case "completed":
           if (!existingChatRun.assistantMessageId)
@@ -198,8 +200,6 @@ export const POST = async (req: Request) => {
     if (!runId) {
       throw new APIError("Failed to log chat run.");
     }
-
-    let responseTimeMs = 0;
 
     const chatAgent = new ToolLoopAgent({
       model: openrouter(selectedModel),
@@ -280,7 +280,7 @@ export const POST = async (req: Request) => {
         if (hasPendingApproval) {
           await updateChatRunDb(runId, {
             status: "awaiting-approval",
-            responseTimeMs: sql`${ChatRunTable.responseTimeMs} + ${roundedRTM}`,
+            responseTimeMs: roundedRTM,
           });
 
           return;
@@ -322,9 +322,7 @@ export const POST = async (req: Request) => {
                 status: isAborted ? "cancelled" : "completed",
                 assistantMessageId: insertedMessage.id,
                 finishedAt: isAborted ? null : new Date(),
-                responseTimeMs: isRegenerating
-                  ? roundedRTM
-                  : sql`${ChatRunTable.responseTimeMs} + ${roundedRTM}`,
+                responseTimeMs: roundedRTM,
               },
               tx,
             );

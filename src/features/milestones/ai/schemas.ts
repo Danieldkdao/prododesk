@@ -66,6 +66,15 @@ export const createMilestonesToolSchema = z.object({
           .enum(milestoneStatuses)
           .default("not_started")
           .describe("The milestone status."),
+        position: z
+          .number()
+          .int()
+          .positive()
+          .min(1)
+          .optional()
+          .describe(
+            "The milestone position. Make sure to search for the milestone count before setting this value to that count + 1.",
+          ),
         dueAt: z.iso
           .datetime()
           .nullish()
