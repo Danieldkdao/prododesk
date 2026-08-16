@@ -1,7 +1,7 @@
 "use server";
 
-import { db } from "@/db/db";
-import { ActivitySourceType, DocumentTable, ProjectTable } from "@/db/schema";
+import { ActivityMutationOptions, db } from "@/db/db";
+import { DocumentTable, ProjectTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -119,7 +119,7 @@ export type ReadDocumentActionReturnType = UnwrapAsync<
 
 export const createDocumentAction = async (
   unsafeData?: DocumentSchemaType,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
@@ -153,7 +153,7 @@ export const createDocumentAction = async (
         ...(insertData ?? {}),
         userId,
       },
-      source,
+      options,
     );
     if (!createdDocument) throw new Error("Failed to create document.");
 
@@ -174,7 +174,7 @@ export const createDocumentAction = async (
 export const updateDocumentAction = async (
   documentId: string,
   unsafeData: Partial<DocumentSchemaType>,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(documentId)) {
     return {
@@ -208,7 +208,7 @@ export const updateDocumentAction = async (
   }
 
   try {
-    const updatedDocument = await updateDocumentDb(documentId, data, source);
+    const updatedDocument = await updateDocumentDb(documentId, data, options);
     if (!updatedDocument) throw new Error("Failed to update document.");
 
     return {
@@ -226,7 +226,7 @@ export const updateDocumentAction = async (
 
 export const deleteDocumentAction = async (
   documentId: string,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(documentId)) {
     return {
@@ -252,7 +252,7 @@ export const deleteDocumentAction = async (
   }
 
   try {
-    const deletedDocument = await deleteDocumentDb(documentId, source);
+    const deletedDocument = await deleteDocumentDb(documentId, options);
     if (!deletedDocument) throw new Error("Failed to delete document.");
 
     return {

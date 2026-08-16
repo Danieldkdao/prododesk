@@ -1,4 +1,4 @@
-import { db, DbTransaction } from "@/db/db";
+import { db, DbMutationOptions } from "@/db/db";
 import {
   MessagePartInsertType,
   MessagePartTable,
@@ -9,8 +9,9 @@ import { revalidateChatCache } from "./cache/chats";
 
 export const insertMessagePartDb = async (
   messagePart: MessagePartInsertType,
-  tx?: DbTransaction,
+  options?: DbMutationOptions,
 ) => {
+  const { tx } = options ?? {};
   const existingMessage = await findChatMessageDb(messagePart.messageId, tx);
   if (!existingMessage) return null;
 

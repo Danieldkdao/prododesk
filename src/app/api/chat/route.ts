@@ -1,5 +1,6 @@
 import { db } from "@/db/db";
-import { ChatMessageTable, ChatRunTable, MessagePartTable } from "@/db/schema";
+import { ChatMessageTable, MessagePartTable } from "@/db/schema";
+import { ArtifactActivityType } from "@/features/activity/lib/types";
 import {
   findChatMessageDb,
   insertChatMessageDb,
@@ -7,6 +8,7 @@ import {
 } from "@/features/chats/server/chat-messages";
 import {
   findChatRunDb,
+  getRunArtifacts,
   insertChatRunDb,
   updateChatRunDb,
   upsertChatRunDb,
@@ -38,12 +40,13 @@ import {
   pruneMessages,
   ToolLoopAgent,
 } from "ai";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {
   let runId: string | null = null;
   let responseTimeMs = 0;
+  let streamedArtifacts: ArtifactActivityType[] = [];
 
   const data: {
     id: string;
@@ -108,7 +111,7 @@ export const POST = async (req: Request) => {
             role: "user",
             clientMessageId: latestUserMessage.id,
           },
-          tx,
+          { tx },
         );
 
         if (!insertedMessage)
@@ -123,7 +126,7 @@ export const POST = async (req: Request) => {
             },
             order: 0,
           },
-          tx,
+          { tx },
         );
 
         if (!insertedPart) throw new APIError("Failed to insert message part.");
@@ -241,8 +244,11 @@ export const POST = async (req: Request) => {
           });
         }
       },
-      onStepEnd: ({ performance }) => {
+      onStepEnd: async ({ performance }) => {
         responseTimeMs += performance.stepTimeMs;
+        if (runId) {
+          streamedArtifacts = await getRunArtifacts(runId);
+        }
       },
     });
 
@@ -259,6 +265,7 @@ export const POST = async (req: Request) => {
             createdAt: new Date(),
             responseTimeMs: Math.round(responseTimeMs),
             responseToClientId: latestUserMessage.id,
+            artifacts: streamedArtifacts,
           };
         }
       },
@@ -295,7 +302,7 @@ export const POST = async (req: Request) => {
               clientMessageId: assistantMessageId ?? responseMessage.id,
               responseToClientId: latestUserMessage.id,
             },
-            tx,
+            { tx },
           );
 
           if (!insertedMessage)
@@ -324,7 +331,7 @@ export const POST = async (req: Request) => {
                 finishedAt: isAborted ? null : new Date(),
                 responseTimeMs: roundedRTM,
               },
-              tx,
+              { tx },
             );
           }
           responseTimeMs = 0;
@@ -357,7 +364,7 @@ export const POST = async (req: Request) => {
               modelId: selectedModel,
               role: "user",
             },
-            tx,
+            { tx },
           )
         )?.id;
         if (!userMessageId) return response;
@@ -375,7 +382,7 @@ export const POST = async (req: Request) => {
                   .join(" ") ?? "",
             },
           },
-          tx,
+          { tx },
         );
 
         const existingAssistantResponse =
@@ -398,7 +405,7 @@ export const POST = async (req: Request) => {
               role: "assistant",
               responseToClientId: userMessageClientId,
             },
-            tx,
+            { tx },
           );
           assistantMessageClientId = insertedChatMessage?.id ?? null;
         }
@@ -411,7 +418,7 @@ export const POST = async (req: Request) => {
             error: errorMessage,
             finishedAt: new Date(),
           },
-          tx,
+          { tx },
         );
       }
       if (userMessageClientId) {
@@ -424,7 +431,7 @@ export const POST = async (req: Request) => {
             error: errorMessage,
             finishedAt: new Date(),
           },
-          tx,
+          { tx },
         );
       }
     });

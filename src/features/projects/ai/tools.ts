@@ -74,7 +74,7 @@ const createProjectTool = tool({
           startAt: project.startAt ? parseISO(project.startAt) : undefined,
           endAt: project.endAt ? parseISO(project.endAt) : undefined,
         },
-        "ai",
+        { source: "ai", chatRunId: context.runId },
       );
 
       const isSuccess = !response.error;
@@ -127,7 +127,7 @@ const updateProjectTool = tool({
         toolCallId,
         toolName: "updateProject",
       });
-      if (insertedToolExecution)
+      if (!insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
@@ -138,7 +138,7 @@ const updateProjectTool = tool({
           startAt: changes.startAt ? parseISO(changes.startAt) : undefined,
           endAt: changes.endAt ? parseISO(changes.endAt) : undefined,
         },
-        "ai",
+        { source: "ai", chatRunId: context.runId },
       );
 
       const isSuccess = !response.error;
@@ -198,7 +198,7 @@ const setProjectArchivedTool = tool({
       const response = await toggleProjectArchiveStatusAction(
         projectId,
         archived,
-        "ai",
+        { source: "ai", chatRunId: context.runId },
       );
 
       const isSuccess = !response.error;
@@ -251,7 +251,10 @@ const deleteProjectTool = tool({
       if (!insertedToolExecution) throw new Error("Failed to execute tool.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteProjectAction(projectId, "ai");
+      const response = await deleteProjectAction(projectId, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const isSuccess = !response.error;
       const output = response.message;

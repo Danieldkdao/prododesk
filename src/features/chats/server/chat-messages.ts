@@ -1,4 +1,4 @@
-import { db, DbTransaction } from "@/db/db";
+import { db, DbMutationOptions, DbTransaction } from "@/db/db";
 import { ChatMessageInsertType, ChatMessageTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidateChatCache } from "./cache/chats";
@@ -17,8 +17,9 @@ export const findChatMessageDb = async (
 
 export const insertChatMessageDb = async (
   chatMessage: ChatMessageInsertType,
-  tx?: DbTransaction,
+  options?: DbMutationOptions,
 ) => {
+  const { tx } = options ?? {};
   const existingChat = await confirmChatOwnership(
     chatMessage.chatId,
     undefined,
@@ -41,8 +42,9 @@ export const insertChatMessageDb = async (
 
 export const upsertChatMessageDb = async (
   chatMessage: ChatMessageInsertType,
-  tx?: DbTransaction,
+  options?: DbMutationOptions,
 ) => {
+  const { tx } = options ?? {};
   const existingChat = await confirmChatOwnership(
     chatMessage.chatId,
     undefined,

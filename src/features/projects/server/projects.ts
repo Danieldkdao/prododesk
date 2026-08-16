@@ -1,6 +1,5 @@
-import { db, DbTransaction } from "@/db/db";
+import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
-  ActivitySource,
   AreaSelectType,
   AreaTable,
   Color,
@@ -320,9 +319,9 @@ export const readProjectsDb = async (filterOptions: {
 
 export const insertProjectDb = async (
   projectData: ProjectInsertType,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   try {
     const insertProject = async (pgtx: DbTransaction) => {
       const [insertedProject] = await pgtx
@@ -342,7 +341,7 @@ export const insertProjectDb = async (
           projectId: insertedProject.id,
           message: `Started project "${insertedProject.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
 
       if (!insertedActivity) throw new Error("Failed to insert activity.");
@@ -377,9 +376,9 @@ export const updateProjectDb = async (
       "id" | "userId" | "createdAt" | "updatedAt"
     >
   >,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   try {
     const existingProject = await confirmUserProjectOwnership(
       projectId,
@@ -411,7 +410,7 @@ export const updateProjectDb = async (
           projectId: updatedProject.id,
           message: `Updated project "${updatedProject.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
@@ -451,9 +450,9 @@ export const updateProjectDb = async (
 
 export const deleteProjectDb = async (
   projectId: string,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   const existingProject = await confirmUserProjectOwnership(
     projectId,
     undefined,
@@ -483,7 +482,7 @@ export const deleteProjectDb = async (
           subjectLabel: deletedProject.name,
           message: `Deleted project "${deletedProject.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 

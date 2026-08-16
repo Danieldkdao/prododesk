@@ -1,11 +1,13 @@
-import { db, DbTransaction } from "@/db/db";
+import { db, DbMutationOptions, DbTransaction } from "@/db/db";
 import {
+  ActivityTable,
+  ArtifactTable,
   ChatRunInsertType,
   ChatRunSelectType,
   ChatRunTable,
 } from "@/db/schema";
 import { SQLMap } from "@/lib/types";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { confirmChatOwnership } from "./chats";
 import { revalidateChatCache } from "./cache/chats";
 
@@ -28,8 +30,9 @@ export const findChatRunDb = async (
 
 export const insertChatRunDb = async (
   chatRun: ChatRunInsertType,
-  tx?: DbTransaction,
+  options?: DbMutationOptions,
 ) => {
+  const { tx } = options ?? {};
   const existingChat = await confirmChatOwnership(
     chatRun.chatId,
     undefined,
@@ -50,8 +53,9 @@ export const insertChatRunDb = async (
 
 export const upsertChatRunDb = async (
   chatRun: ChatRunInsertType,
-  tx?: DbTransaction,
+  options?: DbMutationOptions,
 ) => {
+  const { tx } = options ?? {};
   const existingChat = await confirmChatOwnership(
     chatRun.chatId,
     undefined,
@@ -87,8 +91,9 @@ export const updateChatRunDb = async (
       >
     >
   >,
-  tx?: DbTransaction,
+  options?: DbMutationOptions,
 ) => {
+  const { tx } = options ?? {};
   const existingChatRun = await findChatRunDb({ id: runId }, tx);
   if (!existingChatRun) return null;
 
@@ -108,4 +113,27 @@ export const updateChatRunDb = async (
   revalidateChatCache(existingChat.userId, existingChat.id);
 
   return updatedChatRun ?? null;
+};
+
+export const getRunArtifacts = async (runId: string) => {
+  return db.query.ArtifactTable.findMany({
+    where: and(
+      eq(ArtifactTable.chatRunId, runId),
+      inArray(
+        ArtifactTable.activityId,
+        db
+          .select({ id: ActivityTable.id })
+          .from(ActivityTable)
+          .where(
+            and(
+              eq(ActivityTable.source, "ai"),
+              inArray(ActivityTable.action, ["create", "update"]),
+            ),
+          ),
+      ),
+    ),
+    with: {
+      activity: true,
+    },
+  });
 };

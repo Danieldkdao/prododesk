@@ -1,13 +1,7 @@
 "use server";
 
-import { db } from "@/db/db";
-import {
-  ActivitySourceType,
-  ProjectTable,
-  TaskPriority,
-  TaskStatus,
-  TaskTable,
-} from "@/db/schema";
+import { ActivityMutationOptions, db } from "@/db/db";
+import { ProjectTable, TaskPriority, TaskStatus, TaskTable } from "@/db/schema";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -35,11 +29,16 @@ import {
   readTasksDb,
   updateTaskDb,
 } from "../server/tasks";
-import { taskSchema, TaskSchemaType } from "./schemas";
+import {
+  taskSchema,
+  TaskSchemaType,
+  updateTaskSchema,
+  UpdateTaskSchemaType,
+} from "./schemas";
 
 export const createTaskAction = async (
   unsafeData: TaskSchemaType,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
@@ -58,7 +57,7 @@ export const createTaskAction = async (
   }
 
   try {
-    const createdTask = await insertTaskDb({ ...data, userId }, source);
+    const createdTask = await insertTaskDb({ ...data, userId }, options);
     if (!createdTask) throw new Error("Failed to create task.");
 
     return {
@@ -76,8 +75,8 @@ export const createTaskAction = async (
 
 export const updateTaskAction = async (
   taskId: string,
-  unsafeData: TaskSchemaType,
-  source: ActivitySourceType = "user",
+  unsafeData: UpdateTaskSchemaType,
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(taskId)) {
     return {
@@ -94,14 +93,6 @@ export const updateTaskAction = async (
     };
   }
 
-  const { data, success } = taskSchema.safeParse(unsafeData);
-  if (!success) {
-    return {
-      error: true,
-      message: INVALID_DATA_ERROR_MESSAGE,
-    };
-  }
-
   const existingTask = await confirmUserTaskOwnership(taskId);
   if (!existingTask) {
     return {
@@ -110,8 +101,32 @@ export const updateTaskAction = async (
     };
   }
 
+  const { data, success } = updateTaskSchema.safeParse(unsafeData);
+  if (!success) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
+  const existingResult = taskSchema.safeParse({
+    name: existingTask.name,
+    outcome: existingTask.description,
+    icon: existingTask.emoji,
+    status: existingTask.status,
+    scheduledAt: existingTask.scheduledAt ?? null,
+    dueAt: existingTask.dueAt ?? null,
+    ...data,
+  });
+  if (!existingResult.success) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
   try {
-    const updatedTask = await updateTaskDb(existingTask.id, data, source);
+    const updatedTask = await updateTaskDb(existingTask.id, data, options);
     if (!updatedTask) throw new Error("Failed to update task.");
 
     return {
@@ -130,7 +145,7 @@ export const updateTaskAction = async (
 export const updateTaskMilestoneAction = async (
   taskId: string,
   milestoneId: string | null,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(taskId) || (milestoneId && !areValidIds(milestoneId))) {
     return {
@@ -159,7 +174,7 @@ export const updateTaskMilestoneAction = async (
     const updatedTask = await updateTaskDb(
       existingTask.id,
       { milestoneId },
-      source,
+      options,
     );
     if (!updatedTask) throw new Error("Failed to update task milestone.");
 
@@ -178,7 +193,7 @@ export const updateTaskMilestoneAction = async (
 
 export const deleteTaskAction = async (
   taskId: string,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(taskId)) {
     return {
@@ -204,7 +219,7 @@ export const deleteTaskAction = async (
   }
 
   try {
-    const deletedTask = await deleteTaskDb(taskId, source);
+    const deletedTask = await deleteTaskDb(taskId, options);
     if (!deletedTask) throw new Error("Failed to delete task.");
 
     return {
@@ -385,7 +400,7 @@ export type ReadTasksActionReturnType = UnwrapAsync<typeof readTasksAction>;
 export const updateTasksStatusAction = async (
   taskId: string | string[],
   newStatus: TaskStatus,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(taskId)) {
     return {
@@ -405,17 +420,13 @@ export const updateTasksStatusAction = async (
   try {
     let updatedTask;
     if (typeof taskId === "string") {
-      updatedTask = await updateTaskDb(
-        taskId,
-        { status: newStatus },
-        source,
-      );
+      updatedTask = await updateTaskDb(taskId, { status: newStatus }, options);
       if (!updatedTask)
         throw new Error("Failed to update task completion status.");
     } else {
       const tasks = await Promise.all(
         taskId.map((taskId) =>
-          updateTaskDb(taskId, { status: newStatus }, source),
+          updateTaskDb(taskId, { status: newStatus }, options),
         ),
       );
       if (!tasks.every(Boolean) || tasks.length !== taskId.length)
@@ -467,7 +478,7 @@ export const updateTasksStatusAction = async (
 export const updateTasksPriorityAction = async (
   taskId: string | string[],
   newPriority: TaskPriority,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(taskId)) {
     return {
@@ -489,7 +500,7 @@ export const updateTasksPriorityAction = async (
     if (Array.isArray(taskId)) {
       const updates = await Promise.all(
         taskId.map((taskId) =>
-          updateTaskDb(taskId, { priority: newPriority }, source),
+          updateTaskDb(taskId, { priority: newPriority }, options),
         ),
       );
       if (!updates.every(Boolean))
@@ -497,11 +508,7 @@ export const updateTasksPriorityAction = async (
 
       update = updates[0];
     } else {
-      update = await updateTaskDb(
-        taskId,
-        { priority: newPriority },
-        source,
-      );
+      update = await updateTaskDb(taskId, { priority: newPriority }, options);
     }
     if (!update) throw new Error("Failed to update task priority.");
 

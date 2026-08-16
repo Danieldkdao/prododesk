@@ -1,6 +1,5 @@
-import { db, DbTransaction } from "@/db/db";
+import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
-  ActivitySource,
   MilestoneInsertType,
   MilestoneSelectType,
   MilestoneStatus,
@@ -187,9 +186,9 @@ export const readMilestonesDb = async (filterOptions: {
 
 export const insertMilestoneDb = async (
   milestone: SQLMap<MilestoneInsertType>,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   try {
     const existingProject =
       milestone.projectId && typeof milestone.projectId === "string"
@@ -215,7 +214,7 @@ export const insertMilestoneDb = async (
           projectId: insertedMilestone.projectId,
           message: `Created milestone ${milestone.name}`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
@@ -247,9 +246,9 @@ export const updateMilestoneDb = async (
     Partial<MilestoneSelectType>,
     "id" | "userId" | "projectId" | "createdAt" | "updatedAt"
   >,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   const existingMilestone = await confirmUserMilestoneOwnership(
     milestoneId,
     undefined,
@@ -291,7 +290,7 @@ export const updateMilestoneDb = async (
           projectId: updatedMilestone.projectId,
           message: `Updated milestone "${updatedMilestone.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
@@ -319,9 +318,9 @@ export const updateMilestoneDb = async (
 
 export const deleteMilestoneDb = async (
   milestoneId: string,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   const existingMilestone = await confirmUserMilestoneOwnership(
     milestoneId,
     undefined,
@@ -362,7 +361,7 @@ export const deleteMilestoneDb = async (
           projectId: deletedMilestone.projectId,
           message: `Deleted milestone "${deletedMilestone.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 

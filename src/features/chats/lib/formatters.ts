@@ -98,6 +98,13 @@ export const formatToolNameForChat = (toolName: ToolName) => {
         error: "Update tasks priority",
         icon: SlidersHorizontalIcon,
       };
+    case "assignTasksToMilestone":
+      return {
+        preparing: "assign tasks to a milestone",
+        finished: "assigning tasks to a milestone",
+        error: "Assign tasks to milestone",
+        icon: GoalIcon,
+      };
     case "readAreas":
       return {
         preparing: "read areas",

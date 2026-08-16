@@ -1,6 +1,5 @@
-import { db, DbTransaction } from "@/db/db";
+import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
-  ActivitySource,
   AreaSelectType,
   DocumentInsertType,
   DocumentSelectType,
@@ -198,9 +197,9 @@ export const readDocumentsDb = async (filterOptions: {
 
 export const insertDocumentDb = async (
   document: DocumentInsertType,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   try {
     const existingProject = document.projectId
       ? await confirmUserProjectOwnership(document.projectId, undefined, tx)
@@ -226,7 +225,7 @@ export const insertDocumentDb = async (
           projectId: insertedDocument.projectId,
           message: `Created document "${insertedDocument.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
 
       if (!insertedActivity) throw new Error("Failed to insert activity.");
@@ -257,9 +256,9 @@ export const insertDocumentDb = async (
 export const updateDocumentDb = async (
   documentId: string,
   document: Pick<Partial<DocumentSelectType>, "name" | "content" | "projectId">,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   const existingDocument = await confirmUserDocumentOwnership(
     documentId,
     undefined,
@@ -310,7 +309,7 @@ export const updateDocumentDb = async (
           projectId: updatedDocument.projectId,
           message: `Updated document "${updatedDocument.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
 
       if (!insertedActivity) throw new Error("Failed to insert activity.");
@@ -351,9 +350,9 @@ export const updateDocumentDb = async (
 
 export const deleteDocumentDb = async (
   documentId: string,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   const existingDocument = await confirmUserDocumentOwnership(
     documentId,
     undefined,
@@ -395,7 +394,7 @@ export const deleteDocumentDb = async (
           projectId: deletedDocument.projectId,
           message: `Deleted document "${deletedDocument.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 

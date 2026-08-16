@@ -1,8 +1,7 @@
 "use server";
 
-import { db } from "@/db/db";
+import { ActivityMutationOptions, db } from "@/db/db";
 import {
-  ActivitySourceType,
   AreaTable,
   Color,
   DocumentTable,
@@ -39,8 +38,13 @@ import {
   readProjectsDb,
   updateProjectDb,
 } from "../server/projects";
-import { projectSchema, ProjectSchemaType } from "./schemas";
-import { format } from "date-fns";
+import {
+  projectSchema,
+  ProjectSchemaType,
+  updateProjectSchema,
+  UpdateProjectSchemaType,
+} from "./schemas";
+import { format, parseISO } from "date-fns";
 
 const readCachedProjectsAction = async (
   userId: string,
@@ -215,7 +219,7 @@ export type ReadProjectActionReturnType = UnwrapAsync<typeof readProjectAction>;
 
 export const createProjectAction = async (
   unsafeData: ProjectSchemaType,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
@@ -236,7 +240,7 @@ export const createProjectAction = async (
   const parsedData = parseProjectData(userId, data);
 
   try {
-    const createdProject = await insertProjectDb(parsedData, source);
+    const createdProject = await insertProjectDb(parsedData, options);
     if (!createdProject) throw new Error("Failed to create project.");
 
     return {
@@ -254,8 +258,8 @@ export const createProjectAction = async (
 
 export const updateProjectAction = async (
   projectId: string,
-  unsafeData: Partial<ProjectSchemaType>,
-  source: ActivitySourceType = "user",
+  unsafeData: UpdateProjectSchemaType,
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(projectId)) {
     return {
@@ -280,8 +284,27 @@ export const updateProjectAction = async (
     };
   }
 
-  const { success, data } = projectSchema.partial().safeParse(unsafeData);
+  const { success, data } = updateProjectSchema.safeParse(unsafeData);
   if (!success) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
+  const existingResult = projectSchema.safeParse({
+    name: existingProject.name,
+    outcome: existingProject.outcome,
+    icon: existingProject.icon,
+    status: existingProject.status,
+    color: existingProject.color,
+    areaId: existingProject.areaId,
+    isArchived: existingProject.isArchived,
+    startAt: existingProject.startAt ? parseISO(existingProject.startAt) : null,
+    endAt: existingProject.endAt ? parseISO(existingProject.endAt) : null,
+    ...data,
+  });
+  if (!existingResult.success) {
     return {
       error: true,
       message: INVALID_DATA_ERROR_MESSAGE,
@@ -296,7 +319,7 @@ export const updateProjectAction = async (
         startAt: data.startAt ? format(data.startAt, "yyyy-MM-dd") : undefined,
         endAt: data.endAt ? format(data.endAt, "yyyy-MM-dd") : undefined,
       },
-      source,
+      options,
     );
     if (!updatedProject) throw new Error("Failed to update project.");
 
@@ -316,7 +339,7 @@ export const updateProjectAction = async (
 export const toggleProjectArchiveStatusAction = async (
   projectId: string,
   newArchiveStatus: boolean,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(projectId)) {
     return {
@@ -348,7 +371,7 @@ export const toggleProjectArchiveStatusAction = async (
         isArchived: newArchiveStatus,
         archivedAt: newArchiveStatus ? new Date() : null,
       },
-      source,
+      options,
     );
     if (!updatedProject)
       throw new Error("Failed to toggle project archive status.");
@@ -370,7 +393,7 @@ export const toggleProjectArchiveStatusAction = async (
 
 export const deleteProjectAction = async (
   projectId: string,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(projectId)) {
     return {
@@ -396,7 +419,7 @@ export const deleteProjectAction = async (
   }
 
   try {
-    const deletedProject = await deleteProjectDb(existingProject.id, source);
+    const deletedProject = await deleteProjectDb(existingProject.id, options);
     if (!deletedProject) throw new Error("Failed to delete project.");
 
     return {

@@ -13,8 +13,13 @@ import {
   UserIcon,
 } from "lucide-react";
 import { ActivitySortByOption } from "./activity-params";
-import { ProjectSelectType } from "@/db/schema";
+import {
+  ActivitySelectType,
+  ArtifactSelectType,
+  ProjectSelectType,
+} from "@/db/schema";
 import { formatDistanceToNow } from "date-fns";
+import { ArtifactActivityType } from "./types";
 
 export const formatActivitySource = (source: ActivitySource) => {
   switch (source) {
@@ -124,4 +129,35 @@ export const formatActivityMessage = ({
   });
   const finalMessage = `${sourceLabel} ${formattedMessage} ${project ? `in project "${project.name}"` : ""} ${timeAgo}`;
   return finalMessage;
+};
+
+export const groupActivityBySubject = (artifacts: ArtifactActivityType[]) => {
+  const subjectGroups: Record<ActivitySubject, ArtifactActivityType[]> = {
+    area: [],
+    document: [],
+    milestone: [],
+    project: [],
+    task: [],
+  };
+
+  artifacts.forEach((artifact) => {
+    if (!artifact.activity) return;
+    subjectGroups[artifact.activity?.subject].push(artifact);
+  });
+
+  return Object.entries(subjectGroups).filter(([_, artifacts]) =>
+    Boolean(artifacts.length),
+  ) as [ActivitySubject, ArtifactActivityType[]][];
+};
+
+export const formatActivityLink: Record<
+  ActivitySubject,
+  (id: string) => string
+> = {
+  area: (areaId) => `/dashboard/areas/${areaId}`,
+  document: (documentId) => `/dashboard/documents/${documentId}`,
+  milestone: (projectId) => `/dashboard/projects/${projectId}/milestones`,
+  project: (projectId) => `/dashboard/projects/${projectId}`,
+  // todo: figure out where this should go separate task page coming soon?
+  task: () => `/dashboard`,
 };

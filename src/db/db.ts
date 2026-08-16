@@ -3,6 +3,7 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import * as schema from "./schema";
+import type { ActivitySourceType } from "./shared";
 
 neonConfig.webSocketConstructor = ws;
 
@@ -16,3 +17,12 @@ export const db = drizzle({
 });
 
 export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export type DbMutationOptions = {
+  tx?: DbTransaction;
+};
+
+export type ActivityMutationOptions = DbMutationOptions & {
+  source?: ActivitySourceType;
+  chatRunId?: string;
+};

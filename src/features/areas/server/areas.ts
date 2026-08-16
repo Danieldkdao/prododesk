@@ -1,6 +1,5 @@
-import { db, DbTransaction } from "@/db/db";
+import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
-  ActivitySource,
   AreaInsertType,
   AreaSelectType,
   AreaTable,
@@ -221,9 +220,9 @@ export const readAreasDb = async (filterOptions: {
 
 export const insertAreaDb = async (
   areaData: SQLMap<AreaInsertType>,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   try {
     const insertArea = async (pgtx: DbTransaction) => {
       const [insertedArea] = await pgtx
@@ -242,7 +241,7 @@ export const insertAreaDb = async (
           areaId: insertedArea.id,
           message: `Started area "${insertedArea.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
@@ -270,9 +269,9 @@ export const updateAreaDb = async (
   areaData: SQLMap<
     Omit<Partial<AreaSelectType>, "id" | "createdAt" | "updatedAt" | "userId">
   >,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   const existingArea = await confirmUserAreaOwnership(areaId, undefined, tx);
   if (!existingArea) return null;
 
@@ -300,7 +299,7 @@ export const updateAreaDb = async (
           areaId: updatedArea.id,
           message: `Updated area "${updatedArea.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
@@ -325,9 +324,9 @@ export const updateAreaDb = async (
 
 export const deleteAreaDb = async (
   areaId: string,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   const existingArea = await confirmUserAreaOwnership(areaId, undefined, tx);
   if (!existingArea) return null;
 
@@ -353,7 +352,7 @@ export const deleteAreaDb = async (
           subjectId: deletedArea.id,
           message: `Deleted area "${deletedArea.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 

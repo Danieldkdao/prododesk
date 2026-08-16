@@ -70,7 +70,10 @@ const createAreaTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await createAreaAction(areaDetails, "ai");
+      const response = await createAreaAction(areaDetails, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -127,7 +130,10 @@ const updateAreaTool = tool({
 
       abortSignal?.throwIfAborted();
 
-      const response = await updateAreaAction(areaId, changes, "ai");
+      const response = await updateAreaAction(areaId, changes, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -186,7 +192,7 @@ const setAreaArchivedTool = tool({
       const response = await toggleAreaArchiveStatusAction(
         areaId,
         archived,
-        "ai",
+        { source: "ai", chatRunId: context.runId },
       );
 
       const isSuccess = !response.error;
@@ -239,7 +245,10 @@ const deleteAreaTool = tool({
       if (!insertedToolExecution) throw new Error("Failed to execute tool.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteAreaAction(areaId, "ai");
+      const response = await deleteAreaAction(areaId, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const isSuccess = !response.error;
       const output = response.message;

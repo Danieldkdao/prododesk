@@ -22,6 +22,7 @@ export const ChatView = ({ chat }: { chat: ReadChatActionReturnType }) => {
         responseTimeMs: msg.chatRun?.responseTimeMs,
         runStatus: msg.chatRun?.status,
         responseToClientId: msg.responseToClientId,
+        artifacts: msg.chatRun?.artifacts,
       },
     })) as unknown as CustomUIMessage[];
   }, [chat.messages]);

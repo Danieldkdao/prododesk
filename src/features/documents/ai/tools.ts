@@ -95,7 +95,7 @@ const createDocumentTool = tool({
           content,
           projectId: projectId ?? undefined,
         },
-        "ai",
+        { source: "ai", chatRunId: context.runId },
       );
 
       const isSuccess = !response.error;
@@ -158,7 +158,7 @@ const updateDocumentTool = tool({
           ...changes,
           projectId: changes.projectId ?? undefined,
         },
-        "ai",
+        { source: "ai", chatRunId: context.runId },
       );
 
       const isSuccess = !response.error;
@@ -212,7 +212,10 @@ const deleteDocumentTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteDocumentAction(documentId, "ai");
+      const response = await deleteDocumentAction(documentId, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const isSuccess = !response.error;
       const output = response.message;

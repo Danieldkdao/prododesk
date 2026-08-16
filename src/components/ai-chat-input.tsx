@@ -8,7 +8,7 @@ import {
 } from "@/services/ai/models";
 import { PlusIcon, SendIcon, SquareIcon } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { TooltipWrapper } from "./tooltip-wrapper";
 import { Button } from "./ui/button";
 import {
@@ -48,43 +48,27 @@ export const AIChatInput = ({
   isPending?: boolean;
   className?: string;
 }) => {
-  const inputContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputLinesChanged, setInputLinesChanged] = useState(false);
-  const [initialInputHeight, setInitialInputHeight] = useState<number | null>(
-    null,
-  );
-
-  useEffect(() => {
-    const inputContainer = inputContainerRef.current;
-    if (!inputContainer || !initialInputHeight) return;
-
-    const handleInputEvent = () => {
-      const scrollHeight = inputContainer.scrollHeight;
-
-      if (scrollHeight !== initialInputHeight) {
-        setInputLinesChanged(true);
-      } else {
-        setInputLinesChanged(false);
-      }
-    };
-
-    inputContainer.addEventListener("input", handleInputEvent);
-
-    return () => inputContainer.removeEventListener("input", handleInputEvent);
-  }, [initialInputHeight]);
-
-  useEffect(() => {
-    if (value.trim() === "") setInputLinesChanged(false);
-  }, [value]);
+  const initialInputHeightRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
-    const inputContainer = inputContainerRef.current;
-    if (!inputContainer) return;
+    const textarea = textareaRef.current;
+    if (!textarea) return;
 
-    const scrollHeight = inputContainer.scrollHeight;
+    if (initialInputHeightRef.current === null) {
+      initialInputHeightRef.current = textarea.scrollHeight;
+    }
 
-    setInitialInputHeight(scrollHeight);
-  }, []);
+    if (!value.trim()) {
+      setInputLinesChanged(false);
+      return;
+    }
+
+    setInputLinesChanged(
+      textarea.scrollHeight > initialInputHeightRef.current + 1,
+    );
+  }, [value]);
 
   const submittedPrompt = value.trim();
   const canSubmit =
@@ -97,7 +81,6 @@ export const AIChatInput = ({
         "flex items-center flex-wrap w-full border p-2 gap-1",
         className,
       )}
-      ref={inputContainerRef}
       transition={{ layout: layoutTransition }}
     >
       <motion.div
@@ -107,9 +90,10 @@ export const AIChatInput = ({
       >
         <Textarea
           className={cn(
-            "min-h-0 border-none focus-visible:ring-0 focus-visible:outline-none focus-visible:border-none text-lg md:text-lg p-0 transition-all duration-200 max-h-32",
+            "min-h-0 border-none focus-visible:ring-0 focus-visible:outline-none focus-visible:border-none text-lg md:text-lg p-0 transition-all duration-200 max-h-52!",
             inputLinesChanged && "p-2",
           )}
+          ref={textareaRef}
           rows={1}
           value={value}
           disabled={isPending}
@@ -209,7 +193,7 @@ export const AIChatInput = ({
         <Button
           type="button"
           size="icon-sm"
-          disabled={!canSubmit}
+          disabled={!isPending && (!submittedPrompt || !selectedModel)}
           onClick={isPending ? onStop : onSubmit}
         >
           {isPending ? <SquareIcon /> : <SendIcon />}

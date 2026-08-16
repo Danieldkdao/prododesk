@@ -150,6 +150,21 @@ export const updateTasksPriorityToolSchema = z.object({
   approvalReason: approvalReasonSchema,
 });
 
+export const assignTasksToMilestoneToolSchema = z.object({
+  taskIds: z
+    .array(z.uuid())
+    .min(1)
+    .max(10)
+    .describe("The IDs of the tasks you want to assign."),
+  milestoneId: z
+    .uuid()
+    .nullish()
+    .describe(
+      "The ID of the milestone that you want to assign the tasks to. Leave `null` to unassign them.",
+    ),
+  approvalReason: approvalReasonSchema,
+});
+
 export const deleteTaskToolSchema = z.object({
   id: z.uuid().describe("The ID of the task to delete."),
   approvalReason: approvalReasonSchema,

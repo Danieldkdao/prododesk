@@ -1,16 +1,23 @@
-import { db, DbTransaction } from "@/db/db";
+import { ActivityMutationOptions, db } from "@/db/db";
 import {
   ActivityAction,
   ActivityInsertType,
+  ActivitySelectType,
   ActivitySource,
   ActivitySubject,
   ActivityTable,
   AreaSelectType,
+  ArtifactTable,
   ProjectSelectType,
   ProjectTable,
 } from "@/db/schema";
+import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+import { findChatRunDb } from "@/features/chats/server/chat-runs";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { PAGE_SIZE } from "@/lib/constants";
+import { runMutationCacheInvalidation } from "@/lib/data-cache";
+import { areValidIds } from "@/lib/utils";
 import {
   and,
   asc,
@@ -24,12 +31,8 @@ import {
   or,
   SQL,
 } from "drizzle-orm";
-import { revalidateActivityCache } from "./cache/activity";
 import { ActivitySortByOption } from "../lib/activity-params";
-import { PAGE_SIZE } from "@/lib/constants";
-import { runMutationCacheInvalidation } from "@/lib/data-cache";
-import { areValidIds } from "@/lib/utils";
-import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+import { revalidateActivityCache } from "./cache/activity";
 
 export const readActivityDb = async (filterOptions: {
   search?: string;
@@ -186,8 +189,9 @@ export const readActivityDb = async (filterOptions: {
 
 export const insertActivityDb = async (
   data: Omit<ActivityInsertType, "userId">,
-  tx?: DbTransaction,
+  options?: Pick<ActivityMutationOptions, "tx" | "chatRunId">,
 ) => {
+  const { tx, chatRunId } = options ?? {};
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
@@ -209,21 +213,51 @@ export const insertActivityDb = async (
     orderBy: desc(ActivityTable.createdAt),
   });
 
-  if (lastActivity) return lastActivity;
+  let activityToReturn: ActivitySelectType | null = null;
 
-  const [insertedActivity] = await (tx ?? db)
-    .insert(ActivityTable)
-    .values({ ...data, userId })
-    .returning();
-  if (!insertedActivity) return null;
+  if (lastActivity) {
+    activityToReturn = lastActivity;
+  } else {
+    const [insertedActivity] = await (tx ?? db)
+      .insert(ActivityTable)
+      .values({ ...data, userId })
+      .returning();
+    if (!insertedActivity) return null;
 
-  await runMutationCacheInvalidation(data.source === "ai", () => {
-    revalidateActivityCache(
-      insertedActivity.userId,
-      insertedActivity.projectId,
-      existingProject?.areaId ?? insertedActivity.areaId,
-    );
-  });
+    await runMutationCacheInvalidation(data.source === "ai", () => {
+      revalidateActivityCache(
+        insertedActivity.userId,
+        insertedActivity.projectId,
+        existingProject?.areaId ?? insertedActivity.areaId,
+      );
+    });
 
-  return insertedActivity;
+    activityToReturn = insertedActivity;
+  }
+
+  if (chatRunId && activityToReturn?.subjectId) {
+    const existingChatRun = await findChatRunDb({ id: chatRunId }, tx);
+    if (!existingChatRun) return null;
+
+    await (tx ?? db)
+      .insert(ArtifactTable)
+      .values({
+        chatRunId: existingChatRun.id,
+        activityId: activityToReturn.id,
+        subject: activityToReturn.subject,
+        subjectId: activityToReturn.subjectId,
+      })
+      .onConflictDoUpdate({
+        target: [
+          ArtifactTable.chatRunId,
+          ArtifactTable.subject,
+          ArtifactTable.subjectId,
+        ],
+        set: {
+          activityId: activityToReturn.id,
+        },
+      });
+  }
+
+  return activityToReturn;
 };

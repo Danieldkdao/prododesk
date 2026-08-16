@@ -1,8 +1,7 @@
 "use server";
 
-import { db } from "@/db/db";
+import { ActivityMutationOptions, db } from "@/db/db";
 import {
-  ActivitySourceType,
   ActivityTable,
   AreaTable,
   Color,
@@ -238,7 +237,7 @@ export type ReadAreasActionReturnType = UnwrapAsync<typeof readAreasAction>;
 
 export const createAreaAction = async (
   unsafeData: AreaSchemaType,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
@@ -267,7 +266,7 @@ export const createAreaAction = async (
         ) + 1`,
         userId,
       },
-      source,
+      options,
     );
     if (!createdArea) throw new Error("Failed to create area.");
 
@@ -287,7 +286,7 @@ export const createAreaAction = async (
 export const updateAreaAction = async (
   areaId: string,
   areaData: Partial<AreaSchemaType>,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(areaId)) {
     return {
@@ -321,7 +320,7 @@ export const updateAreaAction = async (
   }
 
   try {
-    const updatedArea = await updateAreaDb(existingArea.id, data, source);
+    const updatedArea = await updateAreaDb(existingArea.id, data, options);
     if (!updatedArea) throw new Error("Failed to update area.");
 
     return {
@@ -340,7 +339,7 @@ export const updateAreaAction = async (
 export const toggleAreaArchiveStatusAction = async (
   areaId: string,
   newArchiveStatus: boolean,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(areaId)) {
     return {
@@ -372,7 +371,7 @@ export const toggleAreaArchiveStatusAction = async (
         isArchived: newArchiveStatus,
         archivedAt: newArchiveStatus ? new Date() : null,
       },
-      source,
+      options,
     );
     if (!updatedArea) throw new Error("Failed to update area archive status.");
 
@@ -393,7 +392,7 @@ export const toggleAreaArchiveStatusAction = async (
 
 export const deleteAreaAction = async (
   areaId: string,
-  source: ActivitySourceType = "user",
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(areaId)) {
     return {
@@ -419,7 +418,7 @@ export const deleteAreaAction = async (
   }
 
   try {
-    const deletedArea = await deleteAreaDb(existingArea.id, source);
+    const deletedArea = await deleteAreaDb(existingArea.id, options);
     if (!deletedArea) throw new Error("Failed to delete area.");
 
     return {

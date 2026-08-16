@@ -90,8 +90,7 @@ const createMilestonesTool = tool({
                 position: maxPosition + index + 1,
                 dueAt: milestone.dueAt ? parseISO(milestone.dueAt) : undefined,
               },
-              "ai",
-              tx,
+              { source: "ai", chatRunId: context.runId, tx },
             );
           }),
         );
@@ -163,7 +162,7 @@ const updateMilestoneTool = tool({
           ...changes,
           dueAt: changes.dueAt ? parseISO(changes.dueAt) : undefined,
         },
-        "ai",
+        { source: "ai", chatRunId: context.runId },
       );
 
       const isSuccess = !response.error;
@@ -222,7 +221,10 @@ const updateMilestonesStatusTool = tool({
       const responses = await Promise.all(
         milestoneIds.map((milestoneId) => {
           abortSignal?.throwIfAborted();
-          return updateMilestoneStatusAction(milestoneId, status, "ai");
+          return updateMilestoneStatusAction(milestoneId, status, {
+            source: "ai",
+            chatRunId: context.runId,
+          });
         }),
       );
 
@@ -287,7 +289,7 @@ const moveMilestoneTool = tool({
         projectId,
         milestoneId,
         position,
-        "ai",
+        { source: "ai", chatRunId: context.runId },
       );
       const isSuccess = !response.error;
       const output = response.message;
@@ -340,7 +342,10 @@ const deleteMilestoneTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteMilestoneAction(milestoneId, "ai");
+      const response = await deleteMilestoneAction(milestoneId, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const isSuccess = !response.error;
       const output = response.message;

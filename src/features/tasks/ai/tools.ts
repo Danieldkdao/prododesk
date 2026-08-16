@@ -12,11 +12,13 @@ import {
   createTaskAction,
   deleteTaskAction,
   updateTaskAction,
+  updateTaskMilestoneAction,
   updateTasksPriorityAction,
   updateTasksStatusAction,
 } from "../actions/actions";
 import { readTasksDb } from "../server/tasks";
 import {
+  assignTasksToMilestoneToolSchema,
   createTasksToolSchema,
   deleteTaskToolSchema,
   readTasksToolSchema,
@@ -84,7 +86,7 @@ const createTasksTool = tool({
               scheduledAt: task.scheduledAt ? parseISO(task.scheduledAt) : null,
               dueAt: task.dueAt ? parseISO(task.dueAt) : null,
             },
-            "ai",
+            { source: "ai", chatRunId: context.runId },
           );
         }),
       );
@@ -160,7 +162,7 @@ const updateTaskTool = tool({
             : null,
           dueAt: updateFields.dueAt ? parseISO(updateFields.dueAt) : null,
         },
-        "ai",
+        { source: "ai", chatRunId: context.runId },
       );
 
       const output = response.message;
@@ -220,7 +222,10 @@ const updateTasksStatusTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateTasksStatusAction(ids, newStatus, "ai");
+      const response = await updateTasksStatusAction(ids, newStatus, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const isSuccess = !response.error;
 
@@ -279,7 +284,10 @@ const updateTasksPriorityTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateTasksPriorityAction(taskIds, priority, "ai");
+      const response = await updateTasksPriorityAction(taskIds, priority, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const isSuccess = !response.error;
       const output = response.message;
@@ -300,6 +308,73 @@ const updateTasksPriorityTool = tool({
         runId: context.runId,
         toolCallId,
         toolName: "updateTasksPriority",
+        output: errorMessage,
+        status: "failed",
+      });
+      throw new Error(errorMessage);
+    }
+  },
+});
+
+const assignTasksToMilestoneTool = tool({
+  description: "Allows you to assign or unassign tasks to a milestone.",
+  inputSchema: assignTasksToMilestoneToolSchema,
+  contextSchema: runIdContextSchema,
+  execute: async (
+    { taskIds, milestoneId },
+    { context, toolCallId, abortSignal },
+  ) => {
+    try {
+      const existingToolExecution = await findToolExecutionDb(
+        context.runId,
+        toolCallId,
+      );
+      if (existingToolExecution?.status === "pending")
+        return "This tool execution is pending.";
+      if (existingToolExecution?.status === "completed")
+        return JSON.stringify(existingToolExecution.output) || "No output.";
+
+      const insertedToolExecution = await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "assignTasksToMilestone",
+      });
+      if (!insertedToolExecution)
+        throw new Error("Failed to execute tool. Please try again.");
+
+      const responses = await Promise.all(
+        taskIds.map((taskId) => {
+          abortSignal?.throwIfAborted();
+          return updateTaskMilestoneAction(taskId, milestoneId ?? null, {
+            source: "ai",
+            chatRunId: context.runId,
+          });
+        }),
+      );
+
+      const isSuccess =
+        responses.filter((res) => !res.error).length === taskIds.length;
+      const output =
+        responses.find((res) => res.error)?.message ??
+        responses.at(0)?.message ??
+        GENERAL_ERROR_MESSAGE;
+
+      await updateToolExecutionDb(context.runId, toolCallId, {
+        output,
+        status: isSuccess ? "completed" : "failed",
+      });
+
+      if (isSuccess) return output;
+      throw new Error(output);
+    } catch (error) {
+      console.error(error);
+      const errorMessage = Error.isError(error)
+        ? error.message
+        : GENERAL_ERROR_MESSAGE;
+      await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "assignTasksToMilestone",
         output: errorMessage,
         status: "failed",
       });
@@ -335,7 +410,10 @@ const deleteTaskTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteTaskAction(id, "ai");
+      const response = await deleteTaskAction(id, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const output = response.message;
 
@@ -373,5 +451,6 @@ export const taskTools = {
   updateTask: updateTaskTool,
   updateTasksStatus: updateTasksStatusTool,
   updateTasksPriority: updateTasksPriorityTool,
+  assignTasksToMilestone: assignTasksToMilestoneTool,
   deleteTask: deleteTaskTool,
 };

@@ -1,6 +1,5 @@
-import { db, DbTransaction } from "@/db/db";
+import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
-  ActivitySource,
   AreaSelectType,
   ProjectSelectType,
   ProjectTable,
@@ -251,9 +250,9 @@ export const readTasksDb = async (filterOptions: {
 
 export const insertTaskDb = async (
   taskData: TaskInsertType,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   try {
     const existingProject = taskData.projectId
       ? await confirmUserProjectOwnership(taskData.projectId, undefined, tx)
@@ -279,7 +278,7 @@ export const insertTaskDb = async (
           projectId: insertedTask.projectId,
           message: `Created task "${insertedTask.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
@@ -312,9 +311,9 @@ export const updateTaskDb = async (
     Partial<TaskSelectType>,
     "id" | "createdAt" | "updatedAt" | "userId"
   >,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   const existingTask = await confirmUserTaskOwnership(taskId, [], tx);
   if (!existingTask) return null;
 
@@ -350,7 +349,7 @@ export const updateTaskDb = async (
           projectId: updatedTask.projectId,
           message: `Updated task "${updatedTask.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
@@ -397,9 +396,9 @@ export const updateTaskDb = async (
 
 export const deleteTaskDb = async (
   taskId: string,
-  source: ActivitySource = "user",
-  tx?: DbTransaction,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   const existingTask = await confirmUserTaskOwnership(taskId, [], tx);
   if (!existingTask) return null;
 
@@ -427,7 +426,7 @@ export const deleteTaskDb = async (
           projectId: deletedTask.projectId,
           message: `Deleted task "${deletedTask.name}"`,
         },
-        pgtx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 

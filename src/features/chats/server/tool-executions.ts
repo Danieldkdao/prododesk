@@ -1,4 +1,4 @@
-import { db, DbTransaction } from "@/db/db";
+import { db, DbMutationOptions } from "@/db/db";
 import {
   ToolExecutionInsertType,
   ToolExecutionSelectType,
@@ -8,8 +8,9 @@ import { and, eq } from "drizzle-orm";
 
 export const upsertToolExecutionDb = async (
   toolExecution: ToolExecutionInsertType,
-  tx?: DbTransaction,
+  options?: DbMutationOptions,
 ) => {
+  const { tx } = options ?? {};
   const [insertedToolExecution] = await (tx ?? db)
     .insert(ToolExecutionTable)
     .values(toolExecution)
@@ -26,8 +27,9 @@ export const updateToolExecutionDb = async (
   runId: string,
   toolCallId: string,
   toolExecution: Partial<Pick<ToolExecutionSelectType, "status" | "output">>,
-  tx?: DbTransaction,
+  options?: DbMutationOptions,
 ) => {
+  const { tx } = options ?? {};
   const [updatedToolExecution] = await (tx ?? db)
     .update(ToolExecutionTable)
     .set(toolExecution)
