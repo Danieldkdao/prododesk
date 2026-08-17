@@ -11,7 +11,7 @@ export const readDocumentsToolSchema = z.object({
     .describe(
       "A search query that allows you to search by document name or content.",
     ),
-  documentsIds: z
+  documentIds: z
     .array(z.uuid())
     .default([])
     .describe("Narrow the search to an array of document IDs."),

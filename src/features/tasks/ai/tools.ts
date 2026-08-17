@@ -1,3 +1,4 @@
+import { db } from "@/db/db";
 import {
   findToolExecutionDb,
   updateToolExecutionDb,
@@ -130,7 +131,7 @@ const updateTaskTool = tool({
   inputSchema: updateTaskToolSchema,
   contextSchema: runIdContextSchema,
   execute: async (
-    { id, updateFields },
+    { id, updateFields: { scheduledAt, dueAt, ...changes } },
     { context, toolCallId, abortSignal },
   ): Promise<string> => {
     try {
@@ -156,11 +157,12 @@ const updateTaskTool = tool({
       const response = await updateTaskAction(
         id,
         {
-          ...updateFields,
-          scheduledAt: updateFields.scheduledAt
-            ? parseISO(updateFields.scheduledAt)
-            : null,
-          dueAt: updateFields.dueAt ? parseISO(updateFields.dueAt) : null,
+          ...changes,
+          scheduledAt:
+            typeof scheduledAt === "string"
+              ? parseISO(scheduledAt)
+              : scheduledAt,
+          dueAt: typeof dueAt === "string" ? parseISO(dueAt) : dueAt,
         },
         { source: "ai", chatRunId: context.runId },
       );
@@ -221,10 +223,16 @@ const updateTasksStatusTool = tool({
       if (!insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
 
-      abortSignal?.throwIfAborted();
-      const response = await updateTasksStatusAction(ids, newStatus, {
-        source: "ai",
-        chatRunId: context.runId,
+      const response = await db.transaction(async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await updateTasksStatusAction(ids, newStatus, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
+        if (response.error) throw new Error(response.message);
+
+        return response;
       });
 
       const isSuccess = !response.error;
@@ -283,10 +291,16 @@ const updateTasksPriorityTool = tool({
       if (!insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
 
-      abortSignal?.throwIfAborted();
-      const response = await updateTasksPriorityAction(taskIds, priority, {
-        source: "ai",
-        chatRunId: context.runId,
+      const response = await db.transaction(async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await updateTasksPriorityAction(taskIds, priority, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
+        if (response.error) throw new Error(response.message);
+
+        return response;
       });
 
       const isSuccess = !response.error;
@@ -342,15 +356,22 @@ const assignTasksToMilestoneTool = tool({
       if (!insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
 
-      const responses = await Promise.all(
-        taskIds.map((taskId) => {
-          abortSignal?.throwIfAborted();
-          return updateTaskMilestoneAction(taskId, milestoneId ?? null, {
-            source: "ai",
-            chatRunId: context.runId,
-          });
-        }),
-      );
+      const responses = await db.transaction(async (tx) => {
+        const responses = await Promise.all(
+          taskIds.map((taskId) => {
+            abortSignal?.throwIfAborted();
+            return updateTaskMilestoneAction(taskId, milestoneId ?? null, {
+              source: "ai",
+              chatRunId: context.runId,
+              tx,
+            });
+          }),
+        );
+        const failedResponse = responses.find((response) => response.error);
+        if (failedResponse) throw new Error(failedResponse.message);
+
+        return responses;
+      });
 
       const isSuccess =
         responses.filter((res) => !res.error).length === taskIds.length;

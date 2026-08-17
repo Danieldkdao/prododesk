@@ -111,3 +111,15 @@ export const formatTimeInput = (time: Date) => {
 
   return format(time, "HH:mm:ss");
 };
+
+export const nullifyZodSchema = <T extends z.ZodObject>(shape: T) => {
+  const entries = Object.entries(shape).map(([key, value]) => [
+    key,
+    value.nullish(),
+  ]);
+  return z.object(Object.fromEntries(entries));
+};
+
+export const isValidDate = (date: unknown): date is Date => {
+  return date instanceof Date && !isNaN(date.getTime());
+};

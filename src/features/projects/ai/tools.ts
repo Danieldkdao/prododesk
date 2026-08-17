@@ -26,7 +26,7 @@ import {
 const readProjectsTool = tool({
   description: "Allows you to read the user's projects.",
   inputSchema: readProjectsToolSchema,
-  execute: async (filterOptions, { abortSignal }) => {
+  execute: async ({ startBefore, ...filterOptions }, { abortSignal }) => {
     const { userId } = await getCurrentUser();
     if (!userId) throw new Error(UNAUTHED_ERROR_MESSAGE);
 
@@ -34,9 +34,7 @@ const readProjectsTool = tool({
     const response = await readProjectsDb({
       ...filterOptions,
       archiveStatus: filterOptions.includeArchived ? "all" : "active",
-      dateTimeEndRange: filterOptions.startBefore
-        ? parseISO(filterOptions.startBefore)
-        : undefined,
+      dateTimeEndRange: startBefore ? parseISO(startBefore) : undefined,
     });
     if (!response) throw new Error(GENERAL_ERROR_MESSAGE);
 
@@ -135,8 +133,14 @@ const updateProjectTool = tool({
         projectId,
         {
           ...changes,
-          startAt: changes.startAt ? parseISO(changes.startAt) : undefined,
-          endAt: changes.endAt ? parseISO(changes.endAt) : undefined,
+          startAt:
+            typeof changes.startAt === "string"
+              ? parseISO(changes.startAt)
+              : changes.startAt,
+          endAt:
+            typeof changes.endAt === "string"
+              ? parseISO(changes.endAt)
+              : changes.endAt,
         },
         { source: "ai", chatRunId: context.runId },
       );

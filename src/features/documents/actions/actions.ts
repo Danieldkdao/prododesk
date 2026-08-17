@@ -10,8 +10,8 @@ import {
   PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
-import { UnwrapAsync } from "@/lib/types";
-import { areValidIds } from "@/lib/utils";
+import { PartialNull, UnwrapAsync } from "@/lib/types";
+import { areValidIds, nullifyZodSchema } from "@/lib/utils";
 import { and, count, eq } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { DocumentsSortByOption } from "../lib/documents-params";
@@ -173,7 +173,7 @@ export const createDocumentAction = async (
 
 export const updateDocumentAction = async (
   documentId: string,
-  unsafeData: Partial<DocumentSchemaType>,
+  unsafeData: PartialNull<DocumentSchemaType>,
   options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(documentId)) {
@@ -199,8 +199,9 @@ export const updateDocumentAction = async (
     };
   }
 
-  const { success, data } = documentSchema.partial().safeParse(unsafeData);
-  if (!success) {
+  const { success, data } =
+    nullifyZodSchema(documentSchema).safeParse(unsafeData);
+  if (!success || Object.values(data).every((value) => value === undefined)) {
     return {
       error: true,
       message: INVALID_DATA_ERROR_MESSAGE,

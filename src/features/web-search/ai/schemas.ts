@@ -19,7 +19,7 @@ export const searchWebToolSchema = z.object({
 export const searchWebToolValidationSchema = z.object({
   results: z.array(
     z.object({
-      id: z.url(),
+      id: z.string(),
       title: z.string(),
       url: z.url(),
       publishedDate: z.string().optional(),
@@ -31,7 +31,7 @@ export const searchWebToolValidationSchema = z.object({
 
 export const scrapeWebpageToolSchema = z.object({
   url: z
-    .url()
+    .url({ protocol: /^https$/ })
     .describe(
       "The URL of the webpage you would like to scrape. Must start with 'https://'",
     ),

@@ -54,10 +54,7 @@ export const confirmUserAreaOwnership = async (
   return existingArea ?? null;
 };
 
-const revalidateAreaProjectsCache = async (
-  userId: string,
-  areaId: string,
-) => {
+const revalidateAreaProjectsCache = async (userId: string, areaId: string) => {
   const existingAreaProjects = await db.query.ProjectTable.findMany({
     where: and(
       eq(ProjectTable.userId, userId),
@@ -105,7 +102,7 @@ export const readAreasDb = async (filterOptions: {
   if (!userIdToUse) return null;
 
   let offset: number | null = null;
-  if (page !== null && page !== undefined) {
+  if (page && page > 0) {
     offset = (page - 1) * limit;
   }
 

@@ -237,7 +237,7 @@ export const insertActivityDb = async (
 
   if (chatRunId && activityToReturn?.subjectId) {
     const existingChatRun = await findChatRunDb({ id: chatRunId }, tx);
-    if (!existingChatRun) return null;
+    if (!existingChatRun) return activityToReturn;
 
     await (tx ?? db)
       .insert(ArtifactTable)

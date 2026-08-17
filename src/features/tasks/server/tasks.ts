@@ -35,6 +35,7 @@ import {
 } from "drizzle-orm";
 import { DayTasksSortByOption } from "../lib/tasks-params";
 import { revalidateTaskCache } from "./cache/tasks";
+import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
 
 export const confirmUserTaskOwnership = async (
   taskId: string,
@@ -231,11 +232,15 @@ export const readTasksDb = async (filterOptions: {
     .where(whereQuery)
     .$dynamic();
 
-  if (!allTasks && offset) {
-    query = query.offset(offset).limit(limit).$dynamic();
+  if (offset) {
+    query = query.offset(offset);
   }
   if (sortBy) {
     query = query.orderBy(sortByMap[sortBy]).$dynamic();
+  }
+
+  if (!allTasks) {
+    query = query.limit(limit).$dynamic();
   }
 
   const tasks = await query;
@@ -273,7 +278,7 @@ export const insertTaskDb = async (
           source,
           subject: "task",
           action: "create",
-          subjectId: insertedTask.id,
+          subjectId: insertedTask.projectId,
           subjectLabel: insertedTask.name,
           projectId: insertedTask.projectId,
           message: `Created task "${insertedTask.name}"`,
@@ -331,6 +336,19 @@ export const updateTaskDb = async (
       ? await confirmUserProjectOwnership(nextProjectId, undefined, tx)
       : null;
 
+    if (nextProjectId && !newProject) throw new Error("Project not found.");
+
+    const newMilestone = taskData.milestoneId
+      ? await confirmUserMilestoneOwnership(
+          taskData.milestoneId,
+          undefined,
+          undefined,
+          tx,
+        )
+      : null;
+    if (taskData.milestoneId && !newMilestone)
+      throw new Error("Milestone not found.");
+
     const updateTask = async (pgtx: DbTransaction) => {
       const [updatedTask] = await pgtx
         .update(TaskTable)
@@ -344,7 +362,7 @@ export const updateTaskDb = async (
           source,
           subject: "task",
           action: "update",
-          subjectId: updatedTask.id,
+          subjectId: updatedTask.projectId,
           subjectLabel: updatedTask.name,
           projectId: updatedTask.projectId,
           message: `Updated task "${updatedTask.name}"`,
@@ -421,7 +439,7 @@ export const deleteTaskDb = async (
           source,
           subject: "task",
           action: "delete",
-          subjectId: deletedTask.id,
+          subjectId: deletedTask.projectId,
           subjectLabel: deletedTask.name,
           projectId: deletedTask.projectId,
           message: `Deleted task "${deletedTask.name}"`,

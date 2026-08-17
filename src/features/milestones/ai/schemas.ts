@@ -24,7 +24,7 @@ export const readMilestonesToolSchema = z.object({
   statuses: z
     .array(z.enum(milestoneStatuses))
     .default([])
-    .describe("An array of milestone IDs to narrow down the search."),
+    .describe("An array of milestone statuses to narrow down the search."),
   dueBefore: z.iso
     .datetime()
     .optional()
@@ -94,7 +94,13 @@ export const updateMilestoneToolSchema = z.object({
   changes: z
     .object({
       projectId: z.uuid().optional().describe("The associated project ID."),
-      name: z.string().trim().min(1).max(100).describe("The milestone name."),
+      name: z
+        .string()
+        .trim()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("The milestone name."),
       description: z
         .string()
         .trim()

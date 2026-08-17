@@ -5,16 +5,21 @@ import {
   ChatRunInsertType,
   ChatRunSelectType,
   ChatRunTable,
+  ChatTable,
 } from "@/db/schema";
 import { SQLMap } from "@/lib/types";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, getTableColumns, inArray } from "drizzle-orm";
 import { confirmChatOwnership } from "./chats";
 import { revalidateChatCache } from "./cache/chats";
+import { getCurrentUser } from "@/lib/auth/helpers";
 
 export const findChatRunDb = async (
   query: { id: string } | { chatId: string; userMessageClientId: string },
   tx?: DbTransaction,
 ) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
   const whereQuery =
     "id" in query
       ? eq(ChatRunTable.id, query.id)
@@ -23,9 +28,16 @@ export const findChatRunDb = async (
           eq(ChatRunTable.userMessageClientId, query.userMessageClientId),
         );
 
-  return (tx ?? db).query.ChatRunTable.findFirst({
-    where: whereQuery,
-  });
+  const [existingChatRun] =
+    (await (tx ?? db)
+      .select({
+        ...getTableColumns(ChatRunTable),
+        chat: getTableColumns(ChatTable),
+      })
+      .from(ChatRunTable)
+      .innerJoin(ChatTable, eq(ChatTable.id, ChatRunTable.chatId))
+      .where(and(whereQuery, eq(ChatTable.userId, userId)))) ?? null;
+  return existingChatRun;
 };
 
 export const insertChatRunDb = async (

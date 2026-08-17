@@ -28,6 +28,22 @@ import {
 } from "drizzle-orm";
 import { revalidateMilestoneCache } from "./cache/milestones";
 
+export const revalidateMilestoneMutationCache = async ({
+  source,
+  userId,
+  projectId,
+  areaId,
+}: {
+  source: NonNullable<ActivityMutationOptions["source"]>;
+  userId: string;
+  projectId: string;
+  areaId?: string | null;
+}) => {
+  await runMutationCacheInvalidation(source === "ai", () => {
+    revalidateMilestoneCache(userId, projectId, areaId);
+  });
+};
+
 export const confirmUserMilestoneOwnership = async (
   milestoneId: string,
   userId?: string,
@@ -209,7 +225,7 @@ export const insertMilestoneDb = async (
           source,
           subject: "milestone",
           action: "create",
-          subjectId: insertedMilestone.id,
+          subjectId: insertedMilestone.projectId,
           subjectLabel: insertedMilestone.name,
           projectId: insertedMilestone.projectId,
           message: `Created milestone ${milestone.name}`,
@@ -225,13 +241,14 @@ export const insertMilestoneDb = async (
       ? await insertMilestone(tx)
       : await db.transaction(insertMilestone);
 
-    await runMutationCacheInvalidation(source === "ai", () => {
-      revalidateMilestoneCache(
-        insertedMilestone.userId,
-        insertedMilestone.projectId,
-        existingProject?.areaId,
-      );
-    });
+    if (!tx) {
+      await revalidateMilestoneMutationCache({
+        source,
+        userId: insertedMilestone.userId,
+        projectId: insertedMilestone.projectId,
+        areaId: existingProject?.areaId,
+      });
+    }
 
     return insertedMilestone;
   } catch (error) {
@@ -285,7 +302,7 @@ export const updateMilestoneDb = async (
           source,
           subject: "milestone",
           action: "update",
-          subjectId: updatedMilestone.id,
+          subjectId: updatedMilestone.projectId,
           subjectLabel: updatedMilestone.name,
           projectId: updatedMilestone.projectId,
           message: `Updated milestone "${updatedMilestone.name}"`,
@@ -301,13 +318,14 @@ export const updateMilestoneDb = async (
       ? await updateMilestone(tx)
       : await db.transaction(updateMilestone);
 
-    await runMutationCacheInvalidation(source === "ai", () => {
-      revalidateMilestoneCache(
-        updatedMilestone.userId,
-        updatedMilestone.projectId,
-        existingProject?.areaId,
-      );
-    });
+    if (!tx) {
+      await revalidateMilestoneMutationCache({
+        source,
+        userId: updatedMilestone.userId,
+        projectId: updatedMilestone.projectId,
+        areaId: existingProject?.areaId,
+      });
+    }
 
     return updatedMilestone;
   } catch (error) {
@@ -356,7 +374,7 @@ export const deleteMilestoneDb = async (
           source,
           subject: "milestone",
           action: "delete",
-          subjectId: deletedMilestone.id,
+          subjectId: deletedMilestone.projectId,
           subjectLabel: deletedMilestone.name,
           projectId: deletedMilestone.projectId,
           message: `Deleted milestone "${deletedMilestone.name}"`,
@@ -372,13 +390,14 @@ export const deleteMilestoneDb = async (
       ? await deleteMilestone(tx)
       : await db.transaction(deleteMilestone);
 
-    await runMutationCacheInvalidation(source === "ai", () => {
-      revalidateMilestoneCache(
-        deletedMilestone.userId,
-        deletedMilestone.projectId,
-        existingProject?.areaId,
-      );
-    });
+    if (!tx) {
+      await revalidateMilestoneMutationCache({
+        source,
+        userId: deletedMilestone.userId,
+        projectId: deletedMilestone.projectId,
+        areaId: existingProject?.areaId,
+      });
+    }
 
     return deletedMilestone;
   } catch (error) {

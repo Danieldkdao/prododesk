@@ -9,11 +9,23 @@ import { getCurrentUser } from "@/lib/auth/helpers";
 import { envServer } from "@/data/env/server";
 import removeMd from "remove-markdown";
 
-export const searchWebTool = tool({
+let searchWebToolCount = 0;
+let scrapeWebpageToolCount = 0;
+
+const MAX_SEARCH_WEB_TOOL_COUNT = 2;
+const MAX_SCRAPE_WEBPAGE_TOOL_COUNT = 2;
+
+const searchWebTool = tool({
   description: "Searches the web and returns search results.",
   inputSchema: searchWebToolSchema,
   execute: async ({ query }, { abortSignal }) => {
-    const userId = await getCurrentUser();
+    searchWebToolCount++;
+    if (searchWebToolCount > MAX_SEARCH_WEB_TOOL_COUNT)
+      throw new Error(
+        "You have exceeded the maximum amount of allowed web searches (2).",
+      );
+
+    const { userId } = await getCurrentUser();
     if (!userId)
       throw new Error(
         "This user is not authenticated. Tell them they need to sign in first.",
@@ -48,11 +60,17 @@ export const searchWebTool = tool({
   },
 });
 
-export const scrapeWebpageTool = tool({
+const scrapeWebpageTool = tool({
   description: "Scrapes given webpage and returns clean information.",
   inputSchema: scrapeWebpageToolSchema,
   execute: async ({ url }, { abortSignal }) => {
-    const userId = await getCurrentUser();
+    scrapeWebpageToolCount++;
+    if (scrapeWebpageToolCount > MAX_SCRAPE_WEBPAGE_TOOL_COUNT)
+      throw new Error(
+        "You have exceeded the maximum amount of allowed web scrapes. (2).",
+      );
+
+    const { userId } = await getCurrentUser();
     if (!userId)
       throw new Error(
         "This user is not authenticated. Tell them they need to sign in first.",
@@ -70,7 +88,6 @@ export const scrapeWebpageTool = tool({
         onlyMainContent: true,
         minAge: 123,
         waitFor: 0,
-        skipTlsVerification: true,
         parsers: ["pdf"],
         actions: [{ type: "wait", milliseconds: 2 }],
         location: { country: "US", languages: ["en-US"] },

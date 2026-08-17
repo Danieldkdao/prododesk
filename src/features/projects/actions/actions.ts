@@ -20,7 +20,8 @@ import {
 } from "@/lib/constants";
 import { ArchiveStatusFilterOption } from "@/lib/params";
 import { UnwrapAsync } from "@/lib/types";
-import { areValidIds } from "@/lib/utils";
+import { areValidIds, isValidDate } from "@/lib/utils";
+import { format, parseISO } from "date-fns";
 import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { cache } from "react";
@@ -44,7 +45,6 @@ import {
   updateProjectSchema,
   UpdateProjectSchemaType,
 } from "./schemas";
-import { format, parseISO } from "date-fns";
 
 const readCachedProjectsAction = async (
   userId: string,
@@ -311,13 +311,15 @@ export const updateProjectAction = async (
     };
   }
 
+  const { startAt, endAt, ...rest } = data;
+
   try {
     const updatedProject = await updateProjectDb(
       projectId,
       {
-        ...data,
-        startAt: data.startAt ? format(data.startAt, "yyyy-MM-dd") : undefined,
-        endAt: data.endAt ? format(data.endAt, "yyyy-MM-dd") : undefined,
+        ...rest,
+        startAt: isValidDate(startAt) ? format(startAt, "yyyy-MM-dd") : startAt,
+        endAt: isValidDate(endAt) ? format(endAt, "yyyy-MM-dd") : endAt,
       },
       options,
     );

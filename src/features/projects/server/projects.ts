@@ -106,6 +106,38 @@ const revalidateProjectTasksCache = async (
   }
 };
 
+export const revalidateProjectMutationCache = async ({
+  source,
+  userId,
+  projectId,
+  areaId,
+  previousAreaId,
+  revalidateTasks = false,
+}: {
+  source: NonNullable<ActivityMutationOptions["source"]>;
+  userId: string;
+  projectId: string;
+  areaId?: string | null;
+  previousAreaId?: string | null;
+  revalidateTasks?: boolean;
+}) => {
+  await runMutationCacheInvalidation(source === "ai", async () => {
+    if (revalidateTasks) {
+      await revalidateProjectTasksCache(userId, projectId);
+    }
+
+    revalidateProjectCache(
+      userId,
+      projectId,
+      previousAreaId === undefined ? areaId : previousAreaId,
+    );
+
+    if (previousAreaId !== undefined && areaId !== previousAreaId) {
+      revalidateProjectCache(userId, projectId, areaId);
+    }
+  });
+};
+
 export const readProjectsDb = async (filterOptions: {
   search?: string;
   sortBy?: ProjectsSortByOption;
@@ -114,6 +146,7 @@ export const readProjectsDb = async (filterOptions: {
   archiveStatus?: ArchiveStatusFilterOption;
   dateTimeStartRange?: Date | null;
   dateTimeEndRange?: Date | null;
+  startBefore?: Date | null;
   page?: number;
   projectIds?: string[];
   areaIds?: string[];
@@ -128,6 +161,7 @@ export const readProjectsDb = async (filterOptions: {
     archiveStatus,
     dateTimeStartRange,
     dateTimeEndRange,
+    startBefore,
     page,
     projectIds,
     areaIds,
@@ -193,6 +227,9 @@ export const readProjectsDb = async (filterOptions: {
     dateTimeStartRange
       ? gte(ProjectTable.startAt, format(dateTimeStartRange, "yyyy-MM-dd"))
       : undefined,
+    startBefore
+      ? lte(ProjectTable.startAt, format(startBefore, "yyyy-MM-dd"))
+      : undefined,
     dateTimeEndRange
       ? lte(ProjectTable.endAt, format(dateTimeEndRange, "yyyy-MM-dd"))
       : undefined,
@@ -226,7 +263,7 @@ export const readProjectsDb = async (filterOptions: {
 
     const existingProjects = await Promise.all(
       projectIds.map((projectId) =>
-        confirmUserProjectOwnership(projectId, userId),
+        confirmUserProjectOwnership(projectId, userIdToUse),
       ),
     );
     existingProjectIds = existingProjects
@@ -353,13 +390,14 @@ export const insertProjectDb = async (
       ? await insertProject(tx)
       : await db.transaction(insertProject);
 
-    await runMutationCacheInvalidation(source === "ai", () => {
-      revalidateProjectCache(
-        insertedProject.userId,
-        insertedProject.id,
-        insertedProject.areaId,
-      );
-    });
+    if (!tx) {
+      await revalidateProjectMutationCache({
+        source,
+        userId: insertedProject.userId,
+        projectId: insertedProject.id,
+        areaId: insertedProject.areaId,
+      });
+    }
 
     return insertedProject;
   } catch (error) {
@@ -421,25 +459,16 @@ export const updateProjectDb = async (
       ? await updateProject(tx)
       : await db.transaction(updateProject);
 
-    await runMutationCacheInvalidation(source === "ai", async () => {
-      await revalidateProjectTasksCache(
-        updatedProject.userId,
-        updatedProject.id,
-      );
-      revalidateProjectCache(
-        updatedProject.userId,
-        updatedProject.id,
-        existingProject.areaId,
-      );
-
-      if (updatedProject.areaId !== existingProject.areaId) {
-        revalidateProjectCache(
-          updatedProject.userId,
-          updatedProject.id,
-          updatedProject.areaId,
-        );
-      }
-    });
+    if (!tx) {
+      await revalidateProjectMutationCache({
+        source,
+        userId: updatedProject.userId,
+        projectId: updatedProject.id,
+        areaId: updatedProject.areaId,
+        previousAreaId: existingProject.areaId,
+        revalidateTasks: true,
+      });
+    }
 
     return updatedProject;
   } catch (error) {
@@ -493,17 +522,15 @@ export const deleteProjectDb = async (
       ? await deleteProject(tx)
       : await db.transaction(deleteProject);
 
-    await runMutationCacheInvalidation(source === "ai", async () => {
-      await revalidateProjectTasksCache(
-        deletedProject.userId,
-        deletedProject.id,
-      );
-      revalidateProjectCache(
-        deletedProject.userId,
-        deletedProject.id,
-        deletedProject.areaId,
-      );
-    });
+    if (!tx) {
+      await revalidateProjectMutationCache({
+        source,
+        userId: deletedProject.userId,
+        projectId: deletedProject.id,
+        areaId: deletedProject.areaId,
+        revalidateTasks: true,
+      });
+    }
 
     return deletedProject;
   } catch (error) {

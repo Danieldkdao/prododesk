@@ -211,14 +211,15 @@ export const ChatViewListMessage = ({
                         <div className="max-h-[min(50rem,60vh)] overflow-y-auto overscroll-contain pr-2 scroll-fade scrollbar-none">
                           <div className="flex flex-col gap-4">
                             {msg.parts
+                              .map((part, index) => ({ part, index }))
                               .filter(
-                                (part, index) =>
+                                ({ part, index }) =>
                                   !(
                                     part.type === "text" &&
                                     index === msg.parts.length - 1
                                   ),
                               )
-                              .map((part, index) => {
+                              .map(({ part, index }) => {
                                 const isLatestPart =
                                   index === msg.parts.length - 1;
                                 if (part.type === "text") {
@@ -542,11 +543,7 @@ export const ChatViewListMessage = ({
                                 </span>
                                 <div className="flex items-center gap-4 flex-wrap max-w-200 w-full">
                                   {subArtifacts.map((artifact) => {
-                                    if (
-                                      !artifact.activity ||
-                                      !artifact.activity.subjectId
-                                    )
-                                      return null;
+                                    if (!artifact.activity) return null;
 
                                     const activitySubject =
                                       artifact.activity.subject;
