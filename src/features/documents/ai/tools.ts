@@ -1,4 +1,23 @@
+import {
+  findToolExecutionDb,
+  updateToolExecutionDb,
+  upsertToolExecutionDb,
+} from "@/features/chats/server/tool-executions";
+import { getCurrentUser } from "@/lib/auth/helpers";
+import {
+  GENERAL_ERROR_MESSAGE,
+  NOT_FOUND_ERROR_MESSAGE,
+  UNAUTHED_ERROR_MESSAGE,
+} from "@/lib/constants";
+import { runIdContextSchema } from "@/services/ai/tools/helpers";
 import { tool } from "ai";
+import {
+  createDocumentAction,
+  deleteDocumentAction,
+  readDocumentAction,
+  updateDocumentAction,
+} from "../actions/actions";
+import { readDocumentsDb } from "../server/documents";
 import {
   createDocumentToolSchema,
   deleteDocumentToolSchema,
@@ -6,25 +25,6 @@ import {
   readDocumentToolSchema,
   updateDocumentToolSchema,
 } from "./schemas";
-import { getCurrentUser } from "@/lib/auth/helpers";
-import {
-  GENERAL_ERROR_MESSAGE,
-  NOT_FOUND_ERROR_MESSAGE,
-  UNAUTHED_ERROR_MESSAGE,
-} from "@/lib/constants";
-import { readDocumentsDb } from "../server/documents";
-import { runIdContextSchema } from "@/services/ai/tools/helpers";
-import {
-  createDocumentAction,
-  deleteDocumentAction,
-  readDocumentAction,
-  updateDocumentAction,
-} from "../actions/actions";
-import {
-  findToolExecutionDb,
-  updateToolExecutionDb,
-  upsertToolExecutionDb,
-} from "@/features/chats/server/tool-executions";
 
 const readDocumentsTool = tool({
   description: "Allows you to read the user's documents.",
@@ -152,14 +152,10 @@ const updateDocumentTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateDocumentAction(
-        documentId,
-        {
-          ...changes,
-          projectId: changes.projectId ?? undefined,
-        },
-        { source: "ai", chatRunId: context.runId },
-      );
+      const response = await updateDocumentAction(documentId, changes, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const isSuccess = !response.error;
       const output = response.message;

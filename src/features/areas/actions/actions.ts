@@ -312,7 +312,7 @@ export const updateAreaAction = async (
   }
 
   const { success, data } = areaSchema.partial().safeParse(areaData);
-  if (!success) {
+  if (!success || Object.values(data).every((value) => value === undefined)) {
     return {
       error: true,
       message: INVALID_DATA_ERROR_MESSAGE,

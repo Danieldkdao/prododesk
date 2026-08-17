@@ -152,12 +152,18 @@ export const groupActivityBySubject = (artifacts: ArtifactActivityType[]) => {
 
 export const formatActivityLink: Record<
   ActivitySubject,
-  (id: string) => string
+  (id: string | null) => string
 > = {
-  area: (areaId) => `/dashboard/areas/${areaId}`,
-  document: (documentId) => `/dashboard/documents/${documentId}`,
-  milestone: (projectId) => `/dashboard/projects/${projectId}/milestones`,
-  project: (projectId) => `/dashboard/projects/${projectId}`,
-  // todo: figure out where this should go separate task page coming soon?
-  task: () => `/dashboard`,
+  area: (areaId) =>
+    areaId ? `/dashboard/areas/${areaId}` : "/dashboard/areas",
+  document: (documentId) =>
+    documentId ? `/dashboard/documents/${documentId}` : `/dashboard/documents`,
+  milestone: (projectId) =>
+    projectId
+      ? `/dashboard/projects/${projectId}/milestones`
+      : "/dashboard/projects",
+  project: (projectId) =>
+    projectId ? `/dashboard/projects/${projectId}` : "/dashboard/projects",
+  task: (projectId) =>
+    projectId ? `/dashboard/projects/${projectId}` : "/dashboard/projects",
 };

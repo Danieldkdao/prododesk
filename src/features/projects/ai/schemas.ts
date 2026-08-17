@@ -29,6 +29,7 @@ export const readProjectsToolSchema = z.object({
     .describe("Whether or not to include archived results."),
   startBefore: z.iso
     .datetime()
+    .optional()
     .describe(
       `Return results before a certain date, datetime formattted as: ${isoDatetimeFormatInstructions}`,
     ),
@@ -58,12 +59,18 @@ export const createProjectToolSchema = z.object({
     .uuid()
     .nullish()
     .describe("The ID of the associated area to this project."),
-  startAt: z.iso.datetime(
-    `The project start date, formatted as: ${isoDatetimeFormatInstructions}`,
-  ),
-  endAt: z.iso.datetime(
-    `The project end date, formatted as: ${isoDatetimeFormatInstructions}`,
-  ),
+  startAt: z.iso
+    .datetime()
+    .nullish()
+    .describe(
+      `The project start date, formatted as: ${isoDatetimeFormatInstructions}`,
+    ),
+  endAt: z.iso
+    .datetime()
+    .nullish()
+    .describe(
+      `The project end date, formatted as: ${isoDatetimeFormatInstructions}`,
+    ),
   approvalReason: approvalReasonSchema,
 });
 
@@ -84,8 +91,11 @@ export const updateProjectToolSchema = z.object({
         .max(20)
         .nullish()
         .describe("The project icon, optional emoji."),
-      color: z.enum(colors).describe("The project color."),
-      status: z.enum(projectStatuses).describe("The project status."),
+      color: z.enum(colors).optional().describe("The project color."),
+      status: z
+        .enum(projectStatuses)
+        .optional()
+        .describe("The project status."),
       areaId: z
         .uuid()
         .nullish()

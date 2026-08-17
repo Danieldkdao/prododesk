@@ -12,6 +12,7 @@ import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
 import {
   getMaxMilestonePositionDb,
   readMilestonesDb,
+  revalidateMilestoneMutationCache,
 } from "../server/milestones";
 import { parseISO } from "date-fns";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
@@ -28,6 +29,7 @@ import {
   updateMilestoneStatusAction,
 } from "../actions/actions";
 import { db } from "@/db/db";
+import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 
 const readMilestonesTool = tool({
   description: "Allows you to read the current user's milestones.",
@@ -58,6 +60,12 @@ const createMilestonesTool = tool({
   contextSchema: runIdContextSchema,
   execute: async ({ milestones }, { context, toolCallId, abortSignal }) => {
     try {
+      if (
+        new Set(milestones.map((milestone) => milestone.projectId)).size !== 1
+      )
+        throw new Error(
+          "You cannot insert milestones from across different projects in the same query.",
+        );
       const existingToolExecution = await findToolExecutionDb(
         context.runId,
         toolCallId,
@@ -77,6 +85,14 @@ const createMilestonesTool = tool({
 
       const projectId = milestones[0]?.projectId;
       if (!projectId) throw new Error("No project ID.");
+
+      const { userId } = await getCurrentUser();
+      if (!userId) throw new Error(UNAUTHED_ERROR_MESSAGE);
+      const existingProject = await confirmUserProjectOwnership(
+        projectId,
+        userId,
+      );
+      if (!existingProject) throw new Error(GENERAL_ERROR_MESSAGE);
 
       const maxPosition = await getMaxMilestonePositionDb(projectId);
 
@@ -103,6 +119,13 @@ const createMilestonesTool = tool({
         return responses;
       });
 
+      await revalidateMilestoneMutationCache({
+        source: "ai",
+        userId,
+        projectId,
+        areaId: existingProject.areaId,
+      });
+
       const isSuccess =
         responses.filter((res) => !res.error).length === milestones.length;
       const output =
@@ -124,6 +147,8 @@ const createMilestonesTool = tool({
         runId: context.runId,
         toolCallId,
         toolName: "createMilestones",
+        output: errorMessage,
+        status: "failed",
       });
       throw new Error(errorMessage);
     }
@@ -153,14 +178,18 @@ const updateMilestoneTool = tool({
         toolCallId,
         toolName: "updateMilestone",
       });
-      if (!insertedToolExecution) return null;
+      if (!insertedToolExecution)
+        throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
       const response = await updateMilestoneAction(
         milestoneId,
         {
           ...changes,
-          dueAt: changes.dueAt ? parseISO(changes.dueAt) : undefined,
+          dueAt:
+            typeof changes.dueAt === "string"
+              ? parseISO(changes.dueAt)
+              : changes.dueAt,
         },
         { source: "ai", chatRunId: context.runId },
       );

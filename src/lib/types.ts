@@ -13,3 +13,7 @@ export type UnwrapAsync<T extends (...params: any[]) => unknown> = NonNullable<
 export type SQLMap<T> = {
   [K in keyof T]: T[K] | SQL<unknown>;
 };
+
+export type PartialNull<T> = {
+  [K in keyof T]: T[K] | undefined | null;
+};

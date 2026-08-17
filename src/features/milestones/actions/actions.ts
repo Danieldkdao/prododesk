@@ -12,21 +12,18 @@ import {
   PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
-import { runMutationCacheInvalidation } from "@/lib/data-cache";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
 import { format } from "date-fns";
 import { and, between, count, eq, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
-import {
-  getProjectMilestoneTag,
-  revalidateMilestoneCache,
-} from "../server/cache/milestones";
+import { getProjectMilestoneTag } from "../server/cache/milestones";
 import {
   confirmUserMilestoneOwnership,
   deleteMilestoneDb,
   insertMilestoneDb,
   readMilestonesDb,
+  revalidateMilestoneMutationCache,
   updateMilestoneDb,
 } from "../server/milestones";
 import { milestoneSchema, MilestoneSchemaType } from "./schemas";
@@ -206,7 +203,12 @@ export const updateMilestoneAction = async (
       existingMilestone.id,
       {
         ...rest,
-        dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
+        dueAt:
+          dueAt === null
+            ? null
+            : dueAt
+              ? format(dueAt, "yyyy-MM-dd")
+              : existingMilestone.dueAt,
       },
       options,
     );
@@ -401,15 +403,13 @@ export const moveMilestoneAction = async (
       await moveMilestone(tx);
     } else {
       await db.transaction(moveMilestone);
-    }
-
-    await runMutationCacheInvalidation(source === "ai", () => {
-      revalidateMilestoneCache(
+      await revalidateMilestoneMutationCache({
+        source,
         userId,
-        existingProject.id,
-        existingProject.areaId,
-      );
-    });
+        projectId: existingProject.id,
+        areaId: existingProject.areaId,
+      });
+    }
 
     return {
       error: false,

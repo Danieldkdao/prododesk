@@ -62,7 +62,7 @@ export const updateAreaToolSchema = z.object({
     })
     .refine((changes) => Object.keys(changes).length > 0)
     .describe(
-      "The chnages you would like to make, you must make at least one change.",
+      "The changes you would like to make, you must make at least one change.",
     ),
   approvalReason: approvalReasonSchema,
 });

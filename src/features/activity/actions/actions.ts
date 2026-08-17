@@ -62,7 +62,7 @@ const readCachedActivityAction = async (
 
   const page = filterOptions.page;
 
-  const response = await readActivityDb(filterOptions);
+  const response = await readActivityDb({ ...filterOptions, userId });
   if (!response) return null;
 
   const { activity, whereQuery } = response;

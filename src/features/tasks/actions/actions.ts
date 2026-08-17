@@ -35,6 +35,7 @@ import {
   updateTaskSchema,
   UpdateTaskSchemaType,
 } from "./schemas";
+import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
 
 export const createTaskAction = async (
   unsafeData: TaskSchemaType,
@@ -111,9 +112,12 @@ export const updateTaskAction = async (
 
   const existingResult = taskSchema.safeParse({
     name: existingTask.name,
-    outcome: existingTask.description,
-    icon: existingTask.emoji,
+    description: existingTask.description,
+    emoji: existingTask.emoji,
+    priority: existingTask.priority,
     status: existingTask.status,
+    projectId: existingTask.projectId,
+    milestoneId: existingTask.milestoneId,
     scheduledAt: existingTask.scheduledAt ?? null,
     dueAt: existingTask.dueAt ?? null,
     ...data,
@@ -168,6 +172,19 @@ export const updateTaskMilestoneAction = async (
       error: true,
       message: NOT_FOUND_ERROR_MESSAGE,
     };
+  }
+
+  if (milestoneId) {
+    const existingMilestone = await confirmUserMilestoneOwnership(
+      milestoneId,
+      userId,
+    );
+    if (!existingMilestone) {
+      return {
+        error: true,
+        message: NOT_FOUND_ERROR_MESSAGE,
+      };
+    }
   }
 
   try {

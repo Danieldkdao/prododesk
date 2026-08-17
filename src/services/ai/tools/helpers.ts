@@ -11,7 +11,7 @@ export const approvalReasonSchema = z
   })
   .max(500)
   .describe(
-    "A detailed, user-facing explanation of why this action is necessary, exactly what will change, and which tasks will be affected. Never use a vague statement.",
+    "A detailed, user-facing explanation of why this action is necessary, exactly what will change, and which items will be affected. Never use a vague statement.",
   );
 
 export const runIdContextSchema = z.object({
