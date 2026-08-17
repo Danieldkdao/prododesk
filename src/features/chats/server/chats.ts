@@ -1,4 +1,4 @@
-import { db, DbTransaction } from "@/db/db";
+import { db, DbMutationOptions, DbTransaction } from "@/db/db";
 import { ChatTable, ChatInsertType } from "@/db/schema";
 import { revalidateChatCache } from "./cache/chats";
 import { and, eq, SQL } from "drizzle-orm";
@@ -6,8 +6,9 @@ import { getCurrentUser } from "@/lib/auth/helpers";
 
 export const insertChatDb = async (
   chat: ChatInsertType,
-  tx?: DbTransaction,
+  options?: DbMutationOptions,
 ) => {
+  const { tx } = options ?? {};
   const [insertedChat] = await (tx ?? db)
     .insert(ChatTable)
     .values(chat)
@@ -21,8 +22,9 @@ export const insertChatDb = async (
 export const updateChatDb = async (
   chatId: string,
   chat: Pick<ChatInsertType, "name">,
-  tx?: DbTransaction,
+  options?: DbMutationOptions,
 ) => {
+  const { tx } = options ?? {};
   const [updatedChat] = await (tx ?? db)
     .update(ChatTable)
     .set(chat)
@@ -37,11 +39,12 @@ export const updateChatDb = async (
 export const confirmChatOwnership = async (
   chatId: string,
   otherQueries?: SQL<unknown> | undefined,
+  tx?: DbTransaction,
 ) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  const [existingChat] = await db
+  const [existingChat] = await (tx ?? db)
     .select()
     .from(ChatTable)
     .where(
@@ -51,8 +54,12 @@ export const confirmChatOwnership = async (
   return existingChat ?? null;
 };
 
-export const deleteChatDb = async (chatId: string) => {
-  const [deletedChat] = await db
+export const deleteChatDb = async (
+  chatId: string,
+  options?: DbMutationOptions,
+) => {
+  const { tx } = options ?? {};
+  const [deletedChat] = await (tx ?? db)
     .delete(ChatTable)
     .where(eq(ChatTable.id, chatId))
     .returning();

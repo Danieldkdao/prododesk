@@ -3,7 +3,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@/lib/tiptap-utils";
+import { cn } from "@/components/tiptap/lib/tiptap-utils";
 
 import { Input } from "@/components/tiptap/tiptap-ui-primitive/input";
 import { Button } from "@/components/tiptap/tiptap-ui-primitive/button";

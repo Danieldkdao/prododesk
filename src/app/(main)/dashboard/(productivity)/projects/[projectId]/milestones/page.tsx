@@ -32,6 +32,7 @@ const ProjectIdMilestonesSuspense = async ({
 
   const milestonesResponse = await readProjectMilestonesAction(projectId, {
     ...filters,
+    search: filters.milestoneSearch,
     page: DEFAULT_PAGE,
   });
   const tasksResponse = await readTasksAction({

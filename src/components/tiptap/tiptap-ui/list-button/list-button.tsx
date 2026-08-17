@@ -3,7 +3,7 @@
 import { forwardRef, useCallback } from "react";
 
 // --- Lib ---
-import { parseShortcutKeys } from "@/lib/tiptap-utils";
+import { parseShortcutKeys } from "@/components/tiptap/lib/tiptap-utils";
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor";
@@ -15,12 +15,12 @@ import { Button } from "@/components/tiptap/tiptap-ui-primitive/button";
 
 // --- Tiptap UI ---
 import type {
-    ListType,
-    UseListConfig,
+  ListType,
+  UseListConfig,
 } from "@/components/tiptap/tiptap-ui/list-button";
 import {
-    LIST_SHORTCUT_KEYS,
-    useList,
+  LIST_SHORTCUT_KEYS,
+  useList,
 } from "@/components/tiptap/tiptap-ui/list-button";
 
 export interface ListButtonProps

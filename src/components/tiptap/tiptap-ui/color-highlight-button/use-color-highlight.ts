@@ -13,7 +13,7 @@ import {
   isMarkInSchema,
   isNodeTypeSelected,
   isExtensionAvailable,
-} from "@/lib/tiptap-utils";
+} from "@/components/tiptap/lib/tiptap-utils";
 
 // --- Icons ---
 import { HighlighterIcon } from "@/components/tiptap/tiptap-icons/highlighter-icon";

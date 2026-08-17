@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { jsonb, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
-import { ToolExecutionStatusEnum } from "../shared";
+import { ToolExecutionStatusEnum, toolNameEnum } from "../shared";
 import { ChatRunTable } from "./chat-run";
 
 export const ToolExecutionTable = pgTable(
@@ -12,7 +12,7 @@ export const ToolExecutionTable = pgTable(
       .references(() => ChatRunTable.id, { onDelete: "cascade" })
       .notNull(),
     toolCallId: text("tool_call_id").notNull(),
-    toolName: text("tool_name").notNull(),
+    toolName: toolNameEnum("tool_name").notNull(),
     status: ToolExecutionStatusEnum("status").default("pending").notNull(),
     output: jsonb("output"),
     error: text("error"),

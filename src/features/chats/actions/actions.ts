@@ -1,7 +1,12 @@
 "use server";
 
 import { db } from "@/db/db";
-import { ChatMessageTable, ChatTable } from "@/db/schema";
+import {
+  ActivityTable,
+  ArtifactTable,
+  ChatMessageTable,
+  ChatTable,
+} from "@/db/schema";
 import { MessagePartTable } from "@/db/schemas/message-part";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -16,7 +21,7 @@ import { areValidIds } from "@/lib/utils";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { GENERATE_CHAT_NAME_INSTRUCTIONS } from "@/services/ai/prompts";
 import { generateText } from "ai";
-import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { getChatIdTag, getUserChatTag } from "../server/cache/chats";
 import {
@@ -60,7 +65,7 @@ export const createChatAction = async (unsafeData: ChatMessageSchemaType) => {
       });
       if (!text) throw new Error("Failed to generate chat name.");
 
-      const insertedChat = await insertChatDb({ name: text, userId }, tx);
+      const insertedChat = await insertChatDb({ name: text, userId }, { tx });
       if (!insertedChat) throw new Error("Failed to insert chat.");
 
       return insertedChat;
@@ -92,7 +97,27 @@ export const readChatAction = async (userId: string, chatId: string) => {
       messages: {
         orderBy: asc(ChatMessageTable.createdAt),
         with: {
-          chatRun: true,
+          chatRun: {
+            with: {
+              artifacts: {
+                where: inArray(
+                  ArtifactTable.activityId,
+                  db
+                    .select({ id: ActivityTable.id })
+                    .from(ActivityTable)
+                    .where(
+                      and(
+                        eq(ActivityTable.source, "ai"),
+                        inArray(ActivityTable.action, ["create", "update"]),
+                      ),
+                    ),
+                ),
+                with: {
+                  activity: true,
+                },
+              },
+            },
+          },
           parts: {
             orderBy: asc(MessagePartTable.order),
           },

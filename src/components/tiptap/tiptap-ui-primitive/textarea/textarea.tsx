@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { cn } from "@/lib/tiptap-utils"
-import "./textarea.scss"
+import { cn } from "@/components/tiptap/lib/tiptap-utils";
+import "./textarea.scss";
 
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
@@ -10,7 +10,7 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
       className={cn("textarea", className)}
       {...props}
     />
-  )
+  );
 }
 
-export { Textarea }
+export { Textarea };

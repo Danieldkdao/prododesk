@@ -1,20 +1,41 @@
-import { db } from "@/db/db";
+import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
   AreaInsertType,
   AreaSelectType,
   AreaTable,
+  Color,
   ProjectTable,
+  TaskTable,
 } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { PAGE_SIZE } from "@/lib/constants";
+import { runMutationCacheInvalidation } from "@/lib/data-cache";
+import { ArchiveStatusFilterOption } from "@/lib/params";
 import { SQLMap } from "@/lib/types";
-import { and, eq } from "drizzle-orm";
+import { areValidIds } from "@/lib/utils";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+  SQL,
+} from "drizzle-orm";
+import { AreasSortByOption } from "../lib/areas-params";
 import { revalidateAreaCache } from "./cache/areas";
 
 export const confirmUserAreaOwnership = async (
   areaId: string,
   existingUserId?: string,
+  tx?: DbTransaction,
 ) => {
   let userIdToUse: string | null | undefined = null;
   if (existingUserId) {
@@ -25,7 +46,7 @@ export const confirmUserAreaOwnership = async (
   }
   if (!userIdToUse) return null;
 
-  const [existingArea] = await db
+  const [existingArea] = await (tx ?? db)
     .select()
     .from(AreaTable)
     .where(and(eq(AreaTable.id, areaId), eq(AreaTable.userId, userIdToUse)));
@@ -33,10 +54,10 @@ export const confirmUserAreaOwnership = async (
   return existingArea ?? null;
 };
 
-const revalidateAreaProjectsCache = async (areaId: string) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return;
-
+const revalidateAreaProjectsCache = async (
+  userId: string,
+  areaId: string,
+) => {
   const existingAreaProjects = await db.query.ProjectTable.findMany({
     where: and(
       eq(ProjectTable.userId, userId),
@@ -51,10 +72,160 @@ const revalidateAreaProjectsCache = async (areaId: string) => {
   }
 };
 
-export const insertAreaDb = async (areaData: SQLMap<AreaInsertType>) => {
+export const readAreasDb = async (filterOptions: {
+  search?: string;
+  sortBy?: AreasSortByOption;
+  archiveStatus?: ArchiveStatusFilterOption;
+  colors?: Color[];
+  page?: number;
+  limit?: number;
+  areaIds?: string[];
+  userId?: string;
+}) => {
+  const {
+    search,
+    sortBy,
+    archiveStatus,
+    colors,
+    page,
+    userId,
+    areaIds,
+    limit = PAGE_SIZE,
+  } = filterOptions;
+
+  let userIdToUse: string | null = null;
+  if (userId) {
+    userIdToUse = userId;
+  } else {
+    const { userId } = await getCurrentUser();
+    if (!userId) return null;
+
+    userIdToUse = userId;
+  }
+  if (!userIdToUse) return null;
+
+  let offset: number | null = null;
+  if (page !== null && page !== undefined) {
+    offset = (page - 1) * limit;
+  }
+
+  const normalizedSearch = search?.trim();
+  const searchFilter = normalizedSearch
+    ? or(
+        ilike(AreaTable.name, `%${normalizedSearch}%`),
+        ilike(AreaTable.description, `%${normalizedSearch}%`),
+      )
+    : undefined;
+
+  const sortByMap: Record<AreasSortByOption, SQL<unknown>> = {
+    recently_created: desc(AreaTable.createdAt),
+    oldest: asc(AreaTable.createdAt),
+    recently_updated: desc(AreaTable.updatedAt),
+    position: asc(AreaTable.position),
+  };
+
+  const archiveStatusMap: Record<
+    ArchiveStatusFilterOption,
+    SQL<unknown> | undefined
+  > = {
+    all: undefined,
+    active: and(eq(AreaTable.isArchived, false), isNull(AreaTable.archivedAt)),
+    archived: and(
+      eq(AreaTable.isArchived, true),
+      isNotNull(AreaTable.archivedAt),
+    ),
+  };
+
+  const colorsFilter = colors?.length
+    ? inArray(AreaTable.color, colors)
+    : undefined;
+
+  const archivedFilter = archiveStatus
+    ? archiveStatusMap[archiveStatus]
+    : undefined;
+
+  let existingAreaIds: string[] = [];
+  if (areaIds?.length) {
+    if (!areValidIds(areaIds)) return null;
+
+    const existingAreas = await Promise.all(
+      areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userIdToUse)),
+    );
+    existingAreaIds = existingAreas
+      .filter((area): area is AreaSelectType => Boolean(area))
+      .map((area) => area.id);
+    if (existingAreaIds.length !== areaIds.length) return null;
+  }
+
+  const areasFilter = existingAreaIds.length
+    ? inArray(AreaTable.id, existingAreaIds)
+    : undefined;
+
+  const whereQuery = and(
+    eq(AreaTable.userId, userIdToUse),
+    searchFilter,
+    archivedFilter,
+    colorsFilter,
+    areasFilter,
+  );
+
+  let query = db
+    .select({
+      ...getTableColumns(AreaTable),
+      activeProjectCount: sql<number>`(
+          SELECT COUNT(*)::int
+          FROM ${ProjectTable} pt
+          WHERE pt.area_id = "areas"."id"
+            AND pt.is_archived = FALSE
+            AND pt.status = 'active'
+        )`,
+      projectCount: sql<number>`(
+          SELECT COUNT(*)::int
+          FROM ${ProjectTable} pt
+          WHERE pt.area_id = "areas"."id"
+        )`,
+      taskCount: sql<number>`(
+          SELECT COUNT(*)::int
+          FROM ${TaskTable} tt
+          INNER JOIN ${ProjectTable} pt
+            ON tt.project_id = pt.id
+          WHERE pt.area_id = "areas"."id"
+        )`,
+      completeTaskCount: sql<number>`(
+          SELECT COUNT(*)::int
+          FROM ${TaskTable} tt
+          INNER JOIN ${ProjectTable} pt
+            ON tt.project_id = pt.id
+          WHERE pt.area_id = "areas"."id"
+            AND tt.status = 'completed'
+        )`,
+    })
+    .from(AreaTable)
+    .where(whereQuery)
+    .$dynamic();
+
+  if (sortBy) {
+    query = query.orderBy(sortByMap[sortBy]).$dynamic();
+  }
+  if (offset) {
+    query = query.offset(offset).$dynamic();
+  }
+  const areas = await query.limit(limit);
+
+  return {
+    areas,
+    whereQuery,
+  };
+};
+
+export const insertAreaDb = async (
+  areaData: SQLMap<AreaInsertType>,
+  options?: ActivityMutationOptions,
+) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   try {
-    const insertedArea = await db.transaction(async (tx) => {
-      const [insertedArea] = await tx
+    const insertArea = async (pgtx: DbTransaction) => {
+      const [insertedArea] = await pgtx
         .insert(AreaTable)
         .values(areaData)
         .returning();
@@ -62,7 +233,7 @@ export const insertAreaDb = async (areaData: SQLMap<AreaInsertType>) => {
 
       const insertedActivity = await insertActivityDb(
         {
-          source: "user",
+          source,
           action: "create",
           subject: "area",
           subjectLabel: insertedArea.name,
@@ -70,15 +241,21 @@ export const insertAreaDb = async (areaData: SQLMap<AreaInsertType>) => {
           areaId: insertedArea.id,
           message: `Started area "${insertedArea.name}"`,
         },
-        tx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
       return insertedArea;
-    });
+    };
 
-    await revalidateAreaProjectsCache(insertedArea.id);
-    revalidateAreaCache(insertedArea.userId, insertedArea.id);
+    const insertedArea = tx
+      ? await insertArea(tx)
+      : await db.transaction(insertArea);
+
+    await runMutationCacheInvalidation(source === "ai", async () => {
+      await revalidateAreaProjectsCache(insertedArea.userId, insertedArea.id);
+      revalidateAreaCache(insertedArea.userId, insertedArea.id);
+    });
 
     return insertedArea;
   } catch (error) {
@@ -92,13 +269,15 @@ export const updateAreaDb = async (
   areaData: SQLMap<
     Omit<Partial<AreaSelectType>, "id" | "createdAt" | "updatedAt" | "userId">
   >,
+  options?: ActivityMutationOptions,
 ) => {
-  const existingArea = await confirmUserAreaOwnership(areaId);
+  const { source = "user", tx, chatRunId } = options ?? {};
+  const existingArea = await confirmUserAreaOwnership(areaId, undefined, tx);
   if (!existingArea) return null;
 
   try {
-    const updatedArea = await db.transaction(async (tx) => {
-      const [updatedArea] = await tx
+    const updateArea = async (pgtx: DbTransaction) => {
+      const [updatedArea] = await pgtx
         .update(AreaTable)
         .set(areaData)
         .where(
@@ -112,7 +291,7 @@ export const updateAreaDb = async (
 
       const insertedActivity = await insertActivityDb(
         {
-          source: "user",
+          source,
           action: "update",
           subject: "area",
           subjectLabel: updatedArea.name,
@@ -120,15 +299,21 @@ export const updateAreaDb = async (
           areaId: updatedArea.id,
           message: `Updated area "${updatedArea.name}"`,
         },
-        tx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
       return updatedArea;
-    });
+    };
 
-    await revalidateAreaProjectsCache(updatedArea.id);
-    revalidateAreaCache(updatedArea.userId, updatedArea.id);
+    const updatedArea = tx
+      ? await updateArea(tx)
+      : await db.transaction(updateArea);
+
+    await runMutationCacheInvalidation(source === "ai", async () => {
+      await revalidateAreaProjectsCache(updatedArea.userId, updatedArea.id);
+      revalidateAreaCache(updatedArea.userId, updatedArea.id);
+    });
 
     return updatedArea;
   } catch (error) {
@@ -137,13 +322,17 @@ export const updateAreaDb = async (
   }
 };
 
-export const deleteAreaDb = async (areaId: string) => {
-  const existingArea = await confirmUserAreaOwnership(areaId);
+export const deleteAreaDb = async (
+  areaId: string,
+  options?: ActivityMutationOptions,
+) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
+  const existingArea = await confirmUserAreaOwnership(areaId, undefined, tx);
   if (!existingArea) return null;
 
   try {
-    const deletedArea = await db.transaction(async (tx) => {
-      const [deletedArea] = await tx
+    const deleteArea = async (pgtx: DbTransaction) => {
+      const [deletedArea] = await pgtx
         .delete(AreaTable)
         .where(
           and(
@@ -156,22 +345,28 @@ export const deleteAreaDb = async (areaId: string) => {
 
       const insertedActivity = await insertActivityDb(
         {
-          source: "user",
+          source,
           action: "delete",
           subject: "area",
           subjectLabel: deletedArea.name,
           subjectId: deletedArea.id,
           message: `Deleted area "${deletedArea.name}"`,
         },
-        tx,
+        { tx: pgtx, chatRunId },
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
       return deletedArea;
-    });
+    };
 
-    await revalidateAreaProjectsCache(deletedArea.id);
-    revalidateAreaCache(deletedArea.userId, deletedArea.id);
+    const deletedArea = tx
+      ? await deleteArea(tx)
+      : await db.transaction(deleteArea);
+
+    await runMutationCacheInvalidation(source === "ai", async () => {
+      await revalidateAreaProjectsCache(deletedArea.userId, deletedArea.id);
+      revalidateAreaCache(deletedArea.userId, deletedArea.id);
+    });
 
     return deletedArea;
   } catch (error) {

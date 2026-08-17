@@ -34,6 +34,7 @@ export const MilestonesInfiniteList = ({
     (nextPage: number) => {
       return readProjectMilestonesAction(projectId, {
         ...filters,
+        search: filters.milestoneSearch,
         page: nextPage,
       });
     },

@@ -51,7 +51,7 @@ const models = [
   },
   {
     name: "DeepSeek V4 Pro",
-    id: "deepseek/deepseek-v4-pro" as const,
+    id: "deepseek/deepseek-v4-pro-0813" as const,
     logo: DeepSeek.Color,
     kind: "fast-cost-efficient",
   },

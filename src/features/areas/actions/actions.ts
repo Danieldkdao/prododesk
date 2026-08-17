@@ -1,6 +1,6 @@
 "use server";
 
-import { db } from "@/db/db";
+import { ActivityMutationOptions, db } from "@/db/db";
 import {
   ActivityTable,
   AreaTable,
@@ -27,13 +27,8 @@ import {
   desc,
   eq,
   getTableColumns,
-  ilike,
-  inArray,
-  isNotNull,
-  isNull,
   lte,
   or,
-  SQL,
   sql,
 } from "drizzle-orm";
 import { cacheTag } from "next/cache";
@@ -42,6 +37,7 @@ import {
   confirmUserAreaOwnership,
   deleteAreaDb,
   insertAreaDb,
+  readAreasDb,
   updateAreaDb,
 } from "../server/areas";
 import { getAreaIdTag, getUserAreaTag } from "../server/cache/areas";
@@ -169,6 +165,8 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
   };
 };
 export const readAreaAction = async (areaId: string) => {
+  if (!areValidIds(areaId)) return null;
+
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
@@ -192,84 +190,12 @@ const readCachedAreasAction = async (
   "use cache";
   cacheTag(getUserAreaTag(userId));
 
-  const { search, sortBy, archiveStatus, colors, page } = filterOptions;
+  const response = await readAreasDb({ ...filterOptions, userId });
+  if (!response) return null;
 
-  const offset = (page - 1) * PAGE_SIZE;
+  const page = filterOptions.page;
 
-  const searchTerm = `%${search.trim()}%`;
-  const searchFilter = search.trim()
-    ? or(
-        ilike(AreaTable.name, searchTerm),
-        ilike(AreaTable.description, searchTerm),
-      )
-    : undefined;
-
-  const sortByMap: Record<AreasSortByOption, SQL<unknown>> = {
-    recently_created: desc(AreaTable.createdAt),
-    oldest: asc(AreaTable.createdAt),
-    recently_updated: desc(AreaTable.updatedAt),
-    position: asc(AreaTable.position),
-  };
-
-  const archiveStatusMap: Record<
-    ArchiveStatusFilterOption,
-    SQL<unknown> | undefined
-  > = {
-    all: undefined,
-    active: and(eq(AreaTable.isArchived, false), isNull(AreaTable.archivedAt)),
-    archived: and(
-      eq(AreaTable.isArchived, true),
-      isNotNull(AreaTable.archivedAt),
-    ),
-  };
-
-  const colorsFilter = colors.length
-    ? inArray(AreaTable.color, colors)
-    : undefined;
-
-  const whereQuery = and(
-    eq(AreaTable.userId, userId),
-    searchFilter,
-    archiveStatusMap[archiveStatus],
-    colorsFilter,
-  );
-
-  const areas = await db
-    .select({
-      ...getTableColumns(AreaTable),
-      activeProjectCount: sql<number>`(
-        SELECT COUNT(*)::int
-        FROM ${ProjectTable} pt
-        WHERE pt.area_id = "areas"."id"
-          AND pt.is_archived = FALSE
-          AND pt.status = 'active'
-      )`,
-      projectCount: sql<number>`(
-        SELECT COUNT(*)::int
-        FROM ${ProjectTable} pt
-        WHERE pt.area_id = "areas"."id"
-      )`,
-      taskCount: sql<number>`(
-        SELECT COUNT(*)::int
-        FROM ${TaskTable} tt
-        INNER JOIN ${ProjectTable} pt
-          ON tt.project_id = pt.id
-        WHERE pt.area_id = "areas"."id"
-      )`,
-      completeTaskCount: sql<number>`(
-        SELECT COUNT(*)::int
-        FROM ${TaskTable} tt
-        INNER JOIN ${ProjectTable} pt
-          ON tt.project_id = pt.id
-        WHERE pt.area_id = "areas"."id"
-          AND tt.status = 'completed'
-      )`,
-    })
-    .from(AreaTable)
-    .where(whereQuery)
-    .orderBy(sortByMap[sortBy])
-    .offset(offset)
-    .limit(PAGE_SIZE);
+  const { areas, whereQuery } = response;
 
   const [totalAreas] = await db
     .select({
@@ -309,7 +235,10 @@ export const readAreasAction = async (filterOptions: {
 };
 export type ReadAreasActionReturnType = UnwrapAsync<typeof readAreasAction>;
 
-export const createAreaAction = async (unsafeData: AreaSchemaType) => {
+export const createAreaAction = async (
+  unsafeData: AreaSchemaType,
+  options?: ActivityMutationOptions,
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -327,15 +256,18 @@ export const createAreaAction = async (unsafeData: AreaSchemaType) => {
   }
 
   try {
-    const createdArea = await insertAreaDb({
-      ...data,
-      position: sql`(
+    const createdArea = await insertAreaDb(
+      {
+        ...data,
+        position: sql`(
           SELECT COUNT(*)
           FROM ${AreaTable} ata
           WHERE ata.user_id = ${userId}
         ) + 1`,
-      userId,
-    });
+        userId,
+      },
+      options,
+    );
     if (!createdArea) throw new Error("Failed to create area.");
 
     return {
@@ -353,7 +285,8 @@ export const createAreaAction = async (unsafeData: AreaSchemaType) => {
 
 export const updateAreaAction = async (
   areaId: string,
-  areaData: AreaSchemaType,
+  areaData: Partial<AreaSchemaType>,
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(areaId)) {
     return {
@@ -378,7 +311,7 @@ export const updateAreaAction = async (
     };
   }
 
-  const { success, data } = areaSchema.safeParse(areaData);
+  const { success, data } = areaSchema.partial().safeParse(areaData);
   if (!success) {
     return {
       error: true,
@@ -387,7 +320,7 @@ export const updateAreaAction = async (
   }
 
   try {
-    const updatedArea = await updateAreaDb(existingArea.id, data);
+    const updatedArea = await updateAreaDb(existingArea.id, data, options);
     if (!updatedArea) throw new Error("Failed to update area.");
 
     return {
@@ -406,6 +339,7 @@ export const updateAreaAction = async (
 export const toggleAreaArchiveStatusAction = async (
   areaId: string,
   newArchiveStatus: boolean,
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(areaId)) {
     return {
@@ -431,10 +365,14 @@ export const toggleAreaArchiveStatusAction = async (
   }
 
   try {
-    const updatedArea = await updateAreaDb(existingArea.id, {
-      isArchived: newArchiveStatus,
-      archivedAt: new Date(),
-    });
+    const updatedArea = await updateAreaDb(
+      existingArea.id,
+      {
+        isArchived: newArchiveStatus,
+        archivedAt: newArchiveStatus ? new Date() : null,
+      },
+      options,
+    );
     if (!updatedArea) throw new Error("Failed to update area archive status.");
 
     return {
@@ -452,7 +390,10 @@ export const toggleAreaArchiveStatusAction = async (
   }
 };
 
-export const deleteAreaAction = async (areaId: string) => {
+export const deleteAreaAction = async (
+  areaId: string,
+  options?: ActivityMutationOptions,
+) => {
   if (!areValidIds(areaId)) {
     return {
       error: true,
@@ -477,7 +418,7 @@ export const deleteAreaAction = async (areaId: string) => {
   }
 
   try {
-    const deletedArea = await deleteAreaDb(existingArea.id);
+    const deletedArea = await deleteAreaDb(existingArea.id, options);
     if (!deletedArea) throw new Error("Failed to delete area.");
 
     return {

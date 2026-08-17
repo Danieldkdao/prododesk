@@ -1,62 +1,9 @@
 import { taskPriorities, taskStatuses } from "@/db/shared";
+import {
+  isoDatetimeFormatInstructions,
+  approvalReasonSchema,
+} from "@/services/ai/tools/helpers";
 import z from "zod";
-
-export const approvalReasonSchema = z
-  .string()
-  .trim()
-  .min(20, {
-    error: "The approval reason must provide meaningful detail.",
-  })
-  .max(500)
-  .describe(
-    "A detailed, user-facing explanation of why this action is necessary, exactly what will change, and which tasks will be affected. Never use a vague statement.",
-  );
-
-export const searchWebToolSchema = z.object({
-  query: z
-    .string()
-    .min(1)
-    .max(400, { error: "Query cannot be longer than 400 characters." })
-    .superRefine((query, ctx) => {
-      if (query.split(" ").length > 50) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["query"],
-          message: "Query cannot be longer than 50 words.",
-        });
-      }
-    })
-    .describe("The search query. No more than 400 characters and 50 words."),
-});
-export const searchWebToolValidationSchema = z.object({
-  results: z.array(
-    z.object({
-      id: z.url(),
-      title: z.string(),
-      url: z.url(),
-      publishedDate: z.string().optional(),
-      image: z.string().optional(),
-      favicon: z.string().optional(),
-    }),
-  ),
-});
-
-export const scrapeWebpageToolSchema = z.object({
-  url: z
-    .url()
-    .describe(
-      "The URL of the webpage you would like to scrape. Must start with 'https://'",
-    ),
-});
-export const scrapeWebpageToolValidationSchema = z.object({
-  success: z.boolean(),
-  data: z.object({
-    markdown: z.string(),
-  }),
-});
-
-const isoDatetimeFormatInstructions =
-  "Strict ISO 8601 string format: YYYY-MM-DDTHH:mm:ssZ (e.g., '2026-07-27T21:44:00Z'). Must include a capital 'T' separator and a trailing 'Z' for UTC timezone.";
 
 export const createTasksToolSchema = z.object({
   tasks: z
@@ -79,6 +26,10 @@ export const createTasksToolSchema = z.object({
           .describe(
             `When this task is scheduled at. Optional. ${isoDatetimeFormatInstructions}`,
           ),
+        projectId: z
+          .uuid()
+          .nullish()
+          .describe("The ID of the project associated with this task."),
         dueAt: z.iso
           .datetime()
           .nullish()
@@ -106,7 +57,12 @@ export const readTasksToolSchema = z
       .describe(
         `An optional after filter that allows you get tasks AFTER or AT a provided datetime. ${isoDatetimeFormatInstructions}`,
       ),
-    search: z.string().nullish(),
+    search: z
+      .string()
+      .optional()
+      .describe(
+        "An optional search query that allows you search by project name, task name, or task description.",
+      ),
     statuses: z
       .array(z.enum(taskStatuses))
       .describe(
@@ -117,6 +73,14 @@ export const readTasksToolSchema = z
       .describe(
         "An array of priorities that allows you to filter the tasks by priority. It is required but you can just pass in an empty array.",
       ),
+    areaIds: z
+      .array(z.uuid())
+      .default([])
+      .describe("Narrow down the search with an array of area IDs."),
+    projectIds: z
+      .array(z.uuid())
+      .default([])
+      .describe("Narrow down the search with an array of project IDs."),
   })
   .superRefine((data, ctx) => {
     if (data.after && data.before && data.after <= data.before) {
@@ -174,11 +138,34 @@ export const updateTasksStatusToolSchema = z.object({
   approvalReason: approvalReasonSchema,
 });
 
-export const deleteTaskToolSchema = z.object({
-  id: z.uuid().describe("The ID of the task that you would like to update."),
+export const updateTasksPriorityToolSchema = z.object({
+  taskIds: z
+    .array(z.uuid())
+    .min(1)
+    .max(100)
+    .describe("The array of task IDs you would like to update."),
+  priority: z
+    .enum(taskPriorities)
+    .describe("The NEW priority that the tasks will be updated to."),
   approvalReason: approvalReasonSchema,
 });
 
-export const runIdContextSchema = z.object({
-  runId: z.uuid(),
+export const assignTasksToMilestoneToolSchema = z.object({
+  taskIds: z
+    .array(z.uuid())
+    .min(1)
+    .max(10)
+    .describe("The IDs of the tasks you want to assign."),
+  milestoneId: z
+    .uuid()
+    .nullish()
+    .describe(
+      "The ID of the milestone that you want to assign the tasks to. Leave `null` to unassign them.",
+    ),
+  approvalReason: approvalReasonSchema,
+});
+
+export const deleteTaskToolSchema = z.object({
+  id: z.uuid().describe("The ID of the task to delete."),
+  approvalReason: approvalReasonSchema,
 });

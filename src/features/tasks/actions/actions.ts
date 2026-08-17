@@ -1,16 +1,8 @@
 "use server";
 
-import { db } from "@/db/db";
-import {
-  AreaSelectType,
-  ProjectSelectType,
-  ProjectTable,
-  TaskPriority,
-  TaskStatus,
-  TaskTable,
-} from "@/db/schema";
+import { ActivityMutationOptions, db } from "@/db/db";
+import { ProjectTable, TaskPriority, TaskStatus, TaskTable } from "@/db/schema";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
-import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -26,23 +18,7 @@ import {
   getLocalMonthBounds,
 } from "@/lib/utils";
 import { format, isValid } from "date-fns";
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  getTableColumns,
-  gte,
-  ilike,
-  inArray,
-  isNull,
-  lte,
-  ne,
-  or,
-  sql,
-  SQL,
-} from "drizzle-orm";
+import { and, asc, count, eq, gte, lte, ne } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { DayTasksSortByOption } from "../lib/tasks-params";
 import { getUserTaskTag } from "../server/cache/tasks";
@@ -50,12 +26,20 @@ import {
   confirmUserTaskOwnership,
   deleteTaskDb,
   insertTaskDb,
+  readTasksDb,
   updateTaskDb,
 } from "../server/tasks";
-import { taskSchema, TaskSchemaType } from "./schemas";
-import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+import {
+  taskSchema,
+  TaskSchemaType,
+  updateTaskSchema,
+  UpdateTaskSchemaType,
+} from "./schemas";
 
-export const createTaskAction = async (unsafeData: TaskSchemaType) => {
+export const createTaskAction = async (
+  unsafeData: TaskSchemaType,
+  options?: ActivityMutationOptions,
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -73,7 +57,7 @@ export const createTaskAction = async (unsafeData: TaskSchemaType) => {
   }
 
   try {
-    const createdTask = await insertTaskDb({ ...data, userId });
+    const createdTask = await insertTaskDb({ ...data, userId }, options);
     if (!createdTask) throw new Error("Failed to create task.");
 
     return {
@@ -91,21 +75,21 @@ export const createTaskAction = async (unsafeData: TaskSchemaType) => {
 
 export const updateTaskAction = async (
   taskId: string,
-  unsafeData: TaskSchemaType,
+  unsafeData: UpdateTaskSchemaType,
+  options?: ActivityMutationOptions,
 ) => {
+  if (!areValidIds(taskId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
       error: true,
       message: UNAUTHED_ERROR_MESSAGE,
-    };
-  }
-
-  const { data, success } = taskSchema.safeParse(unsafeData);
-  if (!success) {
-    return {
-      error: true,
-      message: INVALID_DATA_ERROR_MESSAGE,
     };
   }
 
@@ -117,8 +101,32 @@ export const updateTaskAction = async (
     };
   }
 
+  const { data, success } = updateTaskSchema.safeParse(unsafeData);
+  if (!success) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
+  const existingResult = taskSchema.safeParse({
+    name: existingTask.name,
+    outcome: existingTask.description,
+    icon: existingTask.emoji,
+    status: existingTask.status,
+    scheduledAt: existingTask.scheduledAt ?? null,
+    dueAt: existingTask.dueAt ?? null,
+    ...data,
+  });
+  if (!existingResult.success) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
   try {
-    const updatedTask = await updateTaskDb(existingTask.id, data);
+    const updatedTask = await updateTaskDb(existingTask.id, data, options);
     if (!updatedTask) throw new Error("Failed to update task.");
 
     return {
@@ -137,6 +145,7 @@ export const updateTaskAction = async (
 export const updateTaskMilestoneAction = async (
   taskId: string,
   milestoneId: string | null,
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(taskId) || (milestoneId && !areValidIds(milestoneId))) {
     return {
@@ -162,7 +171,11 @@ export const updateTaskMilestoneAction = async (
   }
 
   try {
-    const updatedTask = await updateTaskDb(existingTask.id, { milestoneId });
+    const updatedTask = await updateTaskDb(
+      existingTask.id,
+      { milestoneId },
+      options,
+    );
     if (!updatedTask) throw new Error("Failed to update task milestone.");
 
     return {
@@ -178,7 +191,17 @@ export const updateTaskMilestoneAction = async (
   }
 };
 
-export const deleteTaskAction = async (taskId: string) => {
+export const deleteTaskAction = async (
+  taskId: string,
+  options?: ActivityMutationOptions,
+) => {
+  if (!areValidIds(taskId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -196,7 +219,7 @@ export const deleteTaskAction = async (taskId: string) => {
   }
 
   try {
-    const deletedTask = await deleteTaskDb(taskId);
+    const deletedTask = await deleteTaskDb(taskId, options);
     if (!deletedTask) throw new Error("Failed to delete task.");
 
     return {
@@ -291,152 +314,12 @@ const readCachedTasksAction = async (
   "use cache";
   cacheTag(getUserTaskTag(userId));
 
-  const {
-    search,
-    sortBy,
-    priorities,
-    statuses,
-    dateTimeStartRange,
-    dateTimeEndRange,
-    page,
-    unassignedOnly = false,
-    allTasks = false,
-    projectIds,
-    areaIds,
-    selectedDay,
-  } = filterOptions;
+  const { page, selectedDay } = filterOptions;
 
-  const offset = (page - 1) * PAGE_SIZE;
+  const response = await readTasksDb({ ...filterOptions, userId, timeZone });
+  if (!response) return null;
 
-  const searchTerm = `%${search.trim()}%`;
-
-  const priorityRank = sql`
-    CASE ${TaskTable.priority}
-      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      ELSE 5
-    END
-  `;
-
-  const searchFilter = search.trim()
-    ? or(
-        ilike(TaskTable.name, searchTerm),
-        ilike(TaskTable.description, searchTerm),
-        ilike(ProjectTable.name, searchTerm),
-      )
-    : undefined;
-
-  const priorityFilter = priorities.length
-    ? inArray(TaskTable.priority, priorities)
-    : undefined;
-
-  const sortByMap: Record<DayTasksSortByOption, SQL<unknown>> = {
-    name_a_z: asc(sql`lower(${TaskTable.name})`),
-    name_z_a: desc(sql`lower(${TaskTable.name})`),
-    oldest: asc(TaskTable.createdAt),
-    priority: asc(priorityRank),
-    recently_created: desc(TaskTable.createdAt),
-  };
-
-  const statusFilter = statuses.length
-    ? inArray(TaskTable.status, statuses)
-    : undefined;
-
-  let existingProjects: ProjectSelectType[] = [];
-
-  if (projectIds?.length) {
-    if (!areValidIds(projectIds)) return null;
-
-    const userProjects = await Promise.all(
-      projectIds.map((projectId) =>
-        confirmUserProjectOwnership(projectId, userId),
-      ),
-    );
-
-    existingProjects = userProjects.filter(
-      (project): project is ProjectSelectType => Boolean(project),
-    );
-
-    if (existingProjects.length !== projectIds.length) return null;
-  }
-
-  const projectsFilter = existingProjects.length
-    ? inArray(
-        TaskTable.projectId,
-        existingProjects.map((project) => project.id),
-      )
-    : undefined;
-
-  let existingAreaIds: string[] = [];
-
-  if (areaIds?.length) {
-    if (!areValidIds(areaIds)) return null;
-
-    const userAreas = await Promise.all(
-      areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userId)),
-    );
-    existingAreaIds = userAreas
-      .filter((area): area is AreaSelectType => Boolean(area))
-      .map((area) => area.id);
-
-    if (existingAreaIds.length !== areaIds.length) return null;
-  }
-
-  const areasFilter = existingAreaIds.length
-    ? inArray(ProjectTable.areaId, existingAreaIds)
-    : undefined;
-
-  const timeRangeFilter = and(
-    dateTimeStartRange
-      ? gte(TaskTable.scheduledAt, dateTimeStartRange)
-      : undefined,
-    dateTimeEndRange ? lte(TaskTable.scheduledAt, dateTimeEndRange) : undefined,
-  );
-
-  let dayFilter;
-
-  if (selectedDay) {
-    const { startUtc, endUtc } = getLocalDayBounds(selectedDay, timeZone);
-
-    dayFilter = and(
-      gte(TaskTable.scheduledAt, startUtc),
-      lte(TaskTable.scheduledAt, endUtc),
-    );
-  }
-
-  const milestoneFilter = unassignedOnly
-    ? isNull(TaskTable.milestoneId)
-    : undefined;
-
-  const whereQuery = and(
-    eq(TaskTable.userId, userId),
-    dayFilter,
-    searchFilter,
-    priorityFilter,
-    projectsFilter,
-    statusFilter,
-    timeRangeFilter,
-    milestoneFilter,
-    areasFilter,
-  );
-
-  const baseFetchTasks = db
-    .select({
-      ...getTableColumns(TaskTable),
-      project: getTableColumns(ProjectTable),
-    })
-    .from(TaskTable)
-    .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
-    .where(whereQuery)
-    .orderBy(sortByMap[sortBy]);
-
-  const fetchTasks = allTasks
-    ? baseFetchTasks
-    : baseFetchTasks.offset(offset).limit(PAGE_SIZE);
-
-  const tasks = await fetchTasks;
+  const { tasks, projects, dayFilter, whereQuery } = response;
 
   const [totalSelectedTasks] = await db
     .select({
@@ -488,7 +371,7 @@ const readCachedTasksAction = async (
       hasNextPage,
       allTasksCompleted,
       day: selectedDay ? format(selectedDay, "yyyy-MM-dd") : null,
-      projects: existingProjects ?? null,
+      projects,
       clientKey,
     },
   };
@@ -517,6 +400,7 @@ export type ReadTasksActionReturnType = UnwrapAsync<typeof readTasksAction>;
 export const updateTasksStatusAction = async (
   taskId: string | string[],
   newStatus: TaskStatus,
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(taskId)) {
     return {
@@ -536,14 +420,14 @@ export const updateTasksStatusAction = async (
   try {
     let updatedTask;
     if (typeof taskId === "string") {
-      updatedTask = await updateTaskDb(taskId, {
-        status: newStatus,
-      });
+      updatedTask = await updateTaskDb(taskId, { status: newStatus }, options);
       if (!updatedTask)
         throw new Error("Failed to update task completion status.");
     } else {
       const tasks = await Promise.all(
-        taskId.map((taskId) => updateTaskDb(taskId, { status: newStatus })),
+        taskId.map((taskId) =>
+          updateTaskDb(taskId, { status: newStatus }, options),
+        ),
       );
       if (!tasks.every(Boolean) || tasks.length !== taskId.length)
         throw new Error("Failed to update tasks status.");
@@ -594,6 +478,7 @@ export const updateTasksStatusAction = async (
 export const updateTasksPriorityAction = async (
   taskId: string | string[],
   newPriority: TaskPriority,
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(taskId)) {
     return {
@@ -614,14 +499,16 @@ export const updateTasksPriorityAction = async (
     let update;
     if (Array.isArray(taskId)) {
       const updates = await Promise.all(
-        taskId.map((taskId) => updateTaskDb(taskId, { priority: newPriority })),
+        taskId.map((taskId) =>
+          updateTaskDb(taskId, { priority: newPriority }, options),
+        ),
       );
       if (!updates.every(Boolean))
         throw new Error("Failed to update task priorities.");
 
       update = updates[0];
     } else {
-      update = await updateTaskDb(taskId, { priority: newPriority });
+      update = await updateTaskDb(taskId, { priority: newPriority }, options);
     }
     if (!update) throw new Error("Failed to update task priority.");
 

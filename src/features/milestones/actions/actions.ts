@@ -1,7 +1,8 @@
 "use server";
 
-import { db } from "@/db/db";
+import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import { MilestoneStatus, MilestoneTable } from "@/db/schema";
+import { insertActivityDb } from "@/features/activity/server/activity";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -11,23 +12,11 @@ import {
   PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
+import { runMutationCacheInvalidation } from "@/lib/data-cache";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
 import { format } from "date-fns";
-import {
-  and,
-  asc,
-  between,
-  count,
-  eq,
-  gte,
-  ilike,
-  inArray,
-  lte,
-  or,
-  SQL,
-  sql,
-} from "drizzle-orm";
+import { and, between, count, eq, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import {
   getProjectMilestoneTag,
@@ -37,16 +26,16 @@ import {
   confirmUserMilestoneOwnership,
   deleteMilestoneDb,
   insertMilestoneDb,
+  readMilestonesDb,
   updateMilestoneDb,
 } from "../server/milestones";
 import { milestoneSchema, MilestoneSchemaType } from "./schemas";
-import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 
 const readCachedProjectMilestonesAction = async (
   userId: string,
   projectId: string,
   filterOptions: {
-    milestoneSearch: string;
+    search: string;
     statuses: MilestoneStatus[];
     dueAtOnAfter: Date | null;
     dueAtOnBefore: Date | null;
@@ -56,53 +45,16 @@ const readCachedProjectMilestonesAction = async (
   "use cache";
   cacheTag(getProjectMilestoneTag(projectId));
 
-  const { milestoneSearch, statuses, dueAtOnAfter, dueAtOnBefore, page } =
-    filterOptions;
+  const page = filterOptions.page;
 
-  const offset = (page - 1) * PAGE_SIZE;
-
-  const searchTerm = `%${milestoneSearch.trim()}%`;
-  const searchFilter = milestoneSearch.trim()
-    ? or(
-        ilike(MilestoneTable.name, searchTerm),
-        ilike(MilestoneTable.description, searchTerm),
-      )
-    : undefined;
-
-  const statusesFilter = statuses.length
-    ? inArray(MilestoneTable.status, statuses)
-    : undefined;
-
-  const dueAtFilter = and(
-    dueAtOnAfter
-      ? gte(MilestoneTable.dueAt, format(dueAtOnAfter, "yyyy-MM-dd"))
-      : undefined,
-    dueAtOnBefore
-      ? lte(MilestoneTable.dueAt, format(dueAtOnBefore, "yyyy-MM-dd"))
-      : undefined,
-  );
-
-  const whereQuery = and(
-    eq(MilestoneTable.userId, userId),
-    eq(MilestoneTable.projectId, projectId),
-    searchFilter,
-    statusesFilter,
-    dueAtFilter,
-  );
-
-  const milestones = await db.query.MilestoneTable.findMany({
-    where: whereQuery,
-    orderBy: asc(MilestoneTable.position),
-    with: {
-      tasks: {
-        with: {
-          project: true,
-        },
-      },
-    },
-    offset,
-    limit: PAGE_SIZE,
+  const response = await readMilestonesDb({
+    ...filterOptions,
+    projectIds: [projectId],
+    userId,
   });
+  if (!response) return null;
+
+  const { milestones, whereQuery } = response;
 
   const [totalMilestones] = await db
     .select({ count: count() })
@@ -132,7 +84,7 @@ const readCachedProjectMilestonesAction = async (
 export const readProjectMilestonesAction = async (
   projectId: string,
   filterOptions: {
-    milestoneSearch: string;
+    search: string;
     statuses: MilestoneStatus[];
     dueAtOnAfter: Date | null;
     dueAtOnBefore: Date | null;
@@ -159,6 +111,7 @@ export type ReadProjectMilestonesActionType = UnwrapAsync<
 
 export const createMilestoneAction = async (
   unsafeData: MilestoneSchemaType,
+  options?: ActivityMutationOptions,
 ) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
@@ -176,20 +129,25 @@ export const createMilestoneAction = async (
     };
   }
 
-  const { dueAt, ...rest } = data;
+  const { dueAt, position, ...rest } = data;
 
   try {
-    const createdMilestone = await insertMilestoneDb({
-      ...rest,
-      userId,
-      position: sql`(
-        SELECT COUNT(*)
+    const createdMilestone = await insertMilestoneDb(
+      {
+        ...rest,
+        userId,
+        position:
+          position ||
+          sql`(
+        SELECT COALESCE(MAX(mt.position), 0)
         FROM ${MilestoneTable} mt
         WHERE mt.user_id = ${userId}
           AND mt.project_id = ${data.projectId}
       ) + 1`,
-      dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
-    });
+        dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
+      },
+      options,
+    );
     if (!createdMilestone) throw new Error("Failed to create milestone.");
 
     return {
@@ -207,7 +165,8 @@ export const createMilestoneAction = async (
 
 export const updateMilestoneAction = async (
   milestoneId: string,
-  unsafeData: MilestoneSchemaType,
+  unsafeData: Partial<MilestoneSchemaType>,
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(milestoneId)) {
     return {
@@ -232,7 +191,7 @@ export const updateMilestoneAction = async (
     };
   }
 
-  const { data, success } = milestoneSchema.safeParse(unsafeData);
+  const { data, success } = milestoneSchema.partial().safeParse(unsafeData);
   if (!success) {
     return {
       error: true,
@@ -243,10 +202,14 @@ export const updateMilestoneAction = async (
   const { dueAt, ...rest } = data;
 
   try {
-    const updatedMilestone = await updateMilestoneDb(existingMilestone.id, {
-      ...rest,
-      dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
-    });
+    const updatedMilestone = await updateMilestoneDb(
+      existingMilestone.id,
+      {
+        ...rest,
+        dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
+      },
+      options,
+    );
     if (!updatedMilestone) throw new Error("Failed to update milestone.");
 
     return {
@@ -265,7 +228,15 @@ export const updateMilestoneAction = async (
 export const updateMilestoneStatusAction = async (
   milestoneId: string,
   newStatus: MilestoneStatus,
+  options?: ActivityMutationOptions,
 ) => {
+  if (!areValidIds(milestoneId)) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -283,9 +254,11 @@ export const updateMilestoneStatusAction = async (
   }
 
   try {
-    const updatedMilestone = await updateMilestoneDb(existingMilestone.id, {
-      status: newStatus,
-    });
+    const updatedMilestone = await updateMilestoneDb(
+      existingMilestone.id,
+      { status: newStatus },
+      options,
+    );
     if (!updatedMilestone) throw new Error("Failed to update milestone.");
 
     return {
@@ -305,7 +278,9 @@ export const moveMilestoneAction = async (
   projectId: string,
   milestoneId: string,
   newPosition: number,
+  options?: ActivityMutationOptions,
 ) => {
+  const { source = "user", tx, chatRunId } = options ?? {};
   if (!areValidIds([projectId, milestoneId])) {
     return {
       error: true,
@@ -321,7 +296,7 @@ export const moveMilestoneAction = async (
     };
   }
 
-  const existingProject = await confirmUserProjectOwnership(projectId);
+  const existingProject = await confirmUserProjectOwnership(projectId, userId);
   if (!existingProject) {
     return {
       error: true,
@@ -345,9 +320,11 @@ export const moveMilestoneAction = async (
     };
   }
 
-  const existingMilestone = await confirmUserMilestoneOwnership(milestoneId, [
-    eq(MilestoneTable.projectId, existingProject.id),
-  ]);
+  const existingMilestone = await confirmUserMilestoneOwnership(
+    milestoneId,
+    userId,
+    [eq(MilestoneTable.projectId, existingProject.id)],
+  );
   if (!existingMilestone) {
     return {
       error: true,
@@ -391,24 +368,48 @@ export const moveMilestoneAction = async (
     const minimumPosition = Math.min(oldPosition, newPosition);
     const maximumPosition = Math.max(oldPosition, newPosition);
 
-    await db
-      .update(MilestoneTable)
-      .set({
-        position: updateSql,
-      })
-      .where(
-        and(
-          eq(MilestoneTable.userId, userId),
-          eq(MilestoneTable.projectId, existingProject.id),
-          between(MilestoneTable.position, minimumPosition, maximumPosition),
-        ),
-      );
+    const moveMilestone = async (pgtx: DbTransaction) => {
+      await pgtx
+        .update(MilestoneTable)
+        .set({
+          position: updateSql,
+        })
+        .where(
+          and(
+            eq(MilestoneTable.userId, userId),
+            eq(MilestoneTable.projectId, existingProject.id),
+            between(MilestoneTable.position, minimumPosition, maximumPosition),
+          ),
+        );
 
-    revalidateMilestoneCache(
-      userId,
-      existingProject.id,
-      existingProject.areaId,
-    );
+      const insertedActivity = await insertActivityDb(
+        {
+          source,
+          subject: "milestone",
+          action: "update",
+          subjectId: existingMilestone.id,
+          subjectLabel: existingMilestone.name,
+          projectId: existingProject.id,
+          message: `Moved milestone "${existingMilestone.name}" to position ${newPosition}`,
+        },
+        { tx: pgtx, chatRunId },
+      );
+      if (!insertedActivity) throw new Error("Failed to insert activity.");
+    };
+
+    if (tx) {
+      await moveMilestone(tx);
+    } else {
+      await db.transaction(moveMilestone);
+    }
+
+    await runMutationCacheInvalidation(source === "ai", () => {
+      revalidateMilestoneCache(
+        userId,
+        existingProject.id,
+        existingProject.areaId,
+      );
+    });
 
     return {
       error: false,
@@ -423,7 +424,10 @@ export const moveMilestoneAction = async (
   }
 };
 
-export const deleteMilestoneAction = async (milestoneId: string) => {
+export const deleteMilestoneAction = async (
+  milestoneId: string,
+  options?: ActivityMutationOptions,
+) => {
   if (!areValidIds(milestoneId)) {
     return {
       error: true,
@@ -448,7 +452,7 @@ export const deleteMilestoneAction = async (milestoneId: string) => {
   }
 
   try {
-    const deletedMilestone = await deleteMilestoneDb(milestoneId);
+    const deletedMilestone = await deleteMilestoneDb(milestoneId, options);
     if (!deletedMilestone) throw new Error("Failed to delete milestone.");
 
     return {

@@ -75,7 +75,10 @@ import { useIsBreakpoint } from "@/hooks/use-is-breakpoint";
 import { useWindowSize } from "@/hooks/use-window-size";
 
 // --- Lib ---
-import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils";
+import {
+  handleImageUpload,
+  MAX_FILE_SIZE,
+} from "@/components/tiptap/lib/tiptap-utils";
 
 // --- Styles ---
 import "@/components/tiptap/tiptap-templates/simple/simple-editor.scss";
@@ -333,7 +336,10 @@ export function SimpleEditor({
     const currentValue = editor.getMarkdown();
 
     if (currentValue !== value) {
-      editor.commands.setContent(value || "", { emitUpdate: false });
+      editor.commands.setContent(value || "", {
+        emitUpdate: false,
+        contentType: "markdown",
+      });
     }
   }, [editor, value]);
 

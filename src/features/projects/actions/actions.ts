@@ -1,18 +1,15 @@
 "use server";
 
-import { db } from "@/db/db";
+import { ActivityMutationOptions, db } from "@/db/db";
 import {
-  AreaSelectType,
   AreaTable,
   Color,
   DocumentTable,
   MilestoneTable,
   ProjectStatus,
   ProjectTable,
-  TaskSelectType,
   TaskTable,
 } from "@/db/schema";
-import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -24,25 +21,7 @@ import {
 import { ArchiveStatusFilterOption } from "@/lib/params";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
-import { format } from "date-fns";
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  getTableColumns,
-  gte,
-  ilike,
-  inArray,
-  isNotNull,
-  isNull,
-  lte,
-  ne,
-  or,
-  sql,
-  SQL,
-} from "drizzle-orm";
+import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { cache } from "react";
 import { ProjectsSortByOption } from "../lib/projects-params";
@@ -56,9 +35,16 @@ import {
   deleteProjectDb,
   insertProjectDb,
   parseProjectData,
+  readProjectsDb,
   updateProjectDb,
 } from "../server/projects";
-import { projectSchema, ProjectSchemaType } from "./schemas";
+import {
+  projectSchema,
+  ProjectSchemaType,
+  updateProjectSchema,
+  UpdateProjectSchemaType,
+} from "./schemas";
+import { format, parseISO } from "date-fns";
 
 const readCachedProjectsAction = async (
   userId: string,
@@ -83,145 +69,12 @@ const readCachedProjectsAction = async (
     cacheTag(getUserProjectTag(userId));
   }
 
-  const {
-    search,
-    sortBy,
-    colors,
-    statuses,
-    archiveStatus,
-    dateTimeStartRange,
-    dateTimeEndRange,
-    page,
-    areaIds,
-  } = filterOptions;
+  const response = await readProjectsDb({ ...filterOptions, userId });
+  if (!response) return null;
 
-  const offset = (page - 1) * PAGE_SIZE;
+  const { projects, whereQuery, areas } = response;
 
-  const searchTerm = `%${search.trim()}%`;
-  const searchFilter = search.trim()
-    ? or(
-        ilike(ProjectTable.name, searchTerm),
-        ilike(ProjectTable.outcome, searchTerm),
-        ilike(AreaTable.name, searchTerm),
-        ilike(AreaTable.description, searchTerm),
-      )
-    : undefined;
-
-  const sortByMap: Record<ProjectsSortByOption, SQL<unknown>> = {
-    oldest: asc(ProjectTable.createdAt),
-    recently_created: desc(ProjectTable.createdAt),
-    recently_updated: desc(ProjectTable.updatedAt),
-  };
-
-  const archiveStatusMap: Record<
-    ArchiveStatusFilterOption,
-    SQL<unknown> | undefined
-  > = {
-    all: undefined,
-    active: and(
-      eq(ProjectTable.isArchived, false),
-      isNull(ProjectTable.archivedAt),
-    ),
-    archived: and(
-      eq(ProjectTable.isArchived, true),
-      isNotNull(ProjectTable.archivedAt),
-    ),
-  };
-
-  const colorsFilter = colors.length
-    ? inArray(ProjectTable.color, colors)
-    : undefined;
-  const statusesFilter = statuses.length
-    ? inArray(ProjectTable.status, statuses)
-    : undefined;
-
-  const dateTimeRangeFilter = and(
-    dateTimeStartRange
-      ? gte(ProjectTable.startAt, format(dateTimeStartRange, "yyyy-MM-dd"))
-      : undefined,
-    dateTimeEndRange
-      ? lte(ProjectTable.endAt, format(dateTimeEndRange, "yyyy-MM-dd"))
-      : undefined,
-  );
-
-  let areas: AreaSelectType[] = [];
-  if (areaIds?.length) {
-    const existingAreas = await Promise.all(
-      areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userId)),
-    );
-    if (!existingAreas.every(Boolean)) {
-      return null;
-    }
-    areas = existingAreas.filter((area): area is AreaSelectType =>
-      Boolean(area),
-    );
-  }
-
-  const areaFilters = areas.length
-    ? inArray(
-        ProjectTable.areaId,
-        areas.map((area) => area.id),
-      )
-    : undefined;
-
-  const whereQuery = and(
-    eq(ProjectTable.userId, userId),
-    searchFilter,
-    colorsFilter,
-    statusesFilter,
-    dateTimeRangeFilter,
-    archiveStatusMap[archiveStatus],
-    areaFilters,
-  );
-
-  const priorityRank = sql`
-    CASE ${TaskTable.priority}
-      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      ELSE 5
-    END
-  `;
-
-  const projects = await db
-    .select({
-      ...getTableColumns(ProjectTable),
-      area: getTableColumns(AreaTable),
-      taskCount: sql<number>`(
-        SELECT COUNT(*)::int
-        FROM ${TaskTable} tt
-        WHERE tt.project_id = ${ProjectTable.id}
-      )`,
-      completeTaskCount: sql<number>`(
-        SELECT COUNT(*)::int
-        FROM ${TaskTable} tt
-        WHERE tt.project_id = ${ProjectTable.id}
-          AND tt.status = 'completed'
-      )`,
-      nextTask: sql<TaskSelectType | null>`(
-        ${db
-          .select({ task: sql`row_to_json(tasks.*)` })
-          .from(TaskTable)
-          .where(
-            and(
-              ne(TaskTable.status, "completed"),
-              eq(TaskTable.projectId, ProjectTable.id),
-            ),
-          )
-          .orderBy(asc(priorityRank))
-          .limit(1)}
-      )`.mapWith((val) => {
-        if (!val) return null;
-        return typeof val === "string" ? JSON.parse(val) : val;
-      }),
-    })
-    .from(ProjectTable)
-    .where(whereQuery)
-    .leftJoin(AreaTable, eq(AreaTable.id, ProjectTable.areaId))
-    .orderBy(sortByMap[sortBy])
-    .offset(offset)
-    .limit(PAGE_SIZE);
+  const page = filterOptions.page;
 
   const [totalProjects] = await db
     .select({ count: count() })
@@ -355,6 +208,8 @@ const readCachedProjectAction = async (userId: string, projectId: string) => {
     : null;
 };
 export const readProjectAction = cache(async (projectId: string) => {
+  if (!areValidIds(projectId)) return null;
+
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
@@ -362,7 +217,10 @@ export const readProjectAction = cache(async (projectId: string) => {
 });
 export type ReadProjectActionReturnType = UnwrapAsync<typeof readProjectAction>;
 
-export const createProjectAction = async (unsafeData: ProjectSchemaType) => {
+export const createProjectAction = async (
+  unsafeData: ProjectSchemaType,
+  options?: ActivityMutationOptions,
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -382,7 +240,7 @@ export const createProjectAction = async (unsafeData: ProjectSchemaType) => {
   const parsedData = parseProjectData(userId, data);
 
   try {
-    const createdProject = await insertProjectDb(parsedData);
+    const createdProject = await insertProjectDb(parsedData, options);
     if (!createdProject) throw new Error("Failed to create project.");
 
     return {
@@ -400,7 +258,8 @@ export const createProjectAction = async (unsafeData: ProjectSchemaType) => {
 
 export const updateProjectAction = async (
   projectId: string,
-  unsafeData: ProjectSchemaType,
+  unsafeData: UpdateProjectSchemaType,
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(projectId)) {
     return {
@@ -425,7 +284,7 @@ export const updateProjectAction = async (
     };
   }
 
-  const { success, data } = projectSchema.safeParse(unsafeData);
+  const { success, data } = updateProjectSchema.safeParse(unsafeData);
   if (!success) {
     return {
       error: true,
@@ -433,10 +292,35 @@ export const updateProjectAction = async (
     };
   }
 
-  const parsedData = parseProjectData(userId, data);
+  const existingResult = projectSchema.safeParse({
+    name: existingProject.name,
+    outcome: existingProject.outcome,
+    icon: existingProject.icon,
+    status: existingProject.status,
+    color: existingProject.color,
+    areaId: existingProject.areaId,
+    isArchived: existingProject.isArchived,
+    startAt: existingProject.startAt ? parseISO(existingProject.startAt) : null,
+    endAt: existingProject.endAt ? parseISO(existingProject.endAt) : null,
+    ...data,
+  });
+  if (!existingResult.success) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
 
   try {
-    const updatedProject = await updateProjectDb(projectId, parsedData);
+    const updatedProject = await updateProjectDb(
+      projectId,
+      {
+        ...data,
+        startAt: data.startAt ? format(data.startAt, "yyyy-MM-dd") : undefined,
+        endAt: data.endAt ? format(data.endAt, "yyyy-MM-dd") : undefined,
+      },
+      options,
+    );
     if (!updatedProject) throw new Error("Failed to update project.");
 
     return {
@@ -455,6 +339,7 @@ export const updateProjectAction = async (
 export const toggleProjectArchiveStatusAction = async (
   projectId: string,
   newArchiveStatus: boolean,
+  options?: ActivityMutationOptions,
 ) => {
   if (!areValidIds(projectId)) {
     return {
@@ -480,10 +365,14 @@ export const toggleProjectArchiveStatusAction = async (
   }
 
   try {
-    const updatedProject = await updateProjectDb(existingProject.id, {
-      isArchived: newArchiveStatus,
-      archivedAt: new Date(),
-    });
+    const updatedProject = await updateProjectDb(
+      existingProject.id,
+      {
+        isArchived: newArchiveStatus,
+        archivedAt: newArchiveStatus ? new Date() : null,
+      },
+      options,
+    );
     if (!updatedProject)
       throw new Error("Failed to toggle project archive status.");
 
@@ -502,7 +391,10 @@ export const toggleProjectArchiveStatusAction = async (
   }
 };
 
-export const deleteProjectAction = async (projectId: string) => {
+export const deleteProjectAction = async (
+  projectId: string,
+  options?: ActivityMutationOptions,
+) => {
   if (!areValidIds(projectId)) {
     return {
       error: true,
@@ -527,7 +419,7 @@ export const deleteProjectAction = async (projectId: string) => {
   }
 
   try {
-    const deletedProject = await deleteProjectDb(existingProject.id);
+    const deletedProject = await deleteProjectDb(existingProject.id, options);
     if (!deletedProject) throw new Error("Failed to delete project.");
 
     return {

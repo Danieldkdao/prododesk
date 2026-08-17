@@ -37,6 +37,7 @@ import {
   CircleCheckIcon,
   CircleXIcon,
   ClockIcon,
+  GemIcon,
   HandIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -45,6 +46,11 @@ import {
   formatToolNameForChat,
   getApprovalReason,
 } from "../lib/formatters";
+import {
+  formatActivitySubject,
+  groupActivityBySubject,
+} from "@/features/activity/lib/formatters";
+import { formatActivityLink } from "@/features/activity/lib/formatters";
 
 export const ChatViewListMessage = ({
   msg,
@@ -71,15 +77,21 @@ export const ChatViewListMessage = ({
   const latestPart = msg.parts.at(-1);
 
   const responseTimeMs = msg.metadata?.responseTimeMs;
+  const artifacts = msg.metadata?.artifacts;
 
   const currentAction = formatCurrentAction(latestPart);
 
+  const pendingApprovals = msg.parts.filter(
+    (part) =>
+      isToolUIPart(part) &&
+      part.state === "approval-requested" &&
+      !part.approval.isAutomatic,
+  );
+  const pendingApproval = pendingApprovals[0];
+  const isAwaitingApproval = pendingApprovals.length > 0;
+
   return (
-    <MessageScrollerItem
-      messageId={msg.id}
-      scrollAnchor={msg.role === "user"}
-      className="group"
-    >
+    <MessageScrollerItem messageId={msg.id} className="group">
       <Message align={msg.role === "user" ? "end" : "start"}>
         <MessageAvatar>
           {msg.role === "user" ? (
@@ -145,36 +157,41 @@ export const ChatViewListMessage = ({
                 ) : (
                   <div className="flex flex-col gap-4">
                     <Collapsible className="space-y-4 group">
-                      <CollapsibleTrigger className="flex items-center gap-1.5 group/trigger">
-                        {latestPart &&
-                        isToolUIPart(latestPart) &&
-                        latestPart.state === "approval-requested" &&
-                        !latestPart.approval?.isAutomatic ? (
+                      <CollapsibleTrigger className="group/trigger flex items-center gap-1.5">
+                        {responseTimeMs != null &&
+                        ((!isAwaitingApproval && status === "ready") ||
+                          !isLatestMsg) ? (
                           <>
-                            <ClockIcon className="text-muted-foreground size-5" />
+                            <span className="text-lg font-medium text-muted-foreground">
+                              Worked for {formatMs(responseTimeMs)}
+                            </span>
+                            <ChevronRightIcon className="size-5 text-muted-foreground opacity-0 transition-all duration-200 group-hover:opacity-100 group-data-panel-open/trigger:rotate-90" />
+                          </>
+                        ) : pendingApproval &&
+                          isToolUIPart(pendingApproval) &&
+                          pendingApproval.state === "approval-requested" &&
+                          !pendingApproval.approval?.isAutomatic ? (
+                          <>
+                            <ClockIcon className="size-5 text-muted-foreground" />
                             <TextShimmer
                               as="span"
                               duration={2}
                               className="text-lg font-medium [--base-color:var(--muted-foreground)]"
                             >
-                              Awaiting approval
+                              {`Awaiting your approval to run ${
+                                formatToolNameForChat(
+                                  getToolName(pendingApproval) as ToolName,
+                                ).preparing
+                              }`}
                             </TextShimmer>
                           </>
                         ) : cancelledMessageIds.has(msg.id) ||
                           msg.metadata?.runStatus === "cancelled" ? (
                           <>
-                            <HandIcon className="text-muted-foreground size-5" />
-                            <span className="text-lg text-muted-foreground font-medium">
+                            <HandIcon className="size-5 text-muted-foreground" />
+                            <span className="text-lg font-medium text-muted-foreground">
                               You stopped this response
                             </span>
-                          </>
-                        ) : responseTimeMs !== undefined &&
-                          responseTimeMs !== null ? (
-                          <>
-                            <span className="text-lg font-medium text-muted-foreground">
-                              Worked for {formatMs(responseTimeMs)}
-                            </span>
-                            <ChevronRightIcon className="text-muted-foreground size-5 transition-all duration-200 group-data-panel-open/trigger:rotate-90" />
                           </>
                         ) : (
                           <>
@@ -186,269 +203,292 @@ export const ChatViewListMessage = ({
                             >
                               {currentAction.text}
                             </TextShimmer>
+                            <ChevronRightIcon className="size-5 text-muted-foreground opacity-0 transition-all duration-200 group-hover:opacity-100 group-data-panel-open/trigger:rotate-90" />
                           </>
                         )}
                       </CollapsibleTrigger>
-                      <CollapsiblePanel className="flex flex-col gap-4">
-                        {msg.parts
-                          .filter(
-                            (part, index) =>
-                              !(
-                                part.type === "text" &&
-                                index === msg.parts.length - 1
-                              ),
-                          )
-                          .map((part, index) => {
-                            const isLatestPart = index === msg.parts.length - 1;
-                            if (part.type === "text") {
-                              return (
-                                <StreamMarkdownRenderer
-                                  key={`${msg.id}-text-${index}`}
-                                  animated={markdownAnimateOptions}
-                                  isAnimating={
-                                    status === "streaming" &&
-                                    isLatestMsg &&
-                                    isLatestPart
-                                  }
-                                >
-                                  {part.text}
-                                </StreamMarkdownRenderer>
-                              );
-                            }
-                            if (part.type === "reasoning") {
-                              return (
-                                <Collapsible
-                                  key={`${msg.id}-text-${index}`}
-                                  className="flex flex-col gap-2"
-                                >
-                                  <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
-                                    <BrainIcon className="text-muted-foreground size-5" />
-                                    {status === "streaming" && isLatestPart ? (
-                                      <TextShimmer
-                                        as="span"
-                                        duration={2}
-                                        className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
-                                      >
-                                        Thinking...
-                                      </TextShimmer>
-                                    ) : (
-                                      <span className="text-base text-muted-foreground font-medium">
-                                        Finished thinking
-                                      </span>
-                                    )}
-                                  </CollapsibleTrigger>
-                                  <CollapsiblePanel className="pl-4 border-l border-border">
+                      <CollapsiblePanel>
+                        <div className="max-h-[min(50rem,60vh)] overflow-y-auto overscroll-contain pr-2 scroll-fade scrollbar-none">
+                          <div className="flex flex-col gap-4">
+                            {msg.parts
+                              .filter(
+                                (part, index) =>
+                                  !(
+                                    part.type === "text" &&
+                                    index === msg.parts.length - 1
+                                  ),
+                              )
+                              .map((part, index) => {
+                                const isLatestPart =
+                                  index === msg.parts.length - 1;
+                                if (part.type === "text") {
+                                  return (
                                     <StreamMarkdownRenderer
+                                      key={`${msg.id}-text-${index}`}
                                       animated={markdownAnimateOptions}
                                       isAnimating={
                                         status === "streaming" &&
                                         isLatestMsg &&
                                         isLatestPart
                                       }
-                                      className="text-muted-foreground"
                                     >
                                       {part.text}
                                     </StreamMarkdownRenderer>
-                                  </CollapsiblePanel>
-                                </Collapsible>
-                              );
-                            }
-                            if (isToolUIPart(part)) {
-                              const toolName = getToolName(part) as ToolName;
-                              const {
-                                preparing,
-                                finished,
-                                error,
-                                icon: Icon,
-                              } = formatToolNameForChat(toolName);
-
-                              switch (part.state) {
-                                case "input-streaming":
-                                case "input-available":
-                                  return (
-                                    <TextShimmer
-                                      as="span"
-                                      duration={2}
-                                      className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
-                                      key={part.toolCallId}
-                                    >
-                                      {`Preparing ${preparing}`}
-                                    </TextShimmer>
                                   );
-                                case "approval-requested":
-                                  if (part.approval.isAutomatic) {
-                                    return (
-                                      <TextShimmer
-                                        as="span"
-                                        duration={2}
-                                        className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
-                                        key={part.toolCallId}
-                                      >
-                                        {`Running ${preparing}`}
-                                      </TextShimmer>
-                                    );
-                                  }
-                                case "approval-responded":
-                                  return part.approval.approved ? (
-                                    <TextShimmer
-                                      as="span"
-                                      duration={2}
-                                      className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
-                                      key={part.toolCallId}
-                                    >
-                                      {`Running ${preparing}`}
-                                    </TextShimmer>
-                                  ) : (
-                                    <div
-                                      className="flex items-center gap-2"
-                                      key={part.toolCallId}
-                                    >
-                                      <CircleXIcon className="text-muted-foreground size-5" />
-                                      <span className="text-muted-foreground text-base">
-                                        You denied the agent to run {preparing}
-                                      </span>
-                                    </div>
-                                  );
-                                case "output-available":
+                                }
+                                if (part.type === "reasoning") {
                                   return (
                                     <Collapsible
-                                      key={part.toolCallId}
+                                      key={`${msg.id}-text-${index}`}
                                       className="flex flex-col gap-2"
                                     >
-                                      <CollapsibleTrigger className="flex flex-col gap-4 cursor-pointer">
-                                        {part.approval?.approved && (
-                                          <div
-                                            className="flex items-center gap-2"
-                                            key={part.toolCallId}
+                                      <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
+                                        <BrainIcon className="text-muted-foreground size-5" />
+                                        {status === "streaming" &&
+                                        isLatestPart ? (
+                                          <TextShimmer
+                                            as="span"
+                                            duration={2}
+                                            className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
                                           >
-                                            <CircleCheckIcon className="text-muted-foreground size-5" />
-                                            <span className="text-muted-foreground text-base font-medium">
-                                              You approved the agent to run{" "}
-                                              {preparing}
-                                            </span>
-                                          </div>
-                                        )}
-                                        <div className="flex items-center gap-2">
-                                          <Icon className="text-muted-foreground size-4.5" />
-                                          <span className="text-base font-medium text-muted-foreground">
-                                            Finished {finished}
-                                          </span>
-                                        </div>
-                                      </CollapsibleTrigger>
-                                      <CollapsiblePanel className="pl-4 border-l border-border text-muted-foreground">
-                                        {typeof part.output === "string" ? (
-                                          toolName === "scrapeWebpage" ? (
-                                            <div className="flex flex-col gap-2">
-                                              <span className="text-muted-foreground font-medium">
-                                                Scraped{" "}
-                                                {typeof part.input ===
-                                                  "object" &&
-                                                part.input !== null &&
-                                                "url" in part.input &&
-                                                typeof part.input.url ===
-                                                  "string" ? (
-                                                  <Link
-                                                    href={part.input.url}
-                                                    target="_blank"
-                                                    rel="noopener"
-                                                    className="text-primary"
-                                                  >
-                                                    {part.input.url}
-                                                  </Link>
-                                                ) : (
-                                                  "Unknown URL"
-                                                )}
-                                              </span>
-                                              <StreamMarkdownRenderer
-                                                animated={
-                                                  markdownAnimateOptions
-                                                }
-                                                isAnimating={
-                                                  status === "streaming" &&
-                                                  isLatestMsg &&
-                                                  isLatestPart
-                                                }
-                                                className="text-muted-foreground"
-                                              >
-                                                {part.output}
-                                              </StreamMarkdownRenderer>
-                                            </div>
-                                          ) : part.output.trim() ? (
-                                            toolName === "searchWeb" ? (
-                                              <div className="flex flex-col gap-2">
-                                                <span className="text-muted-foreground font-medium">
-                                                  Searched for{" "}
-                                                  {typeof part.input ===
-                                                    "object" &&
-                                                  part.input !== null &&
-                                                  "query" in part.input &&
-                                                  typeof part.input.query ===
-                                                    "string"
-                                                    ? `"${part.input.query}"`
-                                                    : "unknown query"}
-                                                </span>
-                                                <p className="text-muted-foreground">
-                                                  {part.output}
-                                                </p>
-                                              </div>
-                                            ) : (
-                                              part.output
-                                            )
-                                          ) : (
-                                            <span className="italic">
-                                              No output
-                                            </span>
-                                          )
-                                        ) : part.output ? (
-                                          JSON.stringify(part.output)
+                                            Thinking...
+                                          </TextShimmer>
                                         ) : (
-                                          "No output"
+                                          <span className="text-base text-muted-foreground font-medium">
+                                            Finished thinking
+                                          </span>
                                         )}
+                                      </CollapsibleTrigger>
+                                      <CollapsiblePanel className="pl-4 border-l border-border">
+                                        <StreamMarkdownRenderer
+                                          animated={markdownAnimateOptions}
+                                          isAnimating={
+                                            status === "streaming" &&
+                                            isLatestMsg &&
+                                            isLatestPart
+                                          }
+                                          className="text-muted-foreground"
+                                        >
+                                          {part.text}
+                                        </StreamMarkdownRenderer>
                                       </CollapsiblePanel>
                                     </Collapsible>
                                   );
-                                case "output-denied":
-                                  return (
-                                    <div
-                                      className="flex items-center gap-2"
-                                      key={part.toolCallId}
-                                    >
-                                      <CircleXIcon className="text-muted-foreground size-5" />
-                                      <span className="text-muted-foreground text-base">
-                                        You denied the agent to run {preparing}
-                                      </span>
-                                    </div>
-                                  );
-                                case "output-error":
-                                  return (
-                                    <div
-                                      key={part.toolCallId}
-                                      className="flex items-center gap-2"
-                                    >
-                                      <Icon className="text-destructive size-4.5" />
-                                      <span className="text-base font-medium text-destructive">
-                                        {error} failed
-                                      </span>
-                                    </div>
-                                  );
-                              }
-                            }
-                          })}
+                                }
+                                if (isToolUIPart(part)) {
+                                  const toolName = getToolName(
+                                    part,
+                                  ) as ToolName;
+                                  const {
+                                    preparing,
+                                    finished,
+                                    error,
+                                    icon: Icon,
+                                  } = formatToolNameForChat(toolName);
+
+                                  switch (part.state) {
+                                    case "input-streaming":
+                                    case "input-available":
+                                      return (
+                                        <TextShimmer
+                                          as="span"
+                                          duration={2}
+                                          className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
+                                          key={part.toolCallId}
+                                        >
+                                          {`Preparing ${preparing}`}
+                                        </TextShimmer>
+                                      );
+                                    case "approval-requested":
+                                      return part.approval.isAutomatic ? (
+                                        <TextShimmer
+                                          as="span"
+                                          duration={2}
+                                          className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
+                                          key={part.toolCallId}
+                                        >
+                                          {`Running ${preparing}`}
+                                        </TextShimmer>
+                                      ) : (
+                                        <div
+                                          className="flex items-center gap-2"
+                                          key={part.toolCallId}
+                                        >
+                                          <ClockIcon className="text-muted-foreground size-5" />
+                                          <TextShimmer
+                                            as="span"
+                                            duration={2}
+                                            className="text-base font-medium [--base-color:var(--muted-foreground)]"
+                                          >
+                                            {`Awaiting your approval to run ${preparing}`}
+                                          </TextShimmer>
+                                        </div>
+                                      );
+                                    case "approval-responded":
+                                      return part.approval.approved ? (
+                                        <TextShimmer
+                                          as="span"
+                                          duration={2}
+                                          className="text-base italic font-medium [--base-color:var(--muted-foreground)]"
+                                          key={part.toolCallId}
+                                        >
+                                          {`Running ${preparing}`}
+                                        </TextShimmer>
+                                      ) : (
+                                        <div
+                                          className="flex items-center gap-2"
+                                          key={part.toolCallId}
+                                        >
+                                          <CircleXIcon className="text-muted-foreground size-5" />
+                                          <span className="text-muted-foreground text-base">
+                                            You denied the agent to run{" "}
+                                            {preparing}
+                                          </span>
+                                        </div>
+                                      );
+                                    case "output-available":
+                                      return (
+                                        <Collapsible
+                                          key={part.toolCallId}
+                                          className="flex flex-col gap-2"
+                                        >
+                                          <CollapsibleTrigger className="flex flex-col gap-4 cursor-pointer">
+                                            {part.approval?.approved && (
+                                              <div
+                                                className="flex items-center gap-2"
+                                                key={part.toolCallId}
+                                              >
+                                                <CircleCheckIcon className="text-muted-foreground size-5" />
+                                                <span className="text-muted-foreground text-base font-medium">
+                                                  You approved the agent to run{" "}
+                                                  {preparing}
+                                                </span>
+                                              </div>
+                                            )}
+                                            <div className="flex items-center gap-2">
+                                              <Icon className="text-muted-foreground size-4.5" />
+                                              <span className="text-base font-medium text-muted-foreground">
+                                                Finished {finished}
+                                              </span>
+                                            </div>
+                                          </CollapsibleTrigger>
+                                          <CollapsiblePanel className="pl-4 border-l border-border text-muted-foreground">
+                                            {typeof part.output === "string" ? (
+                                              toolName === "scrapeWebpage" ? (
+                                                <div className="flex flex-col gap-2">
+                                                  <span className="text-muted-foreground font-medium">
+                                                    Scraped{" "}
+                                                    {typeof part.input ===
+                                                      "object" &&
+                                                    part.input !== null &&
+                                                    "url" in part.input &&
+                                                    typeof part.input.url ===
+                                                      "string" ? (
+                                                      <Link
+                                                        href={part.input.url}
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                        className="text-primary"
+                                                      >
+                                                        {part.input.url}
+                                                      </Link>
+                                                    ) : (
+                                                      "Unknown URL"
+                                                    )}
+                                                  </span>
+                                                  <StreamMarkdownRenderer
+                                                    animated={
+                                                      markdownAnimateOptions
+                                                    }
+                                                    isAnimating={
+                                                      status === "streaming" &&
+                                                      isLatestMsg &&
+                                                      isLatestPart
+                                                    }
+                                                    className="text-muted-foreground"
+                                                  >
+                                                    {part.output}
+                                                  </StreamMarkdownRenderer>
+                                                </div>
+                                              ) : part.output.trim() ? (
+                                                toolName === "searchWeb" ? (
+                                                  <div className="flex flex-col gap-2">
+                                                    <span className="text-muted-foreground font-medium">
+                                                      Searched for{" "}
+                                                      {typeof part.input ===
+                                                        "object" &&
+                                                      part.input !== null &&
+                                                      "query" in part.input &&
+                                                      typeof part.input
+                                                        .query === "string"
+                                                        ? `"${part.input.query}"`
+                                                        : "unknown query"}
+                                                    </span>
+                                                    <p className="text-muted-foreground">
+                                                      {part.output}
+                                                    </p>
+                                                  </div>
+                                                ) : (
+                                                  part.output
+                                                )
+                                              ) : (
+                                                <span className="italic">
+                                                  No output
+                                                </span>
+                                              )
+                                            ) : part.output ? (
+                                              JSON.stringify(part.output)
+                                            ) : (
+                                              "No output"
+                                            )}
+                                          </CollapsiblePanel>
+                                        </Collapsible>
+                                      );
+                                    case "output-denied":
+                                      return (
+                                        <div
+                                          className="flex items-center gap-2"
+                                          key={part.toolCallId}
+                                        >
+                                          <CircleXIcon className="text-muted-foreground size-5" />
+                                          <span className="text-muted-foreground text-base">
+                                            You denied the agent to run{" "}
+                                            {preparing}
+                                          </span>
+                                        </div>
+                                      );
+                                    case "output-error":
+                                      return (
+                                        <div
+                                          key={part.toolCallId}
+                                          className="flex items-center gap-2"
+                                        >
+                                          <Icon className="text-destructive size-4.5" />
+                                          <span className="text-base font-medium text-destructive">
+                                            {error} failed
+                                          </span>
+                                        </div>
+                                      );
+                                  }
+                                }
+                              })}
+                          </div>
+                        </div>
                       </CollapsiblePanel>
                     </Collapsible>
-                    {latestPart &&
-                      isToolUIPart(latestPart) &&
-                      latestPart.state === "approval-requested" &&
-                      !latestPart.approval?.isAutomatic && (
+                    {pendingApproval &&
+                      isToolUIPart(pendingApproval) &&
+                      pendingApproval.state === "approval-requested" &&
+                      !pendingApproval.approval?.isAutomatic && (
                         <div className="flex flex-col gap-2">
                           <span className="text-muted-foreground font-medium text-base">
-                            {getApprovalReason(latestPart.input)}
+                            {getApprovalReason(pendingApproval)}
                           </span>
                           <div className="flex items-center gap-2">
                             <Button
                               onClick={() =>
                                 addToolApprovalResponse({
-                                  id: latestPart.approval.id,
+                                  id: pendingApproval.approval.id,
                                   approved: true,
                                 })
                               }
@@ -459,7 +499,7 @@ export const ChatViewListMessage = ({
                               variant="outline"
                               onClick={() =>
                                 addToolApprovalResponse({
-                                  id: latestPart.approval.id,
+                                  id: pendingApproval.approval.id,
                                   approved: false,
                                 })
                               }
@@ -479,6 +519,65 @@ export const ChatViewListMessage = ({
                           : "No output"}
                       </StreamMarkdownRenderer>
                     )}
+
+                    {artifacts?.length ? (
+                      <Collapsible className="group flex flex-col gap-4">
+                        <CollapsibleTrigger className="flex items-center gap-2 group/trigger">
+                          <GemIcon className="text-muted-foreground size-4" />
+                          <span className="text-muted-foreground text-base font-medium">
+                            {artifacts.length}{" "}
+                            {artifacts.length === 1 ? "artifact" : "artifacts"}
+                          </span>
+                          <ChevronRightIcon className="size-4 text-muted-foreground opacity-0 transition-all duration-200 group-hover:opacity-100 group-data-panel-open/trigger:rotate-90" />
+                        </CollapsibleTrigger>
+                        <CollapsiblePanel className="flex flex-col gap-4">
+                          {groupActivityBySubject(artifacts).map(
+                            ([subject, subArtifacts]) => (
+                              <div
+                                key={subject}
+                                className="flex flex-col gap-2"
+                              >
+                                <span className="text-base font-medium">
+                                  {formatActivitySubject(subject).label}
+                                </span>
+                                <div className="flex items-center gap-4 flex-wrap max-w-200 w-full">
+                                  {subArtifacts.map((artifact) => {
+                                    if (
+                                      !artifact.activity ||
+                                      !artifact.activity.subjectId
+                                    )
+                                      return null;
+
+                                    const activitySubject =
+                                      artifact.activity.subject;
+
+                                    const { icon: SubjectIcon } =
+                                      formatActivitySubject(activitySubject);
+
+                                    return (
+                                      <Link
+                                        key={artifact.activityId}
+                                        href={formatActivityLink[
+                                          activitySubject
+                                        ](artifact.activity.subjectId)}
+                                        target="_blank"
+                                      >
+                                        <div className="flex items-center gap-2 px-2 py-0.5 bg-primary/10 text-primary">
+                                          <SubjectIcon className="size-5" />
+                                          <span className="text-base font-medium">
+                                            {artifact.activity.subjectLabel}
+                                          </span>
+                                        </div>
+                                      </Link>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ),
+                          )}
+                        </CollapsiblePanel>
+                      </Collapsible>
+                    ) : null}
                   </div>
                 )}
               </BubbleContent>
@@ -486,45 +585,48 @@ export const ChatViewListMessage = ({
 
             {(msg.role === "user" ||
               (msg.role === "assistant" &&
-                (status === "ready" || status === "error"))) && (
-              <MessageFooter
-                className={cn(
-                  "flex items-center gap-2",
-                  msg.role === "user" &&
-                    "opacity-0 group-hover:opacity-100 transition-all duration-200",
-                )}
-              >
-                {msg.role === "user" && msg.metadata?.createdAt && (
-                  <span className="text-muted-foreground">
-                    Sent at {format(msg.metadata.createdAt, "p")}{" "}
-                    {isSameDay(new Date(), msg.metadata.createdAt)
-                      ? "earlier today"
-                      : format(msg.metadata.createdAt, " 'on' PP")}
-                  </span>
-                )}
-                {msg.metadata?.runStatus !== "failed" && (
-                  <TooltipWrapper content="Copy">
-                    <CopyButton
-                      content={messageContent}
-                      variant="ghost"
-                      size="sm"
+                (status === "ready" || status === "error"))) &&
+              !isAwaitingApproval && (
+                <MessageFooter
+                  className={cn(
+                    "flex items-center gap-2",
+                    msg.role === "user" &&
+                      "opacity-0 group-hover:opacity-100 transition-all duration-200",
+                  )}
+                >
+                  {msg.role === "user" && msg.metadata?.createdAt && (
+                    <span className="text-muted-foreground">
+                      Sent at {format(msg.metadata.createdAt, "p")}{" "}
+                      {isSameDay(new Date(), msg.metadata.createdAt)
+                        ? "earlier today"
+                        : format(msg.metadata.createdAt, " 'on' PP")}
+                    </span>
+                  )}
+                  {msg.metadata?.runStatus !== "failed" && (
+                    <TooltipWrapper content="Copy">
+                      <CopyButton
+                        content={messageContent}
+                        variant="ghost"
+                        size="sm"
+                      />
+                    </TooltipWrapper>
+                  )}
+                  {msg.role === "assistant" && isLatestMsg && (
+                    <RegenerateButton
+                      id={msg.id}
+                      chatId={msg.metadata?.chatId ?? id}
+                      modelId={
+                        msg.metadata?.modelId ??
+                        currentModelInfo?.id ??
+                        undefined
+                      }
+                      responseToClientId={
+                        msg.metadata?.responseToClientId ?? latestUserMsg?.id
+                      }
                     />
-                  </TooltipWrapper>
-                )}
-                {msg.role === "assistant" && isLatestMsg && (
-                  <RegenerateButton
-                    id={msg.id}
-                    chatId={msg.metadata?.chatId ?? id}
-                    modelId={
-                      msg.metadata?.modelId ?? currentModelInfo?.id ?? undefined
-                    }
-                    responseToClientId={
-                      msg.metadata?.responseToClientId ?? latestUserMsg?.id
-                    }
-                  />
-                )}
-              </MessageFooter>
-            )}
+                  )}
+                </MessageFooter>
+              )}
           </Bubble>
         </MessageContent>
       </Message>

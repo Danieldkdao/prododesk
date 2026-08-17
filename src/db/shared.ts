@@ -1,4 +1,5 @@
 import { modelIds } from "@/services/ai/model-ids";
+import { toolNames } from "@/services/ai/tool-contracts";
 import { pgEnum } from "drizzle-orm/pg-core";
 
 export const taskStatuses = [
@@ -83,7 +84,8 @@ export const milestoneStatusEnum = pgEnum(
 );
 
 export const activitySources = ["user", "ai", "system"] as const;
-export type ActivitySource = (typeof activitySources)[number];
+export type ActivitySourceType = (typeof activitySources)[number];
+export type ActivitySource = ActivitySourceType;
 export const activitySourceEnum = pgEnum("activity_sources", activitySources);
 
 export const activitySubjects = [
@@ -102,3 +104,5 @@ export const activitySubjectEnum = pgEnum(
 export const activityActions = ["create", "update", "delete"] as const;
 export type ActivityAction = (typeof activityActions)[number];
 export const activityActionEnum = pgEnum("activity_actions", activityActions);
+
+export const toolNameEnum = pgEnum("tool_names", toolNames);

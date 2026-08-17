@@ -87,7 +87,7 @@ export const InitialAIInputClient = () => {
   };
 
   return (
-    <div className="w-full flex flex-col items-center justify-center gap-8 h-full min-h-0">
+    <div className="@container w-full flex flex-col items-center justify-center gap-8 h-full min-h-0 min-w-0">
       {isPending && selectedModel ? (
         <>
           <ChatHeader />
@@ -98,7 +98,7 @@ export const InitialAIInputClient = () => {
         </>
       ) : (
         <div className="w-full flex flex-col items-center justify-center gap-8">
-          <h1 className="text-center text-4xl font-semibold">
+          <h1 className="text-center text-2xl @xl:text-4xl font-semibold">
             What should we work on today?
           </h1>
           <div className="max-w-6xl w-full min-w-0 overflow-hidden">

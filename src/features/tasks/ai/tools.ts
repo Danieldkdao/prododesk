@@ -1,171 +1,49 @@
-import { envServer } from "@/data/env/server";
-import { db } from "@/db/db";
-import { TaskTable } from "@/db/schema";
 import {
   findToolExecutionDb,
-  upsertToolExecutionDb,
   updateToolExecutionDb,
+  upsertToolExecutionDb,
 } from "@/features/chats/server/tool-executions";
+import { getCurrentUser } from "@/lib/auth/helpers";
+import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
+import { runIdContextSchema } from "@/services/ai/tools/helpers";
+import { tool } from "ai";
+import { parseISO } from "date-fns";
 import {
   createTaskAction,
   deleteTaskAction,
-  updateTasksStatusAction,
   updateTaskAction,
-} from "@/features/tasks/actions/actions";
-import { getCurrentUser } from "@/lib/auth/helpers";
-import { tool } from "ai";
-import { format, parseISO } from "date-fns";
-import { and, eq, gte, ilike, inArray, lte } from "drizzle-orm";
-import z from "zod";
+  updateTaskMilestoneAction,
+  updateTasksPriorityAction,
+  updateTasksStatusAction,
+} from "../actions/actions";
+import { readTasksDb } from "../server/tasks";
 import {
-  runIdContextSchema,
+  assignTasksToMilestoneToolSchema,
   createTasksToolSchema,
   deleteTaskToolSchema,
   readTasksToolSchema,
-  scrapeWebpageToolSchema,
-  scrapeWebpageToolValidationSchema,
-  searchWebToolSchema,
-  searchWebToolValidationSchema,
-  updateTasksStatusToolSchema,
   updateTaskToolSchema,
+  updateTasksPriorityToolSchema,
+  updateTasksStatusToolSchema,
 } from "./schemas";
-import { ChatToolSet, ToolName } from "./tool-contracts";
-import removeMd from "remove-markdown";
-import { formatTaskStatus } from "@/features/tasks/lib/formatters";
-
-const searchWebTool = tool({
-  description: "Searches the web and returns search results.",
-  inputSchema: searchWebToolSchema,
-  execute: async ({ query }, { abortSignal }) => {
-    const userId = await getCurrentUser();
-    if (!userId)
-      throw new Error(
-        "This user is not authenticated. Tell them they need to sign in first.",
-      );
-
-    const response = await fetch(
-      "https://ai.hackclub.com/proxy/v1/exa/search",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${envServer.HACK_CLUB_AI_API_KEY}`,
-        },
-        body: JSON.stringify({ query, numResults: 5 }),
-        signal: abortSignal,
-      },
-    );
-    const unparsedData = await response.json();
-    const { data, success } =
-      searchWebToolValidationSchema.safeParse(unparsedData);
-    if (!success) throw new Error("Invalid response data. Please try again.");
-
-    return data.results
-      .map(
-        (result) => `
-      ID: ${result.id}
-      TITLE: ${result.title}
-      URL: ${result.url}\n\n
-      `,
-      )
-      .join("");
-  },
-});
-
-const scrapeWebpageTool = tool({
-  description: "Scrapes given webpage and returns clean information.",
-  inputSchema: scrapeWebpageToolSchema,
-  execute: async ({ url }, { abortSignal }) => {
-    const userId = await getCurrentUser();
-    if (!userId)
-      throw new Error(
-        "This user is not authenticated. Tell them they need to sign in first.",
-      );
-
-    const response = await fetch("https://api.firecrawl.dev/v2/scrape", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${envServer.FIRECRAWL_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url,
-        formats: [{ type: "markdown" }],
-        onlyMainContent: true,
-        minAge: 123,
-        waitFor: 0,
-        skipTlsVerification: true,
-        parsers: ["pdf"],
-        actions: [{ type: "wait", milliseconds: 2 }],
-        location: { country: "US", languages: ["en-US"] },
-        removeBase64Images: true,
-        blockAds: true,
-        proxy: "auto",
-        storeInCache: true,
-        lockdown: false,
-        redactPII: false,
-        zeroDataRetention: false,
-      }),
-      signal: abortSignal,
-    });
-    const unparsedData = await response.json();
-    const { data, success } =
-      scrapeWebpageToolValidationSchema.safeParse(unparsedData);
-    if (!success) throw new Error("Invalid response data. Please try again.");
-
-    const normalText = removeMd(data.data.markdown);
-
-    return normalText;
-  },
-});
 
 const readTasksTool = tool({
   description: "Allows you to read the user's tasks.",
   inputSchema: readTasksToolSchema,
-  execute: async (
-    { before, after, statuses, priorities, search },
-    { abortSignal },
-  ) => {
+  execute: async ({ before, after, ...filterOptions }, { abortSignal }) => {
+    const { userId } = await getCurrentUser();
+    if (!userId) throw new Error(UNAUTHED_ERROR_MESSAGE);
+
     abortSignal?.throwIfAborted();
 
-    const { userId } = await getCurrentUser();
-    if (!userId)
-      throw new Error(
-        "This user is not authenticated. Tell them they need to sign in.",
-      );
+    const response = await readTasksDb({
+      ...filterOptions,
+      dateTimeStartRange: after ? parseISO(after) : undefined,
+      dateTimeEndRange: before ? parseISO(before) : undefined,
+    });
+    if (!response) throw new Error(GENERAL_ERROR_MESSAGE);
 
-    const tasks = await db
-      .select()
-      .from(TaskTable)
-      .where(
-        and(
-          eq(TaskTable.userId, userId),
-          before ? lte(TaskTable.scheduledAt, parseISO(before)) : undefined,
-          after ? gte(TaskTable.scheduledAt, parseISO(after)) : undefined,
-          statuses.length ? inArray(TaskTable.status, statuses) : undefined,
-          priorities.length
-            ? inArray(TaskTable.priority, priorities)
-            : undefined,
-          search?.trim()
-            ? ilike(TaskTable.name, `%${search.trim()}%`)
-            : undefined,
-        ),
-      );
-
-    return tasks
-      .map(
-        (task) =>
-          `ID: ${task.id}\n
-           NAME: ${task.name}\n
-           DESCRIPTION: ${task.description}\n
-           EMOJI: ${task.emoji}\n
-           PRIORITY: ${task.priority}\n
-           STATUS: ${formatTaskStatus(task.status)}\n
-           SCHEDULED AT: ${task.scheduledAt ? format(task.scheduledAt, "PPpp") : "NONE"}\n
-           DUE AT: ${task.dueAt ? format(task.dueAt, "PPpp") : "NONE"}\n
-           CREATED AT: ${format(task.createdAt, "PPpp")}`,
-      )
-      .join("\n\n");
+    return JSON.stringify(response.tasks);
   },
 });
 
@@ -202,20 +80,25 @@ const createTasksTool = tool({
       const responses = await Promise.all(
         tasks.map((task) => {
           abortSignal?.throwIfAborted();
-          return createTaskAction({
-            ...task,
-            scheduledAt: task.scheduledAt ? parseISO(task.scheduledAt) : null,
-            dueAt: task.dueAt ? parseISO(task.dueAt) : null,
-          });
+          return createTaskAction(
+            {
+              ...task,
+              scheduledAt: task.scheduledAt ? parseISO(task.scheduledAt) : null,
+              dueAt: task.dueAt ? parseISO(task.dueAt) : null,
+            },
+            { source: "ai", chatRunId: context.runId },
+          );
         }),
       );
 
-      const isSuccess = responses.every((response) => !response.error);
+      const isSuccess =
+        responses.length === tasks.length &&
+        responses.every((response) => !response.error);
 
-      const output = isSuccess
-        ? "Success! Tasks created successfully!"
-        : (responses.at(0)?.message ??
-          "An error occurred. Unable to create all tasks.");
+      const output =
+        (responses.find((res) => res.error)?.message ??
+          responses.at(0)?.message) ||
+        GENERAL_ERROR_MESSAGE;
 
       await updateToolExecutionDb(
         insertedToolExecution.runId,
@@ -229,7 +112,7 @@ const createTasksTool = tool({
       console.error(error);
       const errorMessage = Error.isError(error)
         ? error.message
-        : "Something went wrong. Please try again.";
+        : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
@@ -270,13 +153,17 @@ const updateTaskTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateTaskAction(id, {
-        ...updateFields,
-        scheduledAt: updateFields.scheduledAt
-          ? parseISO(updateFields.scheduledAt)
-          : null,
-        dueAt: updateFields.dueAt ? parseISO(updateFields.dueAt) : null,
-      });
+      const response = await updateTaskAction(
+        id,
+        {
+          ...updateFields,
+          scheduledAt: updateFields.scheduledAt
+            ? parseISO(updateFields.scheduledAt)
+            : null,
+          dueAt: updateFields.dueAt ? parseISO(updateFields.dueAt) : null,
+        },
+        { source: "ai", chatRunId: context.runId },
+      );
 
       const output = response.message;
 
@@ -295,7 +182,7 @@ const updateTaskTool = tool({
       console.error(error);
       const errorMessage = Error.isError(error)
         ? error.message
-        : "Something went wrong. Please try again.";
+        : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
@@ -309,7 +196,7 @@ const updateTaskTool = tool({
 });
 
 const updateTasksStatusTool = tool({
-  description: "Allows you to mark tasks as complete/uncomplete.",
+  description: "Allows you to update multiple tasks' statuses.",
   inputSchema: updateTasksStatusToolSchema,
   contextSchema: runIdContextSchema,
   execute: async (
@@ -329,13 +216,16 @@ const updateTasksStatusTool = tool({
       const insertedToolExecution = await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
-        toolName: "toggleTasksCompletionStatus",
+        toolName: "updateTasksStatus",
       });
       if (!insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await updateTasksStatusAction(ids, newStatus);
+      const response = await updateTasksStatusAction(ids, newStatus, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const isSuccess = !response.error;
 
@@ -349,16 +239,142 @@ const updateTasksStatusTool = tool({
       });
 
       if (isSuccess) return output;
-      else throw new Error(output);
+      throw new Error(output);
     } catch (error) {
       console.error(error);
       const errorMessage = Error.isError(error)
         ? error.message
-        : "Something went wrong. Please try again.";
+        : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
-        toolName: "toggleTasksCompletionStatus",
+        toolName: "updateTasksStatus",
+        output: errorMessage,
+        status: "failed",
+      });
+      throw new Error(errorMessage);
+    }
+  },
+});
+
+const updateTasksPriorityTool = tool({
+  description: "Allows you to update multiple tasks' priorities.",
+  inputSchema: updateTasksPriorityToolSchema,
+  contextSchema: runIdContextSchema,
+  execute: async (
+    { taskIds, priority },
+    { context, toolCallId, abortSignal },
+  ) => {
+    try {
+      const existingToolExecution = await findToolExecutionDb(
+        context.runId,
+        toolCallId,
+      );
+      if (existingToolExecution?.status === "pending")
+        return "This execution is pending.";
+      if (existingToolExecution?.status === "completed")
+        return JSON.stringify(existingToolExecution.output) || "No output.";
+
+      const insertedToolExecution = await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "updateTasksPriority",
+      });
+      if (!insertedToolExecution)
+        throw new Error("Failed to execute tool. Please try again.");
+
+      abortSignal?.throwIfAborted();
+      const response = await updateTasksPriorityAction(taskIds, priority, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
+
+      const isSuccess = !response.error;
+      const output = response.message;
+
+      await updateToolExecutionDb(context.runId, toolCallId, {
+        output,
+        status: isSuccess ? "completed" : "failed",
+      });
+
+      if (isSuccess) return output;
+      throw new Error(output);
+    } catch (error) {
+      console.error(error);
+      const errorMessage = Error.isError(error)
+        ? error.message
+        : GENERAL_ERROR_MESSAGE;
+      await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "updateTasksPriority",
+        output: errorMessage,
+        status: "failed",
+      });
+      throw new Error(errorMessage);
+    }
+  },
+});
+
+const assignTasksToMilestoneTool = tool({
+  description: "Allows you to assign or unassign tasks to a milestone.",
+  inputSchema: assignTasksToMilestoneToolSchema,
+  contextSchema: runIdContextSchema,
+  execute: async (
+    { taskIds, milestoneId },
+    { context, toolCallId, abortSignal },
+  ) => {
+    try {
+      const existingToolExecution = await findToolExecutionDb(
+        context.runId,
+        toolCallId,
+      );
+      if (existingToolExecution?.status === "pending")
+        return "This tool execution is pending.";
+      if (existingToolExecution?.status === "completed")
+        return JSON.stringify(existingToolExecution.output) || "No output.";
+
+      const insertedToolExecution = await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "assignTasksToMilestone",
+      });
+      if (!insertedToolExecution)
+        throw new Error("Failed to execute tool. Please try again.");
+
+      const responses = await Promise.all(
+        taskIds.map((taskId) => {
+          abortSignal?.throwIfAborted();
+          return updateTaskMilestoneAction(taskId, milestoneId ?? null, {
+            source: "ai",
+            chatRunId: context.runId,
+          });
+        }),
+      );
+
+      const isSuccess =
+        responses.filter((res) => !res.error).length === taskIds.length;
+      const output =
+        responses.find((res) => res.error)?.message ??
+        responses.at(0)?.message ??
+        GENERAL_ERROR_MESSAGE;
+
+      await updateToolExecutionDb(context.runId, toolCallId, {
+        output,
+        status: isSuccess ? "completed" : "failed",
+      });
+
+      if (isSuccess) return output;
+      throw new Error(output);
+    } catch (error) {
+      console.error(error);
+      const errorMessage = Error.isError(error)
+        ? error.message
+        : GENERAL_ERROR_MESSAGE;
+      await upsertToolExecutionDb({
+        runId: context.runId,
+        toolCallId,
+        toolName: "assignTasksToMilestone",
         output: errorMessage,
         status: "failed",
       });
@@ -394,7 +410,10 @@ const deleteTaskTool = tool({
         throw new Error("Failed to execute tool. Please try again.");
 
       abortSignal?.throwIfAborted();
-      const response = await deleteTaskAction(id);
+      const response = await deleteTaskAction(id, {
+        source: "ai",
+        chatRunId: context.runId,
+      });
 
       const output = response.message;
 
@@ -413,7 +432,7 @@ const deleteTaskTool = tool({
       console.error(error);
       const errorMessage = Error.isError(error)
         ? error.message
-        : "Something went wrong. Please try again.";
+        : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
         runId: context.runId,
         toolCallId,
@@ -426,23 +445,12 @@ const deleteTaskTool = tool({
   },
 });
 
-const getCurrentTimeTool = tool({
-  description: "Allows you to get the current system time.",
-  inputSchema: z.object({}),
-  execute: async () => {
-    const date = new Date();
-    return format(date, "PPPPpppp");
-  },
-});
-
-export const tools = {
-  searchWeb: searchWebTool,
-  scrapeWebpage: scrapeWebpageTool,
+export const taskTools = {
   readTasks: readTasksTool,
   createTasks: createTasksTool,
   updateTask: updateTaskTool,
-  deleteTask: deleteTaskTool,
-  getCurrentTime: getCurrentTimeTool,
   updateTasksStatus: updateTasksStatusTool,
-} satisfies ChatToolSet;
-export const toolNames = Object.keys(tools) as ToolName[];
+  updateTasksPriority: updateTasksPriorityTool,
+  assignTasksToMilestone: assignTasksToMilestoneTool,
+  deleteTask: deleteTaskTool,
+};

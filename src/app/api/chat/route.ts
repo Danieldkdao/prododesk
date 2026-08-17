@@ -1,46 +1,52 @@
 import { db } from "@/db/db";
-import { ChatMessageTable, ChatRunTable, MessagePartTable } from "@/db/schema";
+import { ChatMessageTable, MessagePartTable } from "@/db/schema";
+import { ArtifactActivityType } from "@/features/activity/lib/types";
 import {
-    findChatMessageDb,
-    insertChatMessageDb,
-    upsertChatMessageDb,
+  findChatMessageDb,
+  insertChatMessageDb,
+  upsertChatMessageDb,
 } from "@/features/chats/server/chat-messages";
 import {
-    findChatRunDb,
-    insertChatRunDb,
-    updateChatRunDb,
-    upsertChatRunDb,
+  findChatRunDb,
+  getRunArtifacts,
+  insertChatRunDb,
+  updateChatRunDb,
+  upsertChatRunDb,
 } from "@/features/chats/server/chat-runs";
 import { confirmChatOwnership } from "@/features/chats/server/chats";
 import { insertMessagePartDb } from "@/features/chats/server/message-parts";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
-    GENERAL_ERROR_MESSAGE,
-    INVALID_DATA_ERROR_MESSAGE,
-    NOT_FOUND_ERROR_MESSAGE,
-    UNAUTHED_ERROR_MESSAGE,
+  GENERAL_ERROR_MESSAGE,
+  INVALID_DATA_ERROR_MESSAGE,
+  NOT_FOUND_ERROR_MESSAGE,
+  UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { APIError } from "@/lib/errors";
+import { areValidIds } from "@/lib/utils";
 import { COMPACT_AFTER_TOKENS, estimateTokens } from "@/services/ai/helpers";
 import { ModelId } from "@/services/ai/model-ids";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { CHAT_INSTRUCTIONS } from "@/services/ai/prompts";
+import { toolApprovalMap, ToolName } from "@/services/ai/tool-contracts";
 import { tools } from "@/services/ai/tools";
 import { CustomUIMessage } from "@/services/ai/types";
 import {
-    consumeStream,
-    createAgentUIStreamResponse,
-    createUIMessageStream,
-    createUIMessageStreamResponse,
-    isToolUIPart,
-    pruneMessages,
-    ToolLoopAgent,
+  consumeStream,
+  createAgentUIStreamResponse,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  isToolUIPart,
+  pruneMessages,
+  ToolLoopAgent,
 } from "ai";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {
   let runId: string | null = null;
+  let responseTimeMs = 0;
+  let streamedArtifacts: ArtifactActivityType[] = [];
 
   const data: {
     id: string;
@@ -66,9 +72,13 @@ export const POST = async (req: Request) => {
     return NextResponse.json(INVALID_DATA_ERROR_MESSAGE, { status: 400 });
   }
 
+  if (!areValidIds(chatId)) {
+    return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 404 });
+  }
+
   const confirmation = await confirmChatOwnership(chatId);
   if (!confirmation) {
-    return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 403 });
+    return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 404 });
   }
 
   try {
@@ -101,7 +111,7 @@ export const POST = async (req: Request) => {
             role: "user",
             clientMessageId: latestUserMessage.id,
           },
-          tx,
+          { tx },
         );
 
         if (!insertedMessage)
@@ -116,7 +126,7 @@ export const POST = async (req: Request) => {
             },
             order: 0,
           },
-          tx,
+          { tx },
         );
 
         if (!insertedPart) throw new APIError("Failed to insert message part.");
@@ -139,6 +149,7 @@ export const POST = async (req: Request) => {
           throw new APIError("This message is already being processed.", 409);
         case "awaiting-approval":
           runId = existingChatRun.id;
+          responseTimeMs = existingChatRun.responseTimeMs;
           break;
         case "completed":
           if (!existingChatRun.assistantMessageId)
@@ -193,48 +204,26 @@ export const POST = async (req: Request) => {
       throw new APIError("Failed to log chat run.");
     }
 
-    let responseTimeMs = 0;
-
     const chatAgent = new ToolLoopAgent({
       model: openrouter(selectedModel),
       instructions: CHAT_INSTRUCTIONS(selectedModel),
       temperature: 0.4,
       tools,
-      toolsContext: {
-        createTasks: {
-          runId,
-        },
-        updateTask: {
-          runId,
-        },
-        deleteTask: {
-          runId,
-        },
-        updateTasksStatus: {
-          runId,
-        },
-      },
-      toolApproval: {
-        createTasks: "user-approval",
-        deleteTask: "user-approval",
-        updateTask: "user-approval",
-        updateTasksStatus: "user-approval",
-      },
+      toolsContext: Object.fromEntries(
+        Object.entries(toolApprovalMap)
+          .filter(([, requiresApproval]) => requiresApproval)
+          .map(([toolName]) => [toolName, { runId }]),
+      ) as Record<ToolName, { runId: string }>,
+      toolApproval: Object.fromEntries(
+        Object.entries(toolApprovalMap)
+          .filter(([, requiresApproval]) => requiresApproval)
+          .map(([toolName]) => [toolName, "user-approval"]),
+      ),
       timeout: {
         totalMs: 120_000,
         stepMs: 60_000,
         chunkMs: 30_000,
         toolMs: 15_000,
-        tools: {
-          searchWebMs: 30_000,
-          scrapeWebpageMs: 60_000,
-          readTasksMs: 10_000,
-          createTasksMs: 30_000,
-          updateTaskMs: 20_000,
-          deleteTaskMs: 15_000,
-          updateTasksStatusMs: 30_000,
-          getCurrentTimeMs: 2_000,
-        },
       },
       prepareStep: ({ messages }) => {
         if (estimateTokens(messages) > COMPACT_AFTER_TOKENS) {
@@ -255,8 +244,11 @@ export const POST = async (req: Request) => {
           });
         }
       },
-      onStepEnd: ({ performance }) => {
+      onStepEnd: async ({ performance }) => {
         responseTimeMs += performance.stepTimeMs;
+        if (runId) {
+          streamedArtifacts = await getRunArtifacts(runId);
+        }
       },
     });
 
@@ -273,6 +265,7 @@ export const POST = async (req: Request) => {
             createdAt: new Date(),
             responseTimeMs: Math.round(responseTimeMs),
             responseToClientId: latestUserMessage.id,
+            artifacts: streamedArtifacts,
           };
         }
       },
@@ -294,7 +287,7 @@ export const POST = async (req: Request) => {
         if (hasPendingApproval) {
           await updateChatRunDb(runId, {
             status: "awaiting-approval",
-            responseTimeMs: sql`${ChatRunTable.responseTimeMs} + ${roundedRTM}`,
+            responseTimeMs: roundedRTM,
           });
 
           return;
@@ -309,7 +302,7 @@ export const POST = async (req: Request) => {
               clientMessageId: assistantMessageId ?? responseMessage.id,
               responseToClientId: latestUserMessage.id,
             },
-            tx,
+            { tx },
           );
 
           if (!insertedMessage)
@@ -336,11 +329,9 @@ export const POST = async (req: Request) => {
                 status: isAborted ? "cancelled" : "completed",
                 assistantMessageId: insertedMessage.id,
                 finishedAt: isAborted ? null : new Date(),
-                responseTimeMs: isRegenerating
-                  ? roundedRTM
-                  : sql`${ChatRunTable.responseTimeMs} + ${roundedRTM}`,
+                responseTimeMs: roundedRTM,
               },
-              tx,
+              { tx },
             );
           }
           responseTimeMs = 0;
@@ -373,7 +364,7 @@ export const POST = async (req: Request) => {
               modelId: selectedModel,
               role: "user",
             },
-            tx,
+            { tx },
           )
         )?.id;
         if (!userMessageId) return response;
@@ -391,7 +382,7 @@ export const POST = async (req: Request) => {
                   .join(" ") ?? "",
             },
           },
-          tx,
+          { tx },
         );
 
         const existingAssistantResponse =
@@ -414,7 +405,7 @@ export const POST = async (req: Request) => {
               role: "assistant",
               responseToClientId: userMessageClientId,
             },
-            tx,
+            { tx },
           );
           assistantMessageClientId = insertedChatMessage?.id ?? null;
         }
@@ -427,7 +418,7 @@ export const POST = async (req: Request) => {
             error: errorMessage,
             finishedAt: new Date(),
           },
-          tx,
+          { tx },
         );
       }
       if (userMessageClientId) {
@@ -440,7 +431,7 @@ export const POST = async (req: Request) => {
             error: errorMessage,
             finishedAt: new Date(),
           },
-          tx,
+          { tx },
         );
       }
     });

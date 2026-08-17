@@ -1,14 +1,16 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { createSelectSchema } from "drizzle-zod";
 import { createdAt, id } from "../helpers";
 import {
   activityActionEnum,
   activitySourceEnum,
   activitySubjectEnum,
 } from "../shared";
+import { AreaTable } from "./area";
+import { ArtifactTable } from "./artifact";
 import { ProjectTable } from "./project";
 import { user } from "./user";
-import { AreaTable } from "./area";
 
 export const ActivityTable = pgTable("activities", {
   id,
@@ -33,7 +35,9 @@ export const ActivityTable = pgTable("activities", {
 export type ActivityInsertType = typeof ActivityTable.$inferInsert;
 export type ActivitySelectType = typeof ActivityTable.$inferSelect;
 
-export const activityRelations = relations(ActivityTable, ({ one }) => ({
+export const activitySelectSchema = createSelectSchema(ActivityTable);
+
+export const activityRelations = relations(ActivityTable, ({ one, many }) => ({
   user: one(user, {
     fields: [ActivityTable.userId],
     references: [user.id],
@@ -46,4 +50,5 @@ export const activityRelations = relations(ActivityTable, ({ one }) => ({
     fields: [ActivityTable.areaId],
     references: [AreaTable.id],
   }),
+  artifacts: many(ArtifactTable),
 }));

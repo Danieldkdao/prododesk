@@ -5,15 +5,15 @@ import { forwardRef, useCallback } from "react";
 // --- Tiptap UI ---
 import type { UseBlockquoteConfig } from "@/components/tiptap/tiptap-ui/blockquote-button";
 import {
-    BLOCKQUOTE_SHORTCUT_KEY,
-    useBlockquote,
+  BLOCKQUOTE_SHORTCUT_KEY,
+  useBlockquote,
 } from "@/components/tiptap/tiptap-ui/blockquote-button";
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor";
 
 // --- Lib ---
-import { parseShortcutKeys } from "@/lib/tiptap-utils";
+import { parseShortcutKeys } from "@/components/tiptap/lib/tiptap-utils";
 
 // --- UI Primitives ---
 import { Badge } from "@/components/tiptap/tiptap-ui-primitive/badge";

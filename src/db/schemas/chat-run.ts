@@ -1,15 +1,16 @@
 import { relations } from "drizzle-orm";
 import {
-    index,
-    integer,
-    pgTable,
-    text,
-    timestamp,
-    unique,
-    uuid,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { chatRunStatusEnum } from "../shared";
+import { ArtifactTable } from "./artifact";
 import { ChatTable } from "./chat";
 import { ChatMessageTable } from "./chat-message";
 
@@ -42,7 +43,7 @@ export const ChatRunTable = pgTable(
 export type ChatRunInsertType = typeof ChatRunTable.$inferInsert;
 export type ChatRunSelectType = typeof ChatRunTable.$inferSelect;
 
-export const chatRunRelations = relations(ChatRunTable, ({ one }) => ({
+export const chatRunRelations = relations(ChatRunTable, ({ one, many }) => ({
   chat: one(ChatTable, {
     fields: [ChatRunTable.chatId],
     references: [ChatTable.id],
@@ -51,4 +52,5 @@ export const chatRunRelations = relations(ChatRunTable, ({ one }) => ({
     fields: [ChatRunTable.assistantMessageId],
     references: [ChatMessageTable.id],
   }),
+  artifacts: many(ArtifactTable),
 }));

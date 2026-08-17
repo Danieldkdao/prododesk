@@ -1,84 +1,70 @@
-import { TaskPriority, TaskStatus } from "@/db/shared";
-import type { Tool, UIMessagePart } from "ai";
+export const toolNames = [
+  "searchWeb",
+  "scrapeWebpage",
+  "readTasks",
+  "createTasks",
+  "updateTask",
+  "updateTasksStatus",
+  "updateTasksPriority",
+  "assignTasksToMilestone",
+  "deleteTask",
+  "getCurrentTime",
+  "readAreas",
+  "createArea",
+  "updateArea",
+  "setAreaArchived",
+  "deleteArea",
+  "readProjects",
+  "createProject",
+  "updateProject",
+  "setProjectArchived",
+  "deleteProject",
+  "readDocuments",
+  "readDocument",
+  "createDocument",
+  "updateDocument",
+  "deleteDocument",
+  "readMilestones",
+  "createMilestones",
+  "updateMilestone",
+  "updateMilestonesStatus",
+  "moveMilestone",
+  "deleteMilestone",
+  "readActivity",
+] as const;
+export type ToolName = (typeof toolNames)[number];
 
-export type ChatTools = {
-  searchWeb: {
-    input: { query: string };
-    output: string;
-  };
-  scrapeWebpage: {
-    input: { url: string };
-    output: string;
-  };
-  readTasks: {
-    input: {
-      before?: string;
-      after?: string;
-      search?: string | null;
-      statuses: TaskStatus[];
-      priorities: TaskPriority[];
-    };
-    output: string;
-  };
-  createTasks: {
-    input: {
-      tasks: Array<{
-        name: string;
-        priority: TaskPriority;
-        status: TaskStatus;
-        description?: string | null;
-        emoji?: string | null;
-        scheduledAt?: string | null;
-        dueAt?: string | null;
-      }>;
-      approvalReason: string;
-    };
-    output: string;
-  };
-  updateTask: {
-    input: {
-      id: string;
-      updateFields: {
-        name: string;
-        priority: TaskPriority;
-        status: TaskStatus;
-        description?: string | null;
-        emoji?: string | null;
-        scheduledAt?: string | null;
-        dueAt?: string | null;
-      };
-      approvalReason: string;
-    };
-    output: string;
-  };
-  deleteTask: {
-    input: {
-      id: string;
-      approvalReason: string;
-    };
-    output: string;
-  };
-  getCurrentTime: {
-    input: Record<string, never>;
-    output: string;
-  };
-  updateTasksStatus: {
-    input: {
-      ids: string[];
-      newStatus: TaskStatus;
-      approvalReason: string;
-    };
-    output: string;
-  };
-};
-
-export type ToolName = keyof ChatTools;
-
-export type MessagePart = UIMessagePart<Record<string, never>, ChatTools>;
-
-export type ChatToolSet = {
-  [Name in keyof ChatTools]: Tool<
-    ChatTools[Name]["input"],
-    ChatTools[Name]["output"]
-  >;
+export const toolApprovalMap: Record<ToolName, boolean> = {
+  searchWeb: false,
+  scrapeWebpage: false,
+  readTasks: false,
+  createTasks: true,
+  updateTask: true,
+  updateTasksStatus: true,
+  updateTasksPriority: true,
+  assignTasksToMilestone: true,
+  deleteTask: true,
+  getCurrentTime: false,
+  readAreas: false,
+  createArea: true,
+  updateArea: true,
+  setAreaArchived: true,
+  deleteArea: true,
+  readProjects: false,
+  createProject: true,
+  updateProject: true,
+  setProjectArchived: true,
+  deleteProject: true,
+  readDocuments: false,
+  readDocument: false,
+  createDocument: true,
+  updateDocument: true,
+  deleteDocument: true,
+  readMilestones: false,
+  createMilestones: true,
+  updateMilestone: true,
+  updateMilestonesStatus: true,
+  moveMilestone: true,
+  deleteMilestone: true,
+  readActivity: false,
 };
