@@ -34,7 +34,7 @@ export const ThemeToggle = (props: ComponentProps<typeof Button>) => {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon" {...props}>
+          <Button variant="ghost" size="icon-sm" {...props}>
             {activeTheme === "system" ? (
               <LaptopIcon />
             ) : activeTheme === "dark" ? (

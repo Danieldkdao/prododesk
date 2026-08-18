@@ -53,6 +53,7 @@ export const SidebarLinks = () => {
       {sidebarLinks.map((link) => (
         <SidebarMenuItem key={link.href} className="flex items-center gap-2">
           <SidebarMenuButton
+            tooltip={link.label}
             render={
               <Link href={link.href}>
                 <link.icon className="size-5" />

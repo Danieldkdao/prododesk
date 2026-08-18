@@ -39,6 +39,7 @@ type SidebarContextProps = {
   openMobile: boolean;
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
+  iconsOnly: boolean;
   toggleSidebar: () => void;
 };
 
@@ -57,6 +58,7 @@ function SidebarProvider({
   defaultOpen = true,
   open: openProp,
   forceMobile = false,
+  iconsOnly = false,
   onOpenChange: setOpenProp,
   className,
   style,
@@ -67,19 +69,22 @@ function SidebarProvider({
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  iconsOnly?: boolean;
   forceMobile?: boolean;
   enableShortcut?: boolean;
 }) {
   const hookIsMobile = useIsMobile();
   const isMobile = forceMobile || hookIsMobile;
-  const [openMobile, setOpenMobile] = React.useState(false);
+  const [_openMobile, _setOpenMobile] = React.useState(false);
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen);
-  const open = openProp ?? _open;
+  const open = iconsOnly ? false : (openProp ?? _open);
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
+      if (iconsOnly) return;
+
       const openState = typeof value === "function" ? value(open) : value;
       if (setOpenProp) {
         setOpenProp(openState);
@@ -90,18 +95,35 @@ function SidebarProvider({
       // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
     },
-    [setOpenProp, open],
+    [setOpenProp, open, iconsOnly],
+  );
+
+  const openMobile = iconsOnly ? false : _openMobile;
+  const setOpenMobile = React.useCallback(
+    (value: boolean) => {
+      if (iconsOnly) return;
+      _setOpenMobile(value);
+    },
+    [iconsOnly],
   );
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
-  }, [isMobile, setOpen, setOpenMobile]);
+    if (iconsOnly) return;
+
+    if (isMobile) {
+      setOpenMobile(!openMobile);
+    } else {
+      setOpen(!open);
+    }
+  }, [isMobile, setOpen, setOpenMobile, iconsOnly, open, openMobile]);
 
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
     if (!enableShortcut) return;
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (!enableShortcut || iconsOnly) return;
+
       if (
         event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
         (event.metaKey || event.ctrlKey)
@@ -113,7 +135,7 @@ function SidebarProvider({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleSidebar]);
+  }, [toggleSidebar, enableShortcut, iconsOnly]);
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
@@ -127,9 +149,19 @@ function SidebarProvider({
       isMobile,
       openMobile,
       setOpenMobile,
+      iconsOnly,
       toggleSidebar,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
+    [
+      state,
+      open,
+      setOpen,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+      iconsOnly,
+    ],
   );
 
   return (
@@ -170,9 +202,12 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none";
   contained?: boolean;
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const { isMobile, state, openMobile, setOpenMobile, iconsOnly } =
+    useSidebar();
 
-  if (collapsible === "none") {
+  const effectiveCollapsible = iconsOnly ? "icon" : collapsible;
+
+  if (effectiveCollapsible === "none") {
     return (
       <div
         data-slot="sidebar"
@@ -217,7 +252,7 @@ function Sidebar({
     <div
       className="group peer hidden text-sidebar-foreground md:block"
       data-state={state}
-      data-collapsible={state === "collapsed" ? collapsible : ""}
+      data-collapsible={state === "collapsed" ? effectiveCollapsible : ""}
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
@@ -265,7 +300,8 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, iconsOnly } = useSidebar();
+  if (iconsOnly) return null;
 
   return (
     <Button
@@ -287,7 +323,8 @@ function SidebarTrigger({
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, iconsOnly } = useSidebar();
+  if (iconsOnly) return null;
 
   return (
     <button
