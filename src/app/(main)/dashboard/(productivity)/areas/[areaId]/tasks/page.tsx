@@ -12,7 +12,7 @@ type AreaIdTasksParams = ParamsId<"areaId"> & SearchParamsType;
 
 const AreaIdTasksPage = (props: AreaIdTasksParams) => {
   return (
-    <Suspense fallback={<AreaProjectTasksSkeleton hasProject />}>
+    <Suspense fallback={<AreaProjectTasksSkeleton showProject />}>
       <AreaIdTasksSuspense {...props} />
     </Suspense>
   );

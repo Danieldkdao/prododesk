@@ -10,6 +10,7 @@ import {
   ShapesIcon,
   FolderKanbanIcon,
   FileTextIcon,
+  ListCheckIcon,
 } from "lucide-react";
 
 export const SidebarLinks = () => {
@@ -20,6 +21,11 @@ export const SidebarLinks = () => {
       label: "Dashboard",
       icon: LayoutDashboardIcon,
       href: "/dashboard",
+    },
+    {
+      label: "Tasks",
+      icon: ListCheckIcon,
+      href: "/dashboard/tasks",
     },
     {
       label: "Areas",

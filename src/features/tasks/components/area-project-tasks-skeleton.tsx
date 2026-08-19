@@ -9,11 +9,11 @@ import {
 } from "@/components/ui/table";
 
 type SkeletonProps = {
-  hasProject?: boolean;
+  showProject?: boolean;
 };
 
 export const AreaProjectTasksSkeleton = ({
-  hasProject = false,
+  showProject = false,
 }: SkeletonProps) => {
   return (
     <div className="flex w-full min-w-0 flex-col gap-4">
@@ -38,13 +38,13 @@ export const AreaProjectTasksSkeleton = ({
               <TableHead>Description</TableHead>
               <TableHead>Scheduled At</TableHead>
               <TableHead>Due At</TableHead>
-              {!hasProject && <TableHead>Project</TableHead>}
+              {!showProject && <TableHead>Project</TableHead>}
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {Array.from({ length: 8 }).map((_, index) => (
-              <AreaProjectTaskSkeleton key={index} hasProject={hasProject} />
+              <AreaProjectTaskSkeleton key={index} showProject={showProject} />
             ))}
           </TableBody>
         </Table>
@@ -54,7 +54,7 @@ export const AreaProjectTasksSkeleton = ({
 };
 
 export const AreaProjectTaskSkeleton = ({
-  hasProject = false,
+  showProject = false,
 }: SkeletonProps) => {
   return (
     <TableRow>
@@ -76,7 +76,7 @@ export const AreaProjectTaskSkeleton = ({
       <TableCell>
         <Skeleton className="h-4 w-24" />
       </TableCell>
-      {!hasProject && (
+      {!showProject && (
         <TableCell>
           <Skeleton className="h-4 w-28" />
         </TableCell>
