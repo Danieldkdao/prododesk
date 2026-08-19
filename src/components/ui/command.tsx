@@ -57,22 +57,6 @@ function CommandDialog({
   const open = useDialogStateStore((state) => state.open);
   const setOpen = useDialogStateStore((state) => state.setOpen);
 
-  React.useEffect(() => {
-    const handleKeyEvent = (e: KeyboardEvent) => {
-      const isShortcut =
-        e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey);
-      if (!isShortcut) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      setOpen(true);
-    };
-    window.addEventListener("keydown", handleKeyEvent, true);
-
-    return () => window.removeEventListener("keydown", handleKeyEvent, true);
-  }, [setOpen]);
-
   return (
     <Dialog
       open={manualOpen ?? open}

@@ -28,6 +28,7 @@ import {
   confirmChatOwnership,
   deleteChatDb,
   insertChatDb,
+  readChatsDb,
   updateChatDb,
 } from "../server/chats";
 import {
@@ -137,23 +138,12 @@ export const readChatsAction = async (
   "use cache";
   cacheTag(getUserChatTag(userId));
 
-  const { search, page } = filterOptions;
+  const page = filterOptions.page;
 
-  const offset = (page - 1) * PAGE_SIZE;
+  const response = await readChatsDb({ userId, ...filterOptions });
+  if (!response) return null;
 
-  const searchQuery = search?.trim()
-    ? ilike(ChatTable.name, `%${search.trim()}%`)
-    : undefined;
-
-  const whereQuery = and(eq(ChatTable.userId, userId), searchQuery);
-
-  const chats = await db
-    .select()
-    .from(ChatTable)
-    .where(whereQuery)
-    .orderBy(desc(ChatTable.createdAt))
-    .offset(offset)
-    .limit(PAGE_SIZE);
+  const { chats, whereQuery } = response;
 
   const [totalChats] = await db
     .select({
@@ -169,7 +159,7 @@ export const readChatsAction = async (
       userId,
     },
     filters: {
-      search,
+      search: filterOptions.search,
     },
     results: chats.map(({ id, name, updatedAt }) => ({
       id,

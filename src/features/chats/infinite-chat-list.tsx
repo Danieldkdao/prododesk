@@ -60,12 +60,14 @@ export const InfiniteChatList = ({
     setPage(DEFAULT_PAGE);
 
     startTransition(async () => {
-      const { chats, metadata } = await readChatsAction(userId, {
+      const response = await readChatsAction(userId, {
         search,
         page: DEFAULT_PAGE,
       });
 
-      if (cancelled) return;
+      if (cancelled || !response) return;
+
+      const { chats, metadata } = response;
 
       setChats(chats);
       setHasNextPage(metadata.hasNextPage);

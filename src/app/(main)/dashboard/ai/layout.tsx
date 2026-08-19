@@ -1,8 +1,8 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AISidebar } from "@/services/ai/components/sidebar";
 import { ChatViewRealSkeleton } from "@/features/chats/components/chat-view-skeleton";
 import { ChatContextProvider } from "@/hooks/use-chat-provider";
+import { AISidebar } from "@/services/ai/components/sidebar";
 import { ReactNode, Suspense } from "react";
 
 const DashboardAILayout = ({ children }: { children: ReactNode }) => {
