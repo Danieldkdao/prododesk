@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatList } from "@/features/chats/components/chat-list";
+import { ChatSearchButton } from "@/features/chats/components/chat-search-button";
 import { ChatSearchCommandDialog } from "@/features/chats/components/chat-search-command-dialog";
 import { NewChatButton } from "@/features/chats/components/new-chat-button";
 import { CommandIcon, SearchIcon } from "lucide-react";
@@ -25,18 +26,7 @@ export const AISidebar = () => {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <ChatSearchCommandDialog>
-                <SidebarMenuButton
-                  tooltip="Search chats"
-                  className="flex items-center gap-2 w-full"
-                >
-                  <div className="flex items-center gap-2 flex-1">
-                    <SearchIcon />
-                    <span>Search chats</span>
-                  </div>
-                  <Kbd className="text-sm">
-                    <CommandIcon className="size-4" />K
-                  </Kbd>
-                </SidebarMenuButton>
+                <ChatSearchButton />
               </ChatSearchCommandDialog>
             </SidebarMenuItem>
           </SidebarGroupContent>

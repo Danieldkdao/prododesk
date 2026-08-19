@@ -11,16 +11,21 @@ export const WorkspaceSearch = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+      if (
+        e.key.toLowerCase() === "k" &&
+        (e.metaKey || e.ctrlKey) &&
+        !e.shiftKey &&
+        !e.altKey
+      ) {
         e.preventDefault();
         setSearchModalOpen(true);
       }
     };
 
-    window.addEventListener("keydown", (e) => handleKeyDown(e));
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener("keydown", (e) => handleKeyDown(e));
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
@@ -34,7 +39,11 @@ export const WorkspaceSearch = () => {
         <InputGroupAddon>
           <SearchIcon />
         </InputGroupAddon>
-        <InputGroupInput placeholder="Search workspace..." />
+        <InputGroupInput
+          placeholder="Search workspace..."
+          disabled
+          className="disabled:opacity-100! disabled:text-muted-foreground! disabled:placeholder:text-muted-foreground!"
+        />
         <InputGroupAddon align="inline-end">
           <Kbd>
             <CommandIcon />K

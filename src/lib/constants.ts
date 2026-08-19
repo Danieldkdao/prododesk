@@ -18,36 +18,3 @@ export const NOT_FOUND_ERROR_MESSAGE = "Resource not found.";
 
 export const DEFAULT_PAGE = 1;
 export const PAGE_SIZE = 20;
-
-export const resources = [
-  {
-    value: "areas",
-    label: "Areas",
-    icon: ShapesIcon,
-  },
-  {
-    value: "projects",
-    label: "Projects",
-    icon: FolderKanbanIcon,
-  },
-  {
-    value: "tasks",
-    label: "Tasks",
-    icon: ListCheckIcon,
-  },
-  {
-    value: "milestones",
-    label: "Milestones",
-    icon: MilestoneIcon,
-  },
-  {
-    value: "documents",
-    label: "Documents",
-    icon: FileTextIcon,
-  },
-  {
-    value: "chats",
-    label: "Chats",
-    icon: MessageSquareMoreIcon,
-  },
-] as const;

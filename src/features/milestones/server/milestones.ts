@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import {
   and,
   asc,
+  desc,
   eq,
   gte,
   ilike,
@@ -27,6 +28,7 @@ import {
   SQL,
 } from "drizzle-orm";
 import { revalidateMilestoneCache } from "./cache/milestones";
+import { MilestoneSortByOption } from "../lib/types";
 
 export const revalidateMilestoneMutationCache = async ({
   source,
@@ -78,6 +80,7 @@ export const readMilestonesDb = async (filterOptions: {
   statuses?: MilestoneStatus[];
   dueAtOnAfter?: Date | null;
   dueAtOnBefore?: Date | null;
+  sortBy?: MilestoneSortByOption;
   userId?: string;
   limit?: number;
   page?: number;
@@ -89,6 +92,7 @@ export const readMilestonesDb = async (filterOptions: {
     statuses,
     dueAtOnAfter,
     dueAtOnBefore,
+    sortBy = "position",
     userId,
     limit = PAGE_SIZE,
     page,
@@ -152,6 +156,11 @@ export const readMilestonesDb = async (filterOptions: {
     ? inArray(MilestoneTable.id, existingMilestoneIds)
     : undefined;
 
+  const sortByMap: Record<MilestoneSortByOption, SQL<unknown>> = {
+    position: asc(MilestoneTable.position),
+    recently_created: desc(MilestoneTable.createdAt),
+  };
+
   let existingProjectIds: string[] = [];
   if (projectIds?.length) {
     if (!areValidIds(projectIds)) return null;
@@ -182,7 +191,7 @@ export const readMilestonesDb = async (filterOptions: {
 
   const milestones = await db.query.MilestoneTable.findMany({
     where: whereQuery,
-    orderBy: asc(MilestoneTable.position),
+    orderBy: sortByMap[sortBy],
     with: {
       tasks: {
         with: {

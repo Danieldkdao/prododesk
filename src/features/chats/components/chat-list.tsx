@@ -39,10 +39,20 @@ const ChatListSuspense = async ({
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
-  const { chats, metadata } = await readChatsAction(userId, {
+  const response = await readChatsAction(userId, {
     search: useSearch ? "" : undefined,
     page: DEFAULT_PAGE,
   });
+  if (!response)
+    return (
+      <div className="p-2 flex items-center justify-center">
+        <p className="text-destructive font-medium text-base text-center">
+          Something went wrong. Please try refreshing the page.
+        </p>
+      </div>
+    );
+
+  const { chats, metadata } = response;
 
   return (
     <InfiniteChatListAdapter
