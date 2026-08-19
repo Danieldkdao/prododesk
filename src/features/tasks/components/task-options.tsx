@@ -17,7 +17,7 @@ export const TaskOptions = ({
   task,
   children,
 }: {
-  task: TaskSelectType & { project: ProjectSelectType | null };
+  task: TaskSelectType & { project?: ProjectSelectType | null };
   children?: ReactElement;
 }) => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);

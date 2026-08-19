@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { TaskBoardColumn } from "./task-board-column";
 import { TaskBoardItem } from "./task-board-item";
 
-export const ProjectTaskBoard = <
+export const TaskBoard = <
   Property extends BoardProperty,
   PropertyOption extends TaskSelectType[Property],
 >({
@@ -22,7 +22,7 @@ export const ProjectTaskBoard = <
   formatter,
 }: {
   initialTasks: TaskSelectType[];
-  project: ProjectSelectType;
+  project?: ProjectSelectType;
   property: Property;
   propertyOptions: readonly PropertyOption[];
   saveOnMoveEnd: (

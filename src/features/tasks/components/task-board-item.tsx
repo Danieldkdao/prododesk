@@ -22,7 +22,7 @@ export const TaskBoardItem = ({
   minimizeSmallScreens = false,
   property,
 }: {
-  task: TaskSelectType & { project: ProjectSelectType | null };
+  task: TaskSelectType & { project?: ProjectSelectType | null };
   className?: string;
   minimizeSmallScreens?: boolean;
   property?: BoardProperty;
@@ -87,7 +87,7 @@ export const TaskBoardItem = ({
             >
               {task.name}
             </span>
-            {(property === "status" || !property) && (
+            {!property && (
               <Badge
                 variant="outline"
                 className={cn(

@@ -15,7 +15,7 @@ import {
   updateTasksPriorityAction,
   updateTasksStatusAction,
 } from "@/features/tasks/actions/actions";
-import { ProjectTaskBoard } from "@/features/tasks/components/project-task-board";
+import { TaskBoard } from "@/features/tasks/components/task-board";
 import { ProjectTasksInfiniteList } from "@/features/tasks/components/project-tasks-infinite-list";
 import { TasksFilters } from "@/features/tasks/components/tasks-filters";
 import {
@@ -129,7 +129,7 @@ export const ProjectTasksView = ({
         </TabsContent>
         <TabsContent value="board">
           {boardViewKind === "status" ? (
-            <ProjectTaskBoard
+            <TaskBoard
               key={currentProject.id}
               project={currentProject}
               initialTasks={boardTasks}
@@ -139,7 +139,7 @@ export const ProjectTasksView = ({
               saveOnMoveEnd={updateTasksStatusAction}
             />
           ) : (
-            <ProjectTaskBoard
+            <TaskBoard
               key={currentProject.id}
               project={currentProject}
               initialTasks={boardTasks}

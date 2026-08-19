@@ -20,7 +20,7 @@ export const TaskBoardColumn = <
 }: {
   property: BoardProperty;
   propertyValue: PropertyOption;
-  project: ProjectSelectType;
+  project?: ProjectSelectType;
   children?: ReactNode;
   formatter: (option: PropertyOption) => {
     label: string;
