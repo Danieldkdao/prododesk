@@ -1,13 +1,3 @@
-import {
-  FileTextIcon,
-  FolderKanbanIcon,
-  ListCheckIcon,
-  MessageSquareMoreIcon,
-  MilestoneIcon,
-  ShapesIcon,
-} from "lucide-react";
-import { label } from "motion/react-m";
-
 export const GENERAL_ERROR_MESSAGE =
   "Something went wrong. Please try again or come back later.";
 export const UNAUTHED_ERROR_MESSAGE = "Please sign in to continue.";

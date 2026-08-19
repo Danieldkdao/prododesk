@@ -66,7 +66,7 @@ export const getResourceListElement = ({
   const iconClassName = "flex size-10 shrink-0 items-center justify-center";
 
   switch (resource) {
-    case "areas":
+    case "areas": {
       const { bgLight: areaBgLight, text: areaText } = formatColor(item.color);
       return (
         <CommandItem
@@ -95,7 +95,8 @@ export const getResourceListElement = ({
           </div>
         </CommandItem>
       );
-    case "projects":
+    }
+    case "projects": {
       const { bgLight: projectBgLight, text: projectText } = formatColor(
         item.color,
       );
@@ -129,7 +130,8 @@ export const getResourceListElement = ({
           <ProjectIcon className={cn("size-5", projectTextColor)} />
         </CommandItem>
       );
-    case "tasks":
+    }
+    case "tasks": {
       const { icon: TaskStatusIcon, textColor: taskStatusTextColor } =
         formatTaskStatus(item.status);
       const { icon: TaskPriorityIcon, textColor: taskPriorityTextColor } =
@@ -165,7 +167,8 @@ export const getResourceListElement = ({
           <TaskStatusIcon className={cn("size-5", taskStatusTextColor)} />
         </CommandItem>
       );
-    case "milestones":
+    }
+    case "milestones": {
       const { icon: MilestoneStatusIcon, textColor: milestoneStatusTextColor } =
         formatMilestoneStatus(item.status);
       return (
@@ -192,7 +195,8 @@ export const getResourceListElement = ({
           />
         </CommandItem>
       );
-    case "documents":
+    }
+    case "documents": {
       return (
         <CommandItem
           key={item.id}
@@ -214,7 +218,8 @@ export const getResourceListElement = ({
           </div>
         </CommandItem>
       );
-    case "chats":
+    }
+    case "chats": {
       return (
         <CommandItem
           key={item.id}
@@ -236,6 +241,7 @@ export const getResourceListElement = ({
           </div>
         </CommandItem>
       );
+    }
     default:
       throw new Error(`Unknown resource type: ${resource satisfies never}`);
   }

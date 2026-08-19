@@ -169,7 +169,7 @@ export const ResourcesCommandList = ({
                         resource,
                         item,
                         onSelect: (item) => {
-                          router.push(`/dashboard/ai/chats/${item.id}`);
+                          router.push(`/dashboard/ai/chat/${item.id}`);
                           setOpen(false);
                         },
                       }),

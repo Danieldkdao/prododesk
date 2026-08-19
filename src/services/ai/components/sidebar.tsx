@@ -1,11 +1,9 @@
-import { Kbd } from "@/components/ui/kbd";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +11,6 @@ import { ChatList } from "@/features/chats/components/chat-list";
 import { ChatSearchButton } from "@/features/chats/components/chat-search-button";
 import { ChatSearchCommandDialog } from "@/features/chats/components/chat-search-command-dialog";
 import { NewChatButton } from "@/features/chats/components/new-chat-button";
-import { CommandIcon, SearchIcon } from "lucide-react";
 
 export const AISidebar = () => {
   return (

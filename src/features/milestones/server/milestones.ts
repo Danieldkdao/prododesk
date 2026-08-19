@@ -156,9 +156,12 @@ export const readMilestonesDb = async (filterOptions: {
     ? inArray(MilestoneTable.id, existingMilestoneIds)
     : undefined;
 
-  const sortByMap: Record<MilestoneSortByOption, SQL<unknown>> = {
-    position: asc(MilestoneTable.position),
-    recently_created: desc(MilestoneTable.createdAt),
+  const sortByMap: Record<
+    MilestoneSortByOption,
+    SQL<unknown> | SQL<unknown>[]
+  > = {
+    position: [asc(MilestoneTable.position), asc(MilestoneTable.id)],
+    recently_created: [desc(MilestoneTable.createdAt), desc(MilestoneTable.id)],
   };
 
   let existingProjectIds: string[] = [];
