@@ -72,7 +72,7 @@ export const AreaTasksInfiniteList = ({
             ))}
             {isPending &&
               Array.from({ length: 8 }).map((_, index) => (
-                <AreaProjectTaskSkeleton key={index} />
+                <AreaProjectTaskSkeleton key={index} showProject />
               ))}
           </TableBody>
         </Table>

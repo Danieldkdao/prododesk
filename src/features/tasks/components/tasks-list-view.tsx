@@ -37,7 +37,7 @@ const ListViewLoading = ({
   showProject?: boolean;
 }) => {
   return (
-    <div className="w-full overflow-hidden border">
+    <div className="w-full overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>

@@ -23,7 +23,7 @@ const DashboardCalendarPage = (props: SearchParamsType) => {
 const DashboardCalendarLoading = () => {
   return (
     <div className="h-full min-h-0 overflow-hidden">
-      <MainCalendarSkeleton />
+      <MainCalendarSkeleton fullScreen />
     </div>
   );
 };

@@ -22,7 +22,11 @@ const TasksPage = (props: SearchParamsType) => {
           </Button>
         </TaskDialog>
       </div>
-      <Suspense fallback={<AreaProjectTasksSkeleton />}>
+      <Suspense
+        fallback={
+          <AreaProjectTasksSkeleton showProject showAddButton={false} />
+        }
+      >
         <TasksSuspense {...props} />
       </Suspense>
     </div>

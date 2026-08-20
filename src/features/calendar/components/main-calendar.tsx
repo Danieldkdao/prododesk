@@ -32,7 +32,9 @@ export const MainCalendar = ({
     format(monthDaysTasks.month, "yyyy-MM-dd") !==
     format(filters.month, "yyyy-MM-dd")
   ) {
-    return <MainCalendarSkeleton fixedHeight />;
+    return (
+      <MainCalendarSkeleton fixedHeight={!fullScreen} fullScreen={fullScreen} />
+    );
   }
 
   const changeDateToUse = (amount: 1 | -1) =>
