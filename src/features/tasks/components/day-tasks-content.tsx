@@ -5,17 +5,17 @@ import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params
 import { format } from "date-fns";
 import { XIcon } from "lucide-react";
 import { ReadTasksActionReturnType } from "../actions/actions";
-import { DayTasksPanelContentSkeleton } from "./day-tasks-panel-content-skeleton";
-import { DayTasksPanelInfiniteList } from "./day-tasks-panel-infinite-list";
+import { DayTasksContentSkeleton } from "./day-tasks-content-skeleton";
+import { DayTasksInfiniteList } from "./day-tasks-infinite-list";
 
-export const DayTasksPanelContent = ({
+export const DayTasksContent = ({
   dayTasks,
 }: {
   dayTasks: ReadTasksActionReturnType | null;
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
 
-  if (!dayTasks) return <DayTasksPanelContentSkeleton />;
+  if (!dayTasks) return <DayTasksContentSkeleton />;
 
   const { tasks: selectedDayTasks, metadata } = dayTasks;
 
@@ -23,12 +23,12 @@ export const DayTasksPanelContent = ({
     !calendarFilters.day ||
     format(calendarFilters.day, "yyyy-MM-dd") !== metadata.day
   ) {
-    return <DayTasksPanelContentSkeleton />;
+    return <DayTasksContentSkeleton />;
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
-      <div className="shrink-0 px-2 h-10 flex items-center justify-between gap-2">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-4 overflow-hidden">
+      <div className="shrink-0 h-10 flex items-center justify-between gap-2">
         <h2 className="text-2xl font-semibold">
           {format(calendarFilters.day, "PPP")}
         </h2>
@@ -40,7 +40,7 @@ export const DayTasksPanelContent = ({
           <XIcon />
         </Button>
       </div>
-      <DayTasksPanelInfiniteList
+      <DayTasksInfiniteList
         initialDayTasks={selectedDayTasks}
         initialHasNextPage={metadata.hasNextPage}
         allTasksCompleted={metadata.allTasksCompleted}

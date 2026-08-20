@@ -1,6 +1,11 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
-export const MainCalendarSkeleton = () => {
+export const MainCalendarSkeleton = ({
+  fixedHeight = false,
+}: {
+  fixedHeight?: boolean;
+}) => {
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div className="flex h-10 shrink-0 items-center justify-between border-b pl-2">
@@ -22,7 +27,13 @@ export const MainCalendarSkeleton = () => {
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-7 auto-rows-fr">
         {Array.from({ length: 42 }).map((_, index) => (
-          <div key={index} className="flex min-h-0 min-w-0 flex-col border p-2">
+          <div
+            key={index}
+            className={cn(
+              "flex min-h-0 min-w-0 flex-col border p-2",
+              fixedHeight && "h-45",
+            )}
+          >
             <div className="flex items-center justify-between">
               <Skeleton className="size-5 rounded-md" />
 

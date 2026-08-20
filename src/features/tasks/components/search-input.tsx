@@ -35,11 +35,11 @@ export const SearchInput = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 w-full border pl-1.5 has-focus-visible:border-primary transition-all duration-300 h-10",
+        "flex items-center gap-1.5 w-full border pl-1.5 has-focus-visible:border-primary transition-all duration-300 h-10",
         parentClassName,
       )}
     >
-      <SearchIcon className="text-muted-foreground size-6 shrink-0" />
+      <SearchIcon className="text-muted-foreground size-5 shrink-0" />
       <Input
         value={search}
         onChange={(e) => {
@@ -49,7 +49,7 @@ export const SearchInput = ({
         }}
         placeholder={placeholder}
         className={cn(
-          "border-none ring-0 focus-visible:ring-0 focus-visible:outline-0 focus-visible:border-none shadow-none text-lg md:text-lg",
+          "border-none ring-0 focus-visible:ring-0 focus-visible:outline-0 focus-visible:border-none shadow-none text-base md:text-base",
           inputClassName,
         )}
       />

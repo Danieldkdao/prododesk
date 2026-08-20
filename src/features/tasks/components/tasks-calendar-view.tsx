@@ -7,7 +7,7 @@ import { SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
 import { getCalendarTasksAction, readTasksAction } from "../actions/actions";
 import { loadTasksSearchParams } from "../lib/tasks-params";
-import { DayTasksPanel } from "./day-tasks-panel";
+import { DayTasksDialog } from "./day-tasks-dialog";
 import { MainCalendarSkeleton } from "@/features/calendar/components/main-calendar-skeleton";
 
 export const TasksCalendarView = (props: SearchParamsType) => {
@@ -21,7 +21,7 @@ export const TasksCalendarView = (props: SearchParamsType) => {
 const TasksCalendarViewLoading = () => {
   return (
     <div className="h-full min-h-0 overflow-hidden">
-      <MainCalendarSkeleton />
+      <MainCalendarSkeleton fixedHeight />
     </div>
   );
 };
@@ -60,7 +60,7 @@ const TasksCalendarViewSuspense = async ({
             <ResizablePanel minSize="65%" className="min-h-0 overflow-hidden">
               <MainCalendar monthDaysTasks={monthDaysTasks} />
             </ResizablePanel>
-            <DayTasksPanel dayTasks={selectedDayTasks} />
+            <DayTasksDialog dayTasks={selectedDayTasks} />
           </ResizablePanelGroup>
         </div>
       </div>

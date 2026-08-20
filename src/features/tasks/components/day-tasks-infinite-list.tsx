@@ -21,7 +21,7 @@ import { Task } from "./task";
 import { TaskDialog } from "./task-dialog";
 import { useCallback } from "react";
 
-export const DayTasksPanelInfiniteList = ({
+export const DayTasksInfiniteList = ({
   initialDayTasks,
   initialHasNextPage,
   allTasksCompleted,
@@ -94,7 +94,7 @@ export const DayTasksPanelInfiniteList = ({
       )}
     </NotFound>
   ) : (
-    <div className="flex flex-col gap-2 flex-1 min-h-0 w-full p-2">
+    <div className="flex flex-col gap-2 flex-1 min-h-0 w-full">
       <TasksFilters />
       {dayTasks.length ? (
         <div

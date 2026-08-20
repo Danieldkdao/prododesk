@@ -7,7 +7,7 @@ import {
   getCalendarTasksAction,
   readTasksAction,
 } from "@/features/tasks/actions/actions";
-import { DayTasksPanel } from "@/features/tasks/components/day-tasks-panel";
+import { DayTasksDialog } from "@/features/tasks/components/day-tasks-dialog";
 import { loadTasksSearchParams } from "@/features/tasks/lib/tasks-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { SearchParamsType } from "@/lib/types";
@@ -57,12 +57,8 @@ const DashboardCalendarSuspense = async ({
 
   return (
     <div className="h-full min-h-0 overflow-hidden">
-      <ResizablePanelGroup orientation="horizontal">
-        <ResizablePanel minSize="65%" className="min-h-0 overflow-hidden">
-          <MainCalendar monthDaysTasks={monthDaysTasks} />
-        </ResizablePanel>
-        <DayTasksPanel dayTasks={selectedDayTasks} />
-      </ResizablePanelGroup>
+      <MainCalendar monthDaysTasks={monthDaysTasks} fullScreen />
+      <DayTasksDialog dayTasks={selectedDayTasks} />
     </div>
   );
 };
