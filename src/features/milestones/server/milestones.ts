@@ -2,7 +2,6 @@ import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
   MilestoneInsertType,
   MilestoneSelectType,
-  MilestoneStatus,
   MilestoneTable,
   ProjectSelectType,
 } from "@/db/schema";
@@ -29,6 +28,7 @@ import {
 } from "drizzle-orm";
 import { revalidateMilestoneCache } from "./cache/milestones";
 import { MilestoneSortByOption } from "../lib/types";
+import { MilestonesFilters } from "../lib/milestones-params";
 
 export const revalidateMilestoneMutationCache = async ({
   source,
@@ -73,18 +73,22 @@ export const confirmUserMilestoneOwnership = async (
   );
 };
 
-export const readMilestonesDb = async (filterOptions: {
+type ReadMilestonesDbFilters = Omit<
+  Partial<MilestonesFilters>,
+  "milestoneSearch"
+> & {
   projectIds?: string[];
   milestoneIds?: string[];
   search?: string;
-  statuses?: MilestoneStatus[];
-  dueAtOnAfter?: Date | null;
-  dueAtOnBefore?: Date | null;
   sortBy?: MilestoneSortByOption;
   userId?: string;
   limit?: number;
   page?: number;
-}) => {
+};
+
+export const readMilestonesDb = async (
+  filterOptions: ReadMilestonesDbFilters,
+) => {
   const {
     projectIds,
     milestoneIds,

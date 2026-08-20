@@ -3,7 +3,6 @@ import {
   AreaInsertType,
   AreaSelectType,
   AreaTable,
-  Color,
   ProjectTable,
   TaskTable,
 } from "@/db/schema";
@@ -29,7 +28,7 @@ import {
   sql,
   SQL,
 } from "drizzle-orm";
-import { AreasSortByOption } from "../lib/areas-params";
+import { AreasFilters, AreasSortByOption } from "../lib/areas-params";
 import { revalidateAreaCache } from "./cache/areas";
 
 export const confirmUserAreaOwnership = async (
@@ -69,16 +68,14 @@ const revalidateAreaProjectsCache = async (userId: string, areaId: string) => {
   }
 };
 
-export const readAreasDb = async (filterOptions: {
-  search?: string;
-  sortBy?: AreasSortByOption;
-  archiveStatus?: ArchiveStatusFilterOption;
-  colors?: Color[];
+type ReadAreasDbFilters = Partial<AreasFilters> & {
   page?: number;
   limit?: number;
   areaIds?: string[];
   userId?: string;
-}) => {
+};
+
+export const readAreasDb = async (filterOptions: ReadAreasDbFilters) => {
   const {
     search,
     sortBy = "recently_created",

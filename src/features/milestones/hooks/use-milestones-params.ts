@@ -1,24 +1,6 @@
-import { milestoneStatuses } from "@/db/shared";
-import { parseAsLocalDate } from "@/features/calendar/lib/calendar-params";
-import {
-  parseAsArrayOf,
-  parseAsString,
-  parseAsStringEnum,
-  useQueryStates,
-} from "nuqs";
+import { useQueryStates } from "nuqs";
+import { milestonesSearchParams } from "../lib/milestones-params";
 
 export const useMilestonesParams = () => {
-  return useQueryStates(
-    {
-      milestoneSearch: parseAsString
-        .withDefault("")
-        .withOptions({ clearOnDefault: true }),
-      statuses: parseAsArrayOf(parseAsStringEnum([...milestoneStatuses]))
-        .withDefault([])
-        .withOptions({ clearOnDefault: true }),
-      dueAtOnAfter: parseAsLocalDate.withOptions({ clearOnDefault: true }),
-      dueAtOnBefore: parseAsLocalDate.withOptions({ clearOnDefault: true }),
-    },
-    { shallow: false },
-  );
+  return useQueryStates(milestonesSearchParams, { shallow: false });
 };

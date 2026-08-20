@@ -42,7 +42,7 @@ const TasksSuspense = (props: SearchParamsType) => {
           </TabsList>
         </div>
         <TabsContent value="list">
-          <TasksListView {...props} />
+          <TasksListView showProject {...props} />
         </TabsContent>
         <TabsContent value="board">
           <TasksBoardView {...props} />

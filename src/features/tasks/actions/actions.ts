@@ -12,15 +12,11 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
-import {
-  areValidIds,
-  getLocalDayBounds,
-  getLocalMonthBounds,
-} from "@/lib/utils";
+import { areValidIds, getLocalDayBounds } from "@/lib/utils";
 import { format, isValid } from "date-fns";
-import { and, asc, count, eq, gte, lte, ne } from "drizzle-orm";
+import { and, count, eq, gte, lte, ne } from "drizzle-orm";
 import { cacheTag } from "next/cache";
-import { DayTasksSortByOption } from "../lib/tasks-params";
+import { TasksFilters } from "../lib/tasks-params";
 import { getUserTaskTag } from "../server/cache/tasks";
 import {
   confirmUserTaskOwnership,
@@ -36,6 +32,24 @@ import {
   UpdateTaskSchemaType,
 } from "./schemas";
 import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
+import { CalendarFilters } from "@/features/calendar/lib/calendar-params";
+
+type ReadCalendarTasksFilters = Pick<CalendarFilters, "view"> & {
+  month: CalendarFilters["month"];
+  projectIds?: string[];
+  areaIds?: string[];
+} & Partial<
+    Omit<TasksFilters, "dateTimeStartRange" | "dateTimeEndRange" | "sortBy">
+  >;
+
+type ReadTasksFilters = TasksFilters & {
+  page: number;
+  unassignedOnly?: boolean;
+  allTasks?: boolean;
+  selectedDay?: CalendarFilters["day"];
+  projectIds?: string[];
+  areaIds?: string[];
+};
 
 export const createTaskAction = async (
   unsafeData: TaskSchemaType,
@@ -253,34 +267,33 @@ export const deleteTaskAction = async (
   }
 };
 
-const getCachedCalendarTasks = async (
+const readCachedCalendarTasks = async (
   userId: string,
   timeZone: string,
-  dateToUse: Date,
+  options: ReadCalendarTasksFilters,
 ) => {
   "use cache";
   cacheTag(getUserTaskTag(userId));
 
-  if (!isValid(dateToUse)) return null;
+  const { month, ...rest } = options;
 
-  const { monthDays } = calculateCalendarValues(dateToUse);
+  if (!isValid(month)) return null;
 
-  const { startUtc, endUtc } = getLocalMonthBounds(dateToUse, timeZone);
+  const { monthDays } = calculateCalendarValues(month);
 
-  const tasks = await db
-    .select()
-    .from(TaskTable)
-    .where(
-      and(
-        eq(TaskTable.userId, userId),
-        gte(TaskTable.scheduledAt, startUtc),
-        lte(TaskTable.scheduledAt, endUtc),
-      ),
-    )
-    .orderBy(asc(TaskTable.id));
+  const response = await readTasksDb({
+    userId,
+    selectedMonth: month,
+    timeZone,
+    allTasks: true,
+    ...rest,
+  });
+  if (!response) return null;
+
+  const { tasks } = response;
 
   const monthDaysWithTasks = monthDays.map((day) => {
-    const dayTasks = tasks.filter((task) => {
+    const scheduledTasks = tasks.filter((task) => {
       const { startUtc, endUtc } = getLocalDayBounds(day, timeZone);
       return (
         task.scheduledAt &&
@@ -289,44 +302,42 @@ const getCachedCalendarTasks = async (
       );
     });
 
+    const dueTasks = tasks.filter((task) => {
+      const { startUtc, endUtc } = getLocalDayBounds(day, timeZone);
+
+      return task.dueAt && task.dueAt >= startUtc && task.dueAt <= endUtc;
+    });
+
     return {
       day,
-      tasks: dayTasks,
+      tasks: {
+        scheduled: scheduledTasks,
+        due: dueTasks,
+      },
     };
   });
 
   return {
-    month: dateToUse,
+    month,
     monthDaysTasks: monthDaysWithTasks,
   };
 };
-export const getCalendarTasksAction = async (dateToUse: Date) => {
+export const readCalendarTasksAction = async (
+  options: ReadCalendarTasksFilters,
+) => {
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) return null;
 
-  return getCachedCalendarTasks(userId, user.timeZone, dateToUse);
+  return readCachedCalendarTasks(userId, user.timeZone, options);
 };
-export type GetCalendarTasksActionReturnType = UnwrapAsync<
-  typeof getCalendarTasksAction
+export type ReadCalendarTasksActionReturnType = UnwrapAsync<
+  typeof readCalendarTasksAction
 >;
 
 const readCachedTasksAction = async (
   userId: string,
   timeZone: string,
-  filterOptions: {
-    search: string;
-    sortBy: DayTasksSortByOption;
-    priorities: TaskPriority[];
-    statuses: TaskStatus[];
-    dateTimeStartRange: Date | null;
-    dateTimeEndRange: Date | null;
-    page: number;
-    unassignedOnly?: boolean;
-    allTasks?: boolean;
-    selectedDay?: Date | null;
-    projectIds?: string[];
-    areaIds?: string[];
-  },
+  filterOptions: ReadTasksFilters,
 ) => {
   "use cache";
   cacheTag(getUserTaskTag(userId));
@@ -393,20 +404,7 @@ const readCachedTasksAction = async (
     },
   };
 };
-export const readTasksAction = async (filterOptions: {
-  search: string;
-  sortBy: DayTasksSortByOption;
-  priorities: TaskPriority[];
-  statuses: TaskStatus[];
-  dateTimeStartRange: Date | null;
-  dateTimeEndRange: Date | null;
-  page: number;
-  unassignedOnly?: boolean;
-  allTasks?: boolean;
-  projectIds?: string[];
-  areaIds?: string[];
-  selectedDay?: Date | null;
-}) => {
+export const readTasksAction = async (filterOptions: ReadTasksFilters) => {
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) return null;
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { ErrorState } from "@/components/error-state";
 import {
   Select,
   SelectContent,
@@ -24,10 +25,12 @@ import { useState } from "react";
 
 export const TasksBoardViewClient = ({
   response,
+  projectId,
 }: {
   response: ReadTasksActionReturnType;
+  projectId?: string;
 }) => {
-  const { tasks } = response;
+  const { tasks, metadata } = response;
 
   const [boardViewKind, setBoardViewKind] = useState<BoardProperty>("status");
 
@@ -47,6 +50,17 @@ export const TasksBoardViewClient = ({
   const currentSelectedBoardViewKind = boardViewKinds.find(
     (kind) => kind.value === boardViewKind,
   );
+
+  const currentProject = metadata.projects?.find(
+    (project) => project.id === projectId,
+  );
+  if (projectId && !currentProject)
+    return (
+      <ErrorState
+        title="An error occurred"
+        description="We were unable to load your project. Try refreshing the page or come back later if the issue persists."
+      />
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -83,6 +97,7 @@ export const TasksBoardViewClient = ({
           initialTasks={tasks}
           property="status"
           propertyOptions={taskStatuses}
+          project={currentProject}
           formatter={formatTaskStatus}
           saveOnMoveEnd={updateTasksStatusAction}
         />
@@ -90,6 +105,7 @@ export const TasksBoardViewClient = ({
         <TaskBoard
           initialTasks={tasks}
           property="priority"
+          project={currentProject}
           propertyOptions={taskPriorities}
           formatter={formatTaskPriority}
           saveOnMoveEnd={updateTasksPriorityAction}

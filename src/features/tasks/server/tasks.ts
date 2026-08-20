@@ -4,9 +4,7 @@ import {
   ProjectSelectType,
   ProjectTable,
   TaskInsertType,
-  TaskPriority,
   TaskSelectType,
-  TaskStatus,
   TaskTable,
 } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
@@ -17,7 +15,11 @@ import { confirmUserProjectOwnership } from "@/features/projects/server/projects
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
 import { runMutationCacheInvalidation } from "@/lib/data-cache";
-import { areValidIds, getLocalDayBounds } from "@/lib/utils";
+import {
+  areValidIds,
+  getLocalDayBounds,
+  getLocalMonthBounds,
+} from "@/lib/utils";
 import {
   and,
   asc,
@@ -33,9 +35,27 @@ import {
   sql,
   SQL,
 } from "drizzle-orm";
-import { DayTasksSortByOption } from "../lib/tasks-params";
+import { DayTasksSortByOption, TasksFilters } from "../lib/tasks-params";
 import { revalidateTaskCache } from "./cache/tasks";
 import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
+import {
+  CalendarFilters,
+  CalendarViewOption,
+} from "@/features/calendar/lib/calendar-params";
+
+type ReadTasksDbFilters = Partial<TasksFilters> & {
+  page?: number;
+  unassignedOnly?: boolean;
+  allTasks?: boolean;
+  selectedDay?: CalendarFilters["day"];
+  selectedMonth?: CalendarFilters["month"] | null;
+  view?: CalendarFilters["view"] | null;
+  projectIds?: string[];
+  areaIds?: string[];
+  userId?: string;
+  timeZone?: string;
+  limit?: number;
+};
 
 export const confirmUserTaskOwnership = async (
   taskId: string,
@@ -58,23 +78,7 @@ export const confirmUserTaskOwnership = async (
   return existingTask ?? null;
 };
 
-export const readTasksDb = async (filterOptions: {
-  search?: string;
-  sortBy?: DayTasksSortByOption;
-  priorities?: TaskPriority[];
-  statuses?: TaskStatus[];
-  dateTimeStartRange?: Date | null;
-  dateTimeEndRange?: Date | null;
-  page?: number;
-  unassignedOnly?: boolean;
-  allTasks?: boolean;
-  selectedDay?: Date | null;
-  projectIds?: string[];
-  areaIds?: string[];
-  userId?: string;
-  timeZone?: string;
-  limit?: number;
-}) => {
+export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
   const {
     search,
     sortBy = "recently_created",
@@ -86,6 +90,8 @@ export const readTasksDb = async (filterOptions: {
     unassignedOnly,
     allTasks,
     selectedDay,
+    selectedMonth,
+    view,
     projectIds,
     areaIds,
     userId,
@@ -206,6 +212,28 @@ export const readTasksDb = async (filterOptions: {
     );
   }
 
+  let monthFilter;
+  if (selectedMonth && timeZone && view) {
+    const { startUtc, endUtc } = getLocalMonthBounds(selectedMonth, timeZone);
+
+    const scheduledFilter = and(
+      gte(TaskTable.scheduledAt, startUtc),
+      lte(TaskTable.scheduledAt, endUtc),
+    );
+    const dueFilter = and(
+      gte(TaskTable.dueAt, startUtc),
+      lte(TaskTable.dueAt, endUtc),
+    );
+
+    const viewMap: Record<CalendarViewOption, SQL<unknown> | undefined> = {
+      all: or(scheduledFilter, dueFilter),
+      scheduled: scheduledFilter,
+      due: dueFilter,
+    };
+
+    monthFilter = viewMap[view];
+  }
+
   const milestoneFilter = unassignedOnly
     ? isNull(TaskTable.milestoneId)
     : undefined;
@@ -213,6 +241,7 @@ export const readTasksDb = async (filterOptions: {
   const whereQuery = and(
     eq(TaskTable.userId, userIdToUse),
     dayFilter,
+    monthFilter,
     searchFilter,
     priorityFilter,
     projectsFilter,

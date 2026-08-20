@@ -33,19 +33,7 @@ export const MainCalendarSkeleton = ({
               "flex min-h-0 min-w-0 flex-col border p-2",
               fixedHeight && "h-45",
             )}
-          >
-            <div className="flex items-center justify-between">
-              <Skeleton className="size-5 rounded-md" />
-
-              {index % 4 === 0 && <Skeleton className="size-6 rounded-md" />}
-            </div>
-
-            {index % 5 === 0 && (
-              <div className="flex flex-1 items-center justify-center">
-                <Skeleton className="size-10 rounded-full" />
-              </div>
-            )}
-          </div>
+          />
         ))}
       </div>
     </div>

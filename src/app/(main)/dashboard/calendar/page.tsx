@@ -1,10 +1,9 @@
 import { ErrorState } from "@/components/error-state";
-import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { MainCalendar } from "@/features/calendar/components/main-calendar";
 import { MainCalendarSkeleton } from "@/features/calendar/components/main-calendar-skeleton";
 import { loadCalendarSearchParams } from "@/features/calendar/lib/calendar-params";
 import {
-  getCalendarTasksAction,
+  readCalendarTasksAction,
   readTasksAction,
 } from "@/features/tasks/actions/actions";
 import { DayTasksDialog } from "@/features/tasks/components/day-tasks-dialog";
@@ -38,7 +37,10 @@ const DashboardCalendarSuspense = async ({
   ]);
 
   const [monthDaysTasks, selectedDayTasks] = await Promise.all([
-    getCalendarTasksAction(calendarFilters.month),
+    readCalendarTasksAction({
+      month: calendarFilters.month,
+      view: calendarFilters.view,
+    }),
     readTasksAction({
       ...dayTasksFilters,
       page: DEFAULT_PAGE,

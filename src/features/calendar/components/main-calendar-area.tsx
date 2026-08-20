@@ -1,12 +1,12 @@
 "use client";
 
-import { GetCalendarTasksActionReturnType } from "@/features/tasks/actions/actions";
+import { ReadCalendarTasksActionReturnType } from "@/features/tasks/actions/actions";
 import { MainCalendarDay } from "./main-calendar-day";
 
 export const MainCalendarArea = ({
   monthDaysTasksRes,
 }: {
-  monthDaysTasksRes: GetCalendarTasksActionReturnType;
+  monthDaysTasksRes: ReadCalendarTasksActionReturnType;
 }) => {
   const { monthDaysTasks } = monthDaysTasksRes;
 

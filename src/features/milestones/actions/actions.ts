@@ -17,6 +17,7 @@ import { areValidIds } from "@/lib/utils";
 import { format } from "date-fns";
 import { and, between, count, eq, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
+import { MilestonesFilters } from "../lib/milestones-params";
 import { getProjectMilestoneTag } from "../server/cache/milestones";
 import {
   confirmUserMilestoneOwnership,
@@ -28,16 +29,18 @@ import {
 } from "../server/milestones";
 import { milestoneSchema, MilestoneSchemaType } from "./schemas";
 
+type ReadProjectMilestonesFilters = Omit<
+  MilestonesFilters,
+  "milestoneSearch"
+> & {
+  search: string;
+  page: number;
+};
+
 const readCachedProjectMilestonesAction = async (
   userId: string,
   projectId: string,
-  filterOptions: {
-    search: string;
-    statuses: MilestoneStatus[];
-    dueAtOnAfter: Date | null;
-    dueAtOnBefore: Date | null;
-    page: number;
-  },
+  filterOptions: ReadProjectMilestonesFilters,
 ) => {
   "use cache";
   cacheTag(getProjectMilestoneTag(projectId));
@@ -80,13 +83,7 @@ const readCachedProjectMilestonesAction = async (
 };
 export const readProjectMilestonesAction = async (
   projectId: string,
-  filterOptions: {
-    search: string;
-    statuses: MilestoneStatus[];
-    dueAtOnAfter: Date | null;
-    dueAtOnBefore: Date | null;
-    page: number;
-  },
+  filterOptions: ReadProjectMilestonesFilters,
 ) => {
   if (!areValidIds(projectId)) return null;
 

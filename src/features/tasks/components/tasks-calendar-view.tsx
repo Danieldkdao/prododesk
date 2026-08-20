@@ -1,16 +1,21 @@
 import { ErrorState } from "@/components/error-state";
-import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { MainCalendar } from "@/features/calendar/components/main-calendar";
+import { MainCalendarSkeleton } from "@/features/calendar/components/main-calendar-skeleton";
 import { loadCalendarSearchParams } from "@/features/calendar/lib/calendar-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
-import { SearchParamsType } from "@/lib/types";
+import { ParamsId, SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
-import { getCalendarTasksAction, readTasksAction } from "../actions/actions";
+import { readCalendarTasksAction, readTasksAction } from "../actions/actions";
 import { loadTasksSearchParams } from "../lib/tasks-params";
 import { DayTasksDialog } from "./day-tasks-dialog";
-import { MainCalendarSkeleton } from "@/features/calendar/components/main-calendar-skeleton";
 
-export const TasksCalendarView = (props: SearchParamsType) => {
+type TasksCalendarViewProps = {
+  params?: Promise<
+    Partial<Awaited<ParamsId<"areaId" | "projectId">["params"]>>
+  >;
+} & SearchParamsType;
+
+export const TasksCalendarView = (props: TasksCalendarViewProps) => {
   return (
     <Suspense fallback={<TasksCalendarViewLoading />}>
       <TasksCalendarViewSuspense {...props} />
@@ -27,19 +32,33 @@ const TasksCalendarViewLoading = () => {
 };
 
 const TasksCalendarViewSuspense = async ({
+  params,
   searchParams,
-}: SearchParamsType) => {
+}: TasksCalendarViewProps) => {
+  const projectId = params ? (await params).projectId : undefined;
+  const areaId = params ? (await params).areaId : undefined;
+
   const [calendarFilters, dayTasksFilters] = await Promise.all([
     loadCalendarSearchParams(searchParams),
     loadTasksSearchParams(searchParams),
   ]);
 
   const [monthDaysTasks, selectedDayTasks] = await Promise.all([
-    getCalendarTasksAction(calendarFilters.month),
+    readCalendarTasksAction({
+      month: calendarFilters.month,
+      view: calendarFilters.view,
+      search: dayTasksFilters.search,
+      statuses: dayTasksFilters.statuses,
+      priorities: dayTasksFilters.priorities,
+      areaIds: areaId ? [areaId] : undefined,
+      projectIds: projectId ? [projectId] : undefined,
+    }),
     readTasksAction({
       ...dayTasksFilters,
       page: DEFAULT_PAGE,
       selectedDay: calendarFilters.day,
+      areaIds: areaId ? [areaId] : undefined,
+      projectIds: projectId ? [projectId] : undefined,
     }),
   ]);
 
@@ -54,16 +73,8 @@ const TasksCalendarViewSuspense = async ({
 
   return (
     <div className="h-full min-h-0 overflow-hidden">
-      <div className="overflow-x-auto">
-        <div className="w-full min-w-300">
-          <ResizablePanelGroup orientation="horizontal">
-            <ResizablePanel minSize="65%" className="min-h-0 overflow-hidden">
-              <MainCalendar monthDaysTasks={monthDaysTasks} />
-            </ResizablePanel>
-            <DayTasksDialog dayTasks={selectedDayTasks} />
-          </ResizablePanelGroup>
-        </div>
-      </div>
+      <MainCalendar monthDaysTasks={monthDaysTasks} />
+      <DayTasksDialog dayTasks={selectedDayTasks} />
     </div>
   );
 };

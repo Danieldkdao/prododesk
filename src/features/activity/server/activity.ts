@@ -1,10 +1,7 @@
 import { ActivityMutationOptions, db } from "@/db/db";
 import {
-  ActivityAction,
   ActivityInsertType,
   ActivitySelectType,
-  ActivitySource,
-  ActivitySubject,
   ActivityTable,
   AreaSelectType,
   ArtifactTable,
@@ -31,23 +28,24 @@ import {
   or,
   SQL,
 } from "drizzle-orm";
-import { ActivitySortByOption } from "../lib/activity-params";
+import {
+  ActivityFilters,
+  ActivitySortByOption,
+} from "../lib/activity-params";
 import { revalidateActivityCache } from "./cache/activity";
 
-export const readActivityDb = async (filterOptions: {
-  search?: string;
-  sortBy?: ActivitySortByOption;
-  sources?: ActivitySource[];
-  actions?: ActivityAction[];
-  subjects?: ActivitySubject[];
+type ReadActivityDbFilters = Partial<ActivityFilters> & {
   projectIds?: string[];
   areaIds?: string[];
   limit?: number;
   userId?: string;
   after?: Date;
   before?: Date;
-  page?: number;
-}) => {
+};
+
+export const readActivityDb = async (
+  filterOptions: ReadActivityDbFilters,
+) => {
   const {
     search,
     sortBy = "most_recent",

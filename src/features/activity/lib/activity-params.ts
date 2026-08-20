@@ -10,12 +10,13 @@ import {
   parseAsInteger,
   parseAsString,
   parseAsStringEnum,
+  type inferParserType,
 } from "nuqs/server";
 
 export const activitySortByOptions = ["most_recent", "oldest"] as const;
 export type ActivitySortByOption = (typeof activitySortByOptions)[number];
 
-const filterSearchParams = {
+export const activitySearchParams = {
   search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   sortBy: parseAsStringEnum([...activitySortByOptions])
     .withDefault("most_recent")
@@ -33,4 +34,6 @@ const filterSearchParams = {
     .withDefault(DEFAULT_PAGE)
     .withOptions({ clearOnDefault: true }),
 };
-export const loadActivitySearchParams = createLoader(filterSearchParams);
+export type ActivityFilters = inferParserType<typeof activitySearchParams>;
+
+export const loadActivitySearchParams = createLoader(activitySearchParams);

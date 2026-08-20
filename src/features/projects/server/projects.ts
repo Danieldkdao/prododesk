@@ -2,10 +2,8 @@ import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
   AreaSelectType,
   AreaTable,
-  Color,
   ProjectInsertType,
   ProjectSelectType,
-  ProjectStatus,
   ProjectTable,
   TaskSelectType,
   TaskTable,
@@ -38,7 +36,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { ProjectSchemaType } from "../actions/schemas";
-import { ProjectsSortByOption } from "../lib/projects-params";
+import { ProjectsFilters, ProjectsSortByOption } from "../lib/projects-params";
 import { revalidateProjectCache } from "./cache/projects";
 
 export const confirmUserProjectOwnership = async (
@@ -138,21 +136,18 @@ export const revalidateProjectMutationCache = async ({
   });
 };
 
-export const readProjectsDb = async (filterOptions: {
-  search?: string;
-  sortBy?: ProjectsSortByOption;
-  colors?: Color[];
-  statuses?: ProjectStatus[];
-  archiveStatus?: ArchiveStatusFilterOption;
-  dateTimeStartRange?: Date | null;
-  dateTimeEndRange?: Date | null;
+type ReadProjectsDbFilters = Partial<ProjectsFilters> & {
   startBefore?: Date | null;
   page?: number;
   projectIds?: string[];
   areaIds?: string[];
   userId?: string;
   limit?: number;
-}) => {
+};
+
+export const readProjectsDb = async (
+  filterOptions: ReadProjectsDbFilters,
+) => {
   const {
     search,
     sortBy = "recently_created",

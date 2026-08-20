@@ -1,10 +1,11 @@
 import { ErrorState } from "@/components/error-state";
-import { readTasksAction } from "@/features/tasks/actions/actions";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 import { AreaProjectTasksSkeleton } from "@/features/tasks/components/area-project-tasks-skeleton";
-import { AreaTasksInfiniteList } from "@/features/tasks/components/area-tasks-infinite-list";
+import { TasksBoardView } from "@/features/tasks/components/tasks-board-view";
+import { TasksCalendarView } from "@/features/tasks/components/tasks-calendar-view";
 import { TasksFilters } from "@/features/tasks/components/tasks-filters";
-import { loadTasksSearchParams } from "@/features/tasks/lib/tasks-params";
-import { DEFAULT_PAGE } from "@/lib/constants";
+import { TasksListView } from "@/features/tasks/components/tasks-list-view";
 import { ParamsId, SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
 
@@ -18,38 +19,39 @@ const AreaIdTasksPage = (props: AreaIdTasksParams) => {
   );
 };
 
-const AreaIdTasksSuspense = async ({
-  params,
-  searchParams,
-}: AreaIdTasksParams) => {
-  const { areaId } = await params;
-  const filters = await loadTasksSearchParams(searchParams);
+const AreaIdTasksSuspense = async (props: AreaIdTasksParams) => {
+  const { areaId } = await props.params;
 
-  const response = await readTasksAction({
-    ...filters,
-    areaIds: [areaId],
-    page: DEFAULT_PAGE,
-  });
-  if (!response) {
+  const existingArea = await confirmUserAreaOwnership(areaId);
+  if (!existingArea)
     return (
       <ErrorState
-        title="An error ocurred"
-        description="We were unable to load your tasks for this area. Try refreshing the page or checking the URL."
+        title="Area not found"
+        description="We were unable to find the area you are looking for. Please check the URL and try again."
       />
     );
-  }
-
-  const { tasks, metadata } = response;
 
   return (
-    <div className="w-full flex flex-col gap-4">
-      <TasksFilters />
-      <AreaTasksInfiniteList
-        key={metadata.clientKey}
-        areaId={areaId}
-        initialTasks={tasks}
-        initialHasNextPage={metadata.hasNextPage}
-      />
+    <div className="flex flex-col gap-4">
+      <Tabs defaultValue="list">
+        <div className="flex flex-col md:flex-row md:items-center gap-2">
+          <TasksFilters />
+          <TabsList>
+            <TabsTrigger value="list">List</TabsTrigger>
+            <TabsTrigger value="board">Board</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="list">
+          <TasksListView showProject {...props} />
+        </TabsContent>
+        <TabsContent value="board">
+          <TasksBoardView {...props} />
+        </TabsContent>
+        <TabsContent value="calendar">
+          <TasksCalendarView {...props} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

@@ -1,5 +1,4 @@
 import { TaskSelectType } from "@/db/schema";
-import { TaskCalendarItem } from "@/features/tasks/components/task-calendar-item";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
 import { useTasksParams } from "@/features/tasks/hooks/use-tasks-params";
 import { defaultDayTasksParamsOptions } from "@/features/tasks/lib/tasks-params";
@@ -8,25 +7,39 @@ import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
 import { TooltipWrapper } from "../../../components/tooltip-wrapper";
 import { Button } from "../../../components/ui/button";
+import { CalendarDayTasksResizeList } from "../calendar-day-tasks-resize-list";
 import { useCalendarParams } from "../hooks/use-calendar-params";
 import { calculateCalendarDayTasksValues } from "../lib/utils";
-import { CalendarDayTasksResizeList } from "../calendar-day-tasks-resize-list";
+import { CalendarViewOption } from "../lib/calendar-params";
 
 export const MainCalendarDay = ({
   date,
   tasks,
 }: {
   date: Date;
-  tasks: TaskSelectType[];
+  tasks: {
+    scheduled: TaskSelectType[];
+    due: TaskSelectType[];
+  };
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
   const [, setDayTasksFilters] = useTasksParams();
 
+  const allTasks = [...tasks.scheduled, ...tasks.due];
+
   const { isToday, isPastDay, isSameMonth } = calculateCalendarDayTasksValues(
     calendarFilters.month,
     date,
-    tasks,
+    allTasks,
   );
+
+  const tasksMap: Record<CalendarViewOption, TaskSelectType[]> = {
+    all: allTasks,
+    scheduled: tasks.scheduled,
+    due: tasks.due,
+  };
+
+  const tasksToShow = tasksMap[calendarFilters.view];
 
   return (
     <div
@@ -63,7 +76,7 @@ export const MainCalendarDay = ({
           )}
         </div>
       </div>
-      <CalendarDayTasksResizeList tasks={tasks} />
+      <CalendarDayTasksResizeList tasks={tasksToShow} />
     </div>
   );
 };

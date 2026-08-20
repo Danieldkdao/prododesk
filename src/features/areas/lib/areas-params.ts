@@ -5,6 +5,7 @@ import {
   parseAsArrayOf,
   parseAsString,
   parseAsStringEnum,
+  type inferParserType,
 } from "nuqs/server";
 
 export const areasSortByOptions = [
@@ -15,7 +16,7 @@ export const areasSortByOptions = [
 ] as const;
 export type AreasSortByOption = (typeof areasSortByOptions)[number];
 
-const filterSearchParams = {
+export const areasSearchParams = {
   search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   sortBy: parseAsStringEnum([...areasSortByOptions])
     .withDefault("recently_created")
@@ -27,4 +28,6 @@ const filterSearchParams = {
     .withDefault([])
     .withOptions({ clearOnDefault: true }),
 };
-export const loadAreasSearchParams = createLoader(filterSearchParams);
+export type AreasFilters = inferParserType<typeof areasSearchParams>;
+
+export const loadAreasSearchParams = createLoader(areasSearchParams);

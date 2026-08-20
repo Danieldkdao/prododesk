@@ -1,4 +1,4 @@
-import { SearchParamsType } from "@/lib/types";
+import { ParamsId, SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
 import { loadTasksSearchParams } from "../lib/tasks-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
@@ -6,7 +6,13 @@ import { readTasksAction } from "../actions/actions";
 import { ErrorState } from "@/components/error-state";
 import { TasksBoardViewClient } from "./tasks-board-view-client";
 
-export const TasksBoardView = (props: SearchParamsType) => {
+type TasksBoardViewProps = {
+  params?: Promise<
+    Partial<Awaited<ParamsId<"areaId" | "projectId">["params"]>>
+  >;
+} & SearchParamsType;
+
+export const TasksBoardView = (props: TasksBoardViewProps) => {
   return (
     <Suspense fallback={<TasksBoardViewLoading />}>
       <TasksBoardViewSuspense {...props} />
@@ -18,13 +24,21 @@ const TasksBoardViewLoading = () => {
   return <div>loading</div>;
 };
 
-const TasksBoardViewSuspense = async ({ searchParams }: SearchParamsType) => {
+const TasksBoardViewSuspense = async ({
+  params,
+  searchParams,
+}: TasksBoardViewProps) => {
+  const projectId = params ? (await params).projectId : undefined;
+  const areaId = params ? (await params).areaId : undefined;
+
   const filters = await loadTasksSearchParams(searchParams);
 
   const response = await readTasksAction({
     ...filters,
     page: DEFAULT_PAGE,
     allTasks: true,
+    projectIds: projectId ? [projectId] : undefined,
+    areaIds: areaId ? [areaId] : undefined,
   });
   if (!response)
     return (
@@ -34,5 +48,10 @@ const TasksBoardViewSuspense = async ({ searchParams }: SearchParamsType) => {
       />
     );
 
-  return <TasksBoardViewClient response={response} />;
+  return (
+    <TasksBoardViewClient
+      response={response}
+      projectId={projectId ?? undefined}
+    />
+  );
 };

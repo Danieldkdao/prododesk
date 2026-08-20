@@ -26,7 +26,10 @@ import {
   or,
   SQL,
 } from "drizzle-orm";
-import { DocumentsSortByOption } from "../lib/documents-params";
+import {
+  DocumentsFilters,
+  DocumentsSortByOption,
+} from "../lib/documents-params";
 import { revalidateDocumentCache } from "./cache/documents";
 
 export const confirmUserDocumentOwnership = async (
@@ -59,16 +62,18 @@ export const confirmUserDocumentOwnership = async (
   return existingDocument ?? null;
 };
 
-export const readDocumentsDb = async (filterOptions: {
-  search?: string;
-  sortBy?: DocumentsSortByOption;
+type ReadDocumentsDbFilters = Partial<DocumentsFilters> & {
   projectIds?: string[];
   areaIds?: string[];
   documentIds?: string[];
   page?: number;
   limit?: number;
   userId?: string;
-}) => {
+};
+
+export const readDocumentsDb = async (
+  filterOptions: ReadDocumentsDbFilters,
+) => {
   const {
     search,
     sortBy = "recently_created",
