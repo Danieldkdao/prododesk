@@ -78,19 +78,30 @@ const createTasksTool = tool({
       if (!insertedToolExecution)
         throw new Error("Failed to execute tool. Please try again.");
 
-      const responses = await Promise.all(
-        tasks.map((task) => {
-          abortSignal?.throwIfAborted();
-          return createTaskAction(
-            {
-              ...task,
-              scheduledAt: task.scheduledAt ? parseISO(task.scheduledAt) : null,
-              dueAt: task.dueAt ? parseISO(task.dueAt) : null,
-            },
-            { source: "ai", chatRunId: context.runId },
-          );
-        }),
-      );
+      const responses = await db.transaction(async (tx) => {
+        const responses = await Promise.all(
+          tasks.map((task) => {
+            abortSignal?.throwIfAborted();
+            return createTaskAction(
+              {
+                ...task,
+                scheduledAt: task.scheduledAt
+                  ? parseISO(task.scheduledAt)
+                  : null,
+                dueAt: task.dueAt ? parseISO(task.dueAt) : null,
+              },
+              { source: "ai", chatRunId: context.runId, tx },
+            );
+          }),
+        );
+
+        const failedResponse = responses.find((response) => response.error);
+        if (responses.length !== tasks.length || failedResponse) {
+          throw new Error(failedResponse?.message || GENERAL_ERROR_MESSAGE);
+        }
+
+        return responses;
+      });
 
       const isSuccess =
         responses.length === tasks.length &&

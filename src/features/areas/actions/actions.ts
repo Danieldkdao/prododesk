@@ -76,7 +76,11 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
             eq(ProjectTable.status, "active"),
             eq(ProjectTable.isArchived, false),
           ),
-          orderBy: [asc(projectRank), desc(ProjectTable.updatedAt)],
+          orderBy: [
+            asc(projectRank),
+            desc(ProjectTable.updatedAt),
+            desc(ProjectTable.id),
+          ],
           limit: 4,
         },
       },
@@ -89,7 +93,11 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
       .from(TaskTable)
       .innerJoin(ProjectTable, eq(TaskTable.projectId, ProjectTable.id))
       .where(and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)))
-      .orderBy(asc(priorityRank), desc(TaskTable.updatedAt))
+      .orderBy(
+        asc(priorityRank),
+        desc(TaskTable.updatedAt),
+        desc(TaskTable.id),
+      )
       .limit(5),
     db
       .select({
@@ -105,7 +113,7 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
           eq(ProjectTable.areaId, areaId),
         ),
       )
-      .orderBy(desc(DocumentTable.updatedAt))
+      .orderBy(desc(DocumentTable.updatedAt), desc(DocumentTable.id))
       .limit(4),
     db
       .select({
@@ -117,6 +125,7 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
       .where(
         or(eq(ActivityTable.areaId, areaId), eq(ProjectTable.areaId, areaId)),
       )
+      .orderBy(desc(ActivityTable.createdAt), desc(ActivityTable.id))
       .limit(5),
     db
       .select({

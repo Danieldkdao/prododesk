@@ -54,7 +54,6 @@ export const ProjectTasksInfiniteList = ({
   const {
     items: tasks,
     page,
-    setContainerEl,
     setSentinelEl,
     isPending,
   } = useInfiniteScroll<ReadTasksActionReturnType["tasks"][number], "tasks">(
@@ -87,7 +86,7 @@ export const ProjectTasksInfiniteList = ({
       </TaskDialog>
     </NotFound>
   ) : tasks.length ? (
-    <div ref={setContainerEl} className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       {allTasksCompleted && (
         <Alert
           variant="success"

@@ -1,4 +1,5 @@
 import { TaskSelectType } from "@/db/schema";
+import { TaskCalendarItem } from "@/features/tasks/components/task-calendar-item";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
 import { useTasksParams } from "@/features/tasks/hooks/use-tasks-params";
 import { defaultDayTasksParamsOptions } from "@/features/tasks/lib/tasks-params";
@@ -8,10 +9,8 @@ import { PlusIcon } from "lucide-react";
 import { TooltipWrapper } from "../../../components/tooltip-wrapper";
 import { Button } from "../../../components/ui/button";
 import { useCalendarParams } from "../hooks/use-calendar-params";
-import {
-  calculateCalendarDayTasksValues,
-  getCalendarDayTasksData,
-} from "../lib/utils";
+import { calculateCalendarDayTasksValues } from "../lib/utils";
+import { CalendarDayTasksResizeList } from "../calendar-day-tasks-resize-list";
 
 export const MainCalendarDay = ({
   date,
@@ -28,17 +27,11 @@ export const MainCalendarDay = ({
     date,
     tasks,
   );
-  const { dayContent, bgColor } = getCalendarDayTasksData(
-    calendarFilters.month,
-    date,
-    tasks,
-  );
 
   return (
     <div
       className={cn(
-        "min-h-0 min-w-0 border p-2 cursor-pointer flex flex-col",
-        bgColor,
+        "min-h-0 min-w-0 border p-2 cursor-pointer flex flex-col gap-2",
         !isSameMonth && "bg-muted/30 dark:bg-card/50 text-muted-foreground",
       )}
       onClick={() => {
@@ -70,9 +63,7 @@ export const MainCalendarDay = ({
           )}
         </div>
       </div>
-      <div className="w-full flex flex-col flex-1 h-full items-center justify-center">
-        {dayContent}
-      </div>
+      <CalendarDayTasksResizeList tasks={tasks} />
     </div>
   );
 };

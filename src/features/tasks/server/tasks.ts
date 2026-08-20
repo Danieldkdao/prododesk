@@ -77,7 +77,7 @@ export const readTasksDb = async (filterOptions: {
 }) => {
   const {
     search,
-    sortBy,
+    sortBy = "recently_created",
     priorities,
     statuses,
     dateTimeStartRange,
@@ -132,12 +132,12 @@ export const readTasksDb = async (filterOptions: {
     ? inArray(TaskTable.priority, priorities)
     : undefined;
 
-  const sortByMap: Record<DayTasksSortByOption, SQL<unknown>> = {
-    name_a_z: asc(sql`lower(${TaskTable.name})`),
-    name_z_a: desc(sql`lower(${TaskTable.name})`),
-    oldest: asc(TaskTable.createdAt),
-    priority: asc(priorityRank),
-    recently_created: desc(TaskTable.createdAt),
+  const sortByMap: Record<DayTasksSortByOption, SQL<unknown>[]> = {
+    name_a_z: [asc(sql`lower(${TaskTable.name})`), asc(TaskTable.id)],
+    name_z_a: [desc(sql`lower(${TaskTable.name})`), desc(TaskTable.id)],
+    oldest: [asc(TaskTable.createdAt), asc(TaskTable.id)],
+    priority: [asc(priorityRank), asc(TaskTable.id)],
+    recently_created: [desc(TaskTable.createdAt), desc(TaskTable.id)],
   };
 
   const statusFilter = statuses?.length
@@ -236,7 +236,7 @@ export const readTasksDb = async (filterOptions: {
     query = query.offset(offset);
   }
   if (sortBy) {
-    query = query.orderBy(sortByMap[sortBy]).$dynamic();
+    query = query.orderBy(...sortByMap[sortBy]).$dynamic();
   }
 
   if (!allTasks) {
@@ -278,7 +278,7 @@ export const insertTaskDb = async (
           source,
           subject: "task",
           action: "create",
-          subjectId: insertedTask.projectId,
+          subjectId: insertedTask.id,
           subjectLabel: insertedTask.name,
           projectId: insertedTask.projectId,
           message: `Created task "${insertedTask.name}"`,
@@ -362,7 +362,7 @@ export const updateTaskDb = async (
           source,
           subject: "task",
           action: "update",
-          subjectId: updatedTask.projectId,
+          subjectId: updatedTask.id,
           subjectLabel: updatedTask.name,
           projectId: updatedTask.projectId,
           message: `Updated task "${updatedTask.name}"`,
@@ -439,7 +439,7 @@ export const deleteTaskDb = async (
           source,
           subject: "task",
           action: "delete",
-          subjectId: deletedTask.projectId,
+          subjectId: deletedTask.id,
           subjectLabel: deletedTask.name,
           projectId: deletedTask.projectId,
           message: `Deleted task "${deletedTask.name}"`,

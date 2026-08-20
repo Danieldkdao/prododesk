@@ -139,16 +139,16 @@ const readCachedProjectAction = async (userId: string, projectId: string) => {
     with: {
       user: true,
       tasks: {
-        orderBy: asc(priorityRank),
+        orderBy: [asc(priorityRank), asc(TaskTable.id)],
         limit: 5,
       },
       documents: {
-        orderBy: desc(DocumentTable.updatedAt),
+        orderBy: [desc(DocumentTable.updatedAt), desc(DocumentTable.id)],
         limit: 4,
       },
       milestones: {
         where: ne(MilestoneTable.status, "completed"),
-        orderBy: asc(MilestoneTable.position),
+        orderBy: [asc(MilestoneTable.position), asc(MilestoneTable.id)],
         limit: 4,
       },
       area: true,

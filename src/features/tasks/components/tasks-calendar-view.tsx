@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { getCalendarTasksAction, readTasksAction } from "../actions/actions";
 import { loadTasksSearchParams } from "../lib/tasks-params";
 import { DayTasksPanel } from "./day-tasks-panel";
+import { MainCalendarSkeleton } from "@/features/calendar/components/main-calendar-skeleton";
 
 export const TasksCalendarView = (props: SearchParamsType) => {
   return (
@@ -18,7 +19,11 @@ export const TasksCalendarView = (props: SearchParamsType) => {
 };
 
 const TasksCalendarViewLoading = () => {
-  return <div>loading</div>;
+  return (
+    <div className="h-full min-h-0 overflow-hidden">
+      <MainCalendarSkeleton />
+    </div>
+  );
 };
 
 const TasksCalendarViewSuspense = async ({

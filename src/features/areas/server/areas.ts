@@ -81,7 +81,7 @@ export const readAreasDb = async (filterOptions: {
 }) => {
   const {
     search,
-    sortBy,
+    sortBy = "recently_created",
     archiveStatus,
     colors,
     page,
@@ -114,11 +114,11 @@ export const readAreasDb = async (filterOptions: {
       )
     : undefined;
 
-  const sortByMap: Record<AreasSortByOption, SQL<unknown>> = {
-    recently_created: desc(AreaTable.createdAt),
-    oldest: asc(AreaTable.createdAt),
-    recently_updated: desc(AreaTable.updatedAt),
-    position: asc(AreaTable.position),
+  const sortByMap: Record<AreasSortByOption, SQL<unknown>[]> = {
+    recently_created: [desc(AreaTable.createdAt), desc(AreaTable.id)],
+    oldest: [asc(AreaTable.createdAt), asc(AreaTable.id)],
+    recently_updated: [desc(AreaTable.updatedAt), desc(AreaTable.id)],
+    position: [asc(AreaTable.position), asc(AreaTable.id)],
   };
 
   const archiveStatusMap: Record<
@@ -202,7 +202,7 @@ export const readAreasDb = async (filterOptions: {
     .$dynamic();
 
   if (sortBy) {
-    query = query.orderBy(sortByMap[sortBy]).$dynamic();
+    query = query.orderBy(...sortByMap[sortBy]).$dynamic();
   }
   if (offset) {
     query = query.offset(offset).$dynamic();

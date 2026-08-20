@@ -153,7 +153,9 @@ export const TaskTableRow = ({
         </Select>
       </TableCell>
       <TableCell>
-        <span className="text-base">{task.description}</span>
+        <span className={cn("text-base", !task.description && "italic")}>
+          {task.description || "No description provided."}
+        </span>
       </TableCell>
       <TableCell className="text-base">
         {task.scheduledAt

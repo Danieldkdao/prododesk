@@ -71,7 +71,7 @@ export const readDocumentsDb = async (filterOptions: {
 }) => {
   const {
     search,
-    sortBy,
+    sortBy = "recently_created",
     projectIds,
     areaIds,
     documentIds,
@@ -93,10 +93,16 @@ export const readDocumentsDb = async (filterOptions: {
     offset = (page - 1) * limit;
   }
 
-  const sortByMap: Record<DocumentsSortByOption, SQL<unknown>> = {
-    oldest: asc(DocumentTable.createdAt),
-    recently_created: desc(DocumentTable.createdAt),
-    recently_updated: desc(DocumentTable.updatedAt),
+  const sortByMap: Record<DocumentsSortByOption, SQL<unknown>[]> = {
+    oldest: [asc(DocumentTable.createdAt), asc(DocumentTable.id)],
+    recently_created: [
+      desc(DocumentTable.createdAt),
+      desc(DocumentTable.id),
+    ],
+    recently_updated: [
+      desc(DocumentTable.updatedAt),
+      desc(DocumentTable.id),
+    ],
   };
 
   const normalizedSearch = search?.trim();
@@ -181,7 +187,7 @@ export const readDocumentsDb = async (filterOptions: {
     .$dynamic();
 
   if (sortBy) {
-    query = query.orderBy(sortByMap[sortBy]).$dynamic();
+    query = query.orderBy(...sortByMap[sortBy]).$dynamic();
   }
   if (offset) {
     query.offset(offset).$dynamic();

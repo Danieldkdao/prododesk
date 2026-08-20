@@ -50,7 +50,7 @@ export const readActivityDb = async (filterOptions: {
 }) => {
   const {
     search,
-    sortBy,
+    sortBy = "most_recent",
     sources,
     actions,
     subjects,
@@ -86,9 +86,9 @@ export const readActivityDb = async (filterOptions: {
       )
     : undefined;
 
-  const sortByMap: Record<ActivitySortByOption, SQL<unknown>> = {
-    most_recent: desc(ActivityTable.createdAt),
-    oldest: asc(ActivityTable.createdAt),
+  const sortByMap: Record<ActivitySortByOption, SQL<unknown>[]> = {
+    most_recent: [desc(ActivityTable.createdAt), desc(ActivityTable.id)],
+    oldest: [asc(ActivityTable.createdAt), asc(ActivityTable.id)],
   };
 
   const sourcesFilter = sources?.length
@@ -172,7 +172,7 @@ export const readActivityDb = async (filterOptions: {
     .$dynamic();
 
   if (sortBy) {
-    query = query.orderBy(sortByMap[sortBy]).$dynamic();
+    query = query.orderBy(...sortByMap[sortBy]).$dynamic();
   }
 
   if (offset) {
@@ -210,7 +210,7 @@ export const insertActivityDb = async (
       eq(ActivityTable.source, data.source),
       eq(ActivityTable.subject, data.subject),
     ),
-    orderBy: desc(ActivityTable.createdAt),
+    orderBy: [desc(ActivityTable.createdAt), desc(ActivityTable.id)],
   });
 
   let activityToReturn: ActivitySelectType | null = null;
