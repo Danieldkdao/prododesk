@@ -2,7 +2,6 @@ import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
   MilestoneInsertType,
   MilestoneSelectType,
-  MilestoneStatus,
   MilestoneTable,
   ProjectSelectType,
 } from "@/db/schema";
@@ -29,6 +28,7 @@ import {
 } from "drizzle-orm";
 import { revalidateMilestoneCache } from "./cache/milestones";
 import { MilestoneSortByOption } from "../lib/types";
+import { MilestonesFilters } from "../lib/milestones-params";
 
 export const revalidateMilestoneMutationCache = async ({
   source,
@@ -73,18 +73,22 @@ export const confirmUserMilestoneOwnership = async (
   );
 };
 
-export const readMilestonesDb = async (filterOptions: {
+type ReadMilestonesDbFilters = Omit<
+  Partial<MilestonesFilters>,
+  "milestoneSearch"
+> & {
   projectIds?: string[];
   milestoneIds?: string[];
   search?: string;
-  statuses?: MilestoneStatus[];
-  dueAtOnAfter?: Date | null;
-  dueAtOnBefore?: Date | null;
   sortBy?: MilestoneSortByOption;
   userId?: string;
   limit?: number;
   page?: number;
-}) => {
+};
+
+export const readMilestonesDb = async (
+  filterOptions: ReadMilestonesDbFilters,
+) => {
   const {
     projectIds,
     milestoneIds,
@@ -237,7 +241,7 @@ export const insertMilestoneDb = async (
           source,
           subject: "milestone",
           action: "create",
-          subjectId: insertedMilestone.projectId,
+          subjectId: insertedMilestone.id,
           subjectLabel: insertedMilestone.name,
           projectId: insertedMilestone.projectId,
           message: `Created milestone ${milestone.name}`,
@@ -314,7 +318,7 @@ export const updateMilestoneDb = async (
           source,
           subject: "milestone",
           action: "update",
-          subjectId: updatedMilestone.projectId,
+          subjectId: updatedMilestone.id,
           subjectLabel: updatedMilestone.name,
           projectId: updatedMilestone.projectId,
           message: `Updated milestone "${updatedMilestone.name}"`,
@@ -386,7 +390,7 @@ export const deleteMilestoneDb = async (
           source,
           subject: "milestone",
           action: "delete",
-          subjectId: deletedMilestone.projectId,
+          subjectId: deletedMilestone.id,
           subjectLabel: deletedMilestone.name,
           projectId: deletedMilestone.projectId,
           message: `Deleted milestone "${deletedMilestone.name}"`,

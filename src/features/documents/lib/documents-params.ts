@@ -1,4 +1,9 @@
-import { createLoader, parseAsString, parseAsStringEnum } from "nuqs/server";
+import {
+  createLoader,
+  parseAsString,
+  parseAsStringEnum,
+  type inferParserType,
+} from "nuqs/server";
 
 export const documentsSortByOptions = [
   "recently_created",
@@ -7,10 +12,12 @@ export const documentsSortByOptions = [
 ] as const;
 export type DocumentsSortByOption = (typeof documentsSortByOptions)[number];
 
-const filterSearchParams = {
+export const documentsSearchParams = {
   search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   sortBy: parseAsStringEnum([...documentsSortByOptions])
     .withDefault("recently_created")
     .withOptions({ clearOnDefault: true }),
 };
-export const loadDocumentsSearchParams = createLoader(filterSearchParams);
+export type DocumentsFilters = inferParserType<typeof documentsSearchParams>;
+
+export const loadDocumentsSearchParams = createLoader(documentsSearchParams);

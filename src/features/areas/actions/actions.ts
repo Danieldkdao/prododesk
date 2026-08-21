@@ -4,7 +4,6 @@ import { ActivityMutationOptions, db } from "@/db/db";
 import {
   ActivityTable,
   AreaTable,
-  Color,
   DocumentTable,
   ProjectTable,
   TaskTable,
@@ -17,7 +16,6 @@ import {
   PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
-import { ArchiveStatusFilterOption } from "@/lib/params";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds } from "@/lib/utils";
 import {
@@ -32,7 +30,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { cacheTag } from "next/cache";
-import { AreasSortByOption } from "../lib/areas-params";
+import { AreasFilters } from "../lib/areas-params";
 import {
   confirmUserAreaOwnership,
   deleteAreaDb,
@@ -42,6 +40,8 @@ import {
 } from "../server/areas";
 import { getAreaIdTag, getUserAreaTag } from "../server/cache/areas";
 import { areaSchema, AreaSchemaType } from "./schemas";
+
+type ReadAreasFilters = AreasFilters & { page: number };
 
 const readCachedAreaAction = async (userId: string, areaId: string) => {
   "use cache";
@@ -76,7 +76,11 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
             eq(ProjectTable.status, "active"),
             eq(ProjectTable.isArchived, false),
           ),
-          orderBy: [asc(projectRank), desc(ProjectTable.updatedAt)],
+          orderBy: [
+            asc(projectRank),
+            desc(ProjectTable.updatedAt),
+            desc(ProjectTable.id),
+          ],
           limit: 4,
         },
       },
@@ -89,7 +93,11 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
       .from(TaskTable)
       .innerJoin(ProjectTable, eq(TaskTable.projectId, ProjectTable.id))
       .where(and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)))
-      .orderBy(asc(priorityRank), desc(TaskTable.updatedAt))
+      .orderBy(
+        asc(priorityRank),
+        desc(TaskTable.updatedAt),
+        desc(TaskTable.id),
+      )
       .limit(5),
     db
       .select({
@@ -105,7 +113,7 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
           eq(ProjectTable.areaId, areaId),
         ),
       )
-      .orderBy(desc(DocumentTable.updatedAt))
+      .orderBy(desc(DocumentTable.updatedAt), desc(DocumentTable.id))
       .limit(4),
     db
       .select({
@@ -117,6 +125,7 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
       .where(
         or(eq(ActivityTable.areaId, areaId), eq(ProjectTable.areaId, areaId)),
       )
+      .orderBy(desc(ActivityTable.createdAt), desc(ActivityTable.id))
       .limit(5),
     db
       .select({
@@ -179,13 +188,7 @@ export type ReadAreaActionReturnType = UnwrapAsync<typeof readAreaAction>;
 
 const readCachedAreasAction = async (
   userId: string,
-  filterOptions: {
-    search: string;
-    sortBy: AreasSortByOption;
-    archiveStatus: ArchiveStatusFilterOption;
-    colors: Color[];
-    page: number;
-  },
+  filterOptions: ReadAreasFilters,
 ) => {
   "use cache";
   cacheTag(getUserAreaTag(userId));
@@ -221,13 +224,7 @@ const readCachedAreasAction = async (
     },
   };
 };
-export const readAreasAction = async (filterOptions: {
-  search: string;
-  sortBy: AreasSortByOption;
-  archiveStatus: ArchiveStatusFilterOption;
-  colors: Color[];
-  page: number;
-}) => {
+export const readAreasAction = async (filterOptions: ReadAreasFilters) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 

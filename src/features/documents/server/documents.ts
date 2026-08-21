@@ -26,7 +26,10 @@ import {
   or,
   SQL,
 } from "drizzle-orm";
-import { DocumentsSortByOption } from "../lib/documents-params";
+import {
+  DocumentsFilters,
+  DocumentsSortByOption,
+} from "../lib/documents-params";
 import { revalidateDocumentCache } from "./cache/documents";
 
 export const confirmUserDocumentOwnership = async (
@@ -59,19 +62,21 @@ export const confirmUserDocumentOwnership = async (
   return existingDocument ?? null;
 };
 
-export const readDocumentsDb = async (filterOptions: {
-  search?: string;
-  sortBy?: DocumentsSortByOption;
+type ReadDocumentsDbFilters = Partial<DocumentsFilters> & {
   projectIds?: string[];
   areaIds?: string[];
   documentIds?: string[];
   page?: number;
   limit?: number;
   userId?: string;
-}) => {
+};
+
+export const readDocumentsDb = async (
+  filterOptions: ReadDocumentsDbFilters,
+) => {
   const {
     search,
-    sortBy,
+    sortBy = "recently_created",
     projectIds,
     areaIds,
     documentIds,
@@ -93,10 +98,16 @@ export const readDocumentsDb = async (filterOptions: {
     offset = (page - 1) * limit;
   }
 
-  const sortByMap: Record<DocumentsSortByOption, SQL<unknown>> = {
-    oldest: asc(DocumentTable.createdAt),
-    recently_created: desc(DocumentTable.createdAt),
-    recently_updated: desc(DocumentTable.updatedAt),
+  const sortByMap: Record<DocumentsSortByOption, SQL<unknown>[]> = {
+    oldest: [asc(DocumentTable.createdAt), asc(DocumentTable.id)],
+    recently_created: [
+      desc(DocumentTable.createdAt),
+      desc(DocumentTable.id),
+    ],
+    recently_updated: [
+      desc(DocumentTable.updatedAt),
+      desc(DocumentTable.id),
+    ],
   };
 
   const normalizedSearch = search?.trim();
@@ -181,7 +192,7 @@ export const readDocumentsDb = async (filterOptions: {
     .$dynamic();
 
   if (sortBy) {
-    query = query.orderBy(sortByMap[sortBy]).$dynamic();
+    query = query.orderBy(...sortByMap[sortBy]).$dynamic();
   }
   if (offset) {
     query.offset(offset).$dynamic();

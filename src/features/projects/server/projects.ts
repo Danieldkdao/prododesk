@@ -2,10 +2,8 @@ import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
   AreaSelectType,
   AreaTable,
-  Color,
   ProjectInsertType,
   ProjectSelectType,
-  ProjectStatus,
   ProjectTable,
   TaskSelectType,
   TaskTable,
@@ -38,7 +36,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { ProjectSchemaType } from "../actions/schemas";
-import { ProjectsSortByOption } from "../lib/projects-params";
+import { ProjectsFilters, ProjectsSortByOption } from "../lib/projects-params";
 import { revalidateProjectCache } from "./cache/projects";
 
 export const confirmUserProjectOwnership = async (
@@ -138,24 +136,21 @@ export const revalidateProjectMutationCache = async ({
   });
 };
 
-export const readProjectsDb = async (filterOptions: {
-  search?: string;
-  sortBy?: ProjectsSortByOption;
-  colors?: Color[];
-  statuses?: ProjectStatus[];
-  archiveStatus?: ArchiveStatusFilterOption;
-  dateTimeStartRange?: Date | null;
-  dateTimeEndRange?: Date | null;
+type ReadProjectsDbFilters = Partial<ProjectsFilters> & {
   startBefore?: Date | null;
   page?: number;
   projectIds?: string[];
   areaIds?: string[];
   userId?: string;
   limit?: number;
-}) => {
+};
+
+export const readProjectsDb = async (
+  filterOptions: ReadProjectsDbFilters,
+) => {
   const {
     search,
-    sortBy,
+    sortBy = "recently_created",
     colors,
     statuses,
     archiveStatus,
@@ -195,10 +190,10 @@ export const readProjectsDb = async (filterOptions: {
       )
     : undefined;
 
-  const sortByMap: Record<ProjectsSortByOption, SQL<unknown>> = {
-    oldest: asc(ProjectTable.createdAt),
-    recently_created: desc(ProjectTable.createdAt),
-    recently_updated: desc(ProjectTable.updatedAt),
+  const sortByMap: Record<ProjectsSortByOption, SQL<unknown>[]> = {
+    oldest: [asc(ProjectTable.createdAt), asc(ProjectTable.id)],
+    recently_created: [desc(ProjectTable.createdAt), desc(ProjectTable.id)],
+    recently_updated: [desc(ProjectTable.updatedAt), desc(ProjectTable.id)],
   };
 
   const archiveStatusMap: Record<
@@ -326,7 +321,7 @@ export const readProjectsDb = async (filterOptions: {
               eq(TaskTable.projectId, ProjectTable.id),
             ),
           )
-          .orderBy(asc(priorityRank))
+          .orderBy(asc(priorityRank), asc(TaskTable.id))
           .limit(1)}
       )`.mapWith((val) => {
         if (!val) return null;
@@ -339,7 +334,7 @@ export const readProjectsDb = async (filterOptions: {
     .$dynamic();
 
   if (sortBy) {
-    query = query.orderBy(sortByMap[sortBy]).$dynamic();
+    query = query.orderBy(...sortByMap[sortBy]).$dynamic();
   }
   if (offset) {
     query = query.offset(offset).$dynamic();

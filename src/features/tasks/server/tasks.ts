@@ -4,9 +4,7 @@ import {
   ProjectSelectType,
   ProjectTable,
   TaskInsertType,
-  TaskPriority,
   TaskSelectType,
-  TaskStatus,
   TaskTable,
 } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
@@ -17,7 +15,12 @@ import { confirmUserProjectOwnership } from "@/features/projects/server/projects
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
 import { runMutationCacheInvalidation } from "@/lib/data-cache";
-import { areValidIds, getLocalDayBounds } from "@/lib/utils";
+import {
+  areValidIds,
+  getLocalDayBounds,
+  getLocalMonthBounds,
+  isValidDate,
+} from "@/lib/utils";
 import {
   and,
   asc,
@@ -28,14 +31,47 @@ import {
   ilike,
   inArray,
   isNull,
+  lt,
   lte,
   or,
   sql,
   SQL,
 } from "drizzle-orm";
-import { DayTasksSortByOption } from "../lib/tasks-params";
+import { DayTasksSortByOption, TasksFilters } from "../lib/tasks-params";
 import { revalidateTaskCache } from "./cache/tasks";
 import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
+import {
+  CalendarFilters,
+  CalendarViewOption,
+} from "@/features/calendar/lib/calendar-params";
+import {
+  taskPriorities,
+  TaskPriority,
+  taskStatuses,
+  TaskStatus,
+} from "@/db/schema";
+import { BoardProperty, TaskBoardCursor } from "../lib/types";
+
+type TaskBoardDbQuery = {
+  property: BoardProperty;
+  column: TaskStatus | TaskPriority;
+  cursor?: TaskBoardCursor | null;
+};
+
+type ReadTasksDbFilters = Partial<TasksFilters> & {
+  page?: number;
+  unassignedOnly?: boolean;
+  allTasks?: boolean;
+  selectedDay?: CalendarFilters["day"];
+  selectedMonth?: CalendarFilters["month"] | null;
+  view?: CalendarFilters["view"] | null;
+  projectIds?: string[];
+  areaIds?: string[];
+  userId?: string;
+  timeZone?: string;
+  board?: TaskBoardDbQuery;
+  limit?: number;
+};
 
 export const confirmUserTaskOwnership = async (
   taskId: string,
@@ -58,26 +94,10 @@ export const confirmUserTaskOwnership = async (
   return existingTask ?? null;
 };
 
-export const readTasksDb = async (filterOptions: {
-  search?: string;
-  sortBy?: DayTasksSortByOption;
-  priorities?: TaskPriority[];
-  statuses?: TaskStatus[];
-  dateTimeStartRange?: Date | null;
-  dateTimeEndRange?: Date | null;
-  page?: number;
-  unassignedOnly?: boolean;
-  allTasks?: boolean;
-  selectedDay?: Date | null;
-  projectIds?: string[];
-  areaIds?: string[];
-  userId?: string;
-  timeZone?: string;
-  limit?: number;
-}) => {
+export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
   const {
     search,
-    sortBy,
+    sortBy = "recently_created",
     priorities,
     statuses,
     dateTimeStartRange,
@@ -86,11 +106,14 @@ export const readTasksDb = async (filterOptions: {
     unassignedOnly,
     allTasks,
     selectedDay,
+    selectedMonth,
+    view,
     projectIds,
     areaIds,
     userId,
     timeZone,
     limit = PAGE_SIZE,
+    board,
   } = filterOptions;
   let userIdToUse: string | null = null;
   if (userId) {
@@ -132,16 +155,46 @@ export const readTasksDb = async (filterOptions: {
     ? inArray(TaskTable.priority, priorities)
     : undefined;
 
-  const sortByMap: Record<DayTasksSortByOption, SQL<unknown>> = {
-    name_a_z: asc(sql`lower(${TaskTable.name})`),
-    name_z_a: desc(sql`lower(${TaskTable.name})`),
-    oldest: asc(TaskTable.createdAt),
-    priority: asc(priorityRank),
-    recently_created: desc(TaskTable.createdAt),
+  const sortByMap: Record<DayTasksSortByOption, SQL<unknown>[]> = {
+    name_a_z: [asc(sql`lower(${TaskTable.name})`), asc(TaskTable.id)],
+    name_z_a: [desc(sql`lower(${TaskTable.name})`), desc(TaskTable.id)],
+    oldest: [asc(TaskTable.createdAt), asc(TaskTable.id)],
+    priority: [asc(priorityRank), asc(TaskTable.id)],
+    recently_created: [desc(TaskTable.createdAt), desc(TaskTable.id)],
   };
 
   const statusFilter = statuses?.length
     ? inArray(TaskTable.status, statuses)
+    : undefined;
+
+  const validBoardColumn = board
+    ? board.property === "status"
+      ? taskStatuses.includes(board.column as TaskStatus)
+      : taskPriorities.includes(board.column as TaskPriority)
+    : true;
+
+  if (!validBoardColumn) return null;
+
+  const boardColumnFilter = board
+    ? board.property === "status"
+      ? eq(TaskTable.status, board.column as TaskStatus)
+      : eq(TaskTable.priority, board.column as TaskPriority)
+    : undefined;
+
+  if (
+    board?.cursor &&
+    (!areValidIds(board.cursor.id) || !isValidDate(board.cursor.createdAt))
+  )
+    return null;
+
+  const boardCursorFilter = board?.cursor
+    ? or(
+        lt(TaskTable.createdAt, board.cursor.createdAt),
+        and(
+          eq(TaskTable.createdAt, board.cursor.createdAt),
+          lt(TaskTable.id, board.cursor.id),
+        ),
+      )
     : undefined;
 
   let existingProjects: ProjectSelectType[] = [];
@@ -195,15 +248,38 @@ export const readTasksDb = async (filterOptions: {
     dateTimeEndRange ? lte(TaskTable.scheduledAt, dateTimeEndRange) : undefined,
   );
 
+  const scheduledFilter = (startUtc: Date, endUtc: Date) =>
+    and(
+      gte(TaskTable.scheduledAt, startUtc),
+      lte(TaskTable.scheduledAt, endUtc),
+    );
+  const dueFilter = (startUtc: Date, endUtc: Date) =>
+    and(gte(TaskTable.dueAt, startUtc), lte(TaskTable.dueAt, endUtc));
+
+  const viewMap: Record<
+    CalendarViewOption,
+    (startUtc: Date, endUtc: Date) => SQL<unknown> | undefined
+  > = {
+    all: (startUtc: Date, endUtc: Date) =>
+      or(scheduledFilter(startUtc, endUtc), dueFilter(startUtc, endUtc)),
+    scheduled: (startUtc: Date, endUtc: Date) =>
+      scheduledFilter(startUtc, endUtc),
+    due: (startUtc: Date, endUtc: Date) => dueFilter(startUtc, endUtc),
+  };
+
   let dayFilter;
 
   if (selectedDay && timeZone) {
     const { startUtc, endUtc } = getLocalDayBounds(selectedDay, timeZone);
 
-    dayFilter = and(
-      gte(TaskTable.scheduledAt, startUtc),
-      lte(TaskTable.scheduledAt, endUtc),
-    );
+    dayFilter = view ? viewMap[view](startUtc, endUtc) : undefined;
+  }
+
+  let monthFilter;
+  if (selectedMonth && timeZone) {
+    const { startUtc, endUtc } = getLocalMonthBounds(selectedMonth, timeZone);
+
+    monthFilter = view ? viewMap[view](startUtc, endUtc) : undefined;
   }
 
   const milestoneFilter = unassignedOnly
@@ -213,6 +289,7 @@ export const readTasksDb = async (filterOptions: {
   const whereQuery = and(
     eq(TaskTable.userId, userIdToUse),
     dayFilter,
+    monthFilter,
     searchFilter,
     priorityFilter,
     projectsFilter,
@@ -220,6 +297,8 @@ export const readTasksDb = async (filterOptions: {
     timeRangeFilter,
     milestoneFilter,
     areasFilter,
+    boardColumnFilter,
+    boardCursorFilter,
   );
 
   let query = db
@@ -235,8 +314,12 @@ export const readTasksDb = async (filterOptions: {
   if (offset) {
     query = query.offset(offset);
   }
-  if (sortBy) {
-    query = query.orderBy(sortByMap[sortBy]).$dynamic();
+  if (board) {
+    query = query
+      .orderBy(desc(TaskTable.createdAt), desc(TaskTable.id))
+      .$dynamic();
+  } else if (sortBy) {
+    query = query.orderBy(...sortByMap[sortBy]).$dynamic();
   }
 
   if (!allTasks) {
@@ -278,7 +361,7 @@ export const insertTaskDb = async (
           source,
           subject: "task",
           action: "create",
-          subjectId: insertedTask.projectId,
+          subjectId: insertedTask.id,
           subjectLabel: insertedTask.name,
           projectId: insertedTask.projectId,
           message: `Created task "${insertedTask.name}"`,
@@ -362,7 +445,7 @@ export const updateTaskDb = async (
           source,
           subject: "task",
           action: "update",
-          subjectId: updatedTask.projectId,
+          subjectId: updatedTask.id,
           subjectLabel: updatedTask.name,
           projectId: updatedTask.projectId,
           message: `Updated task "${updatedTask.name}"`,
@@ -439,7 +522,7 @@ export const deleteTaskDb = async (
           source,
           subject: "task",
           action: "delete",
-          subjectId: deletedTask.projectId,
+          subjectId: deletedTask.id,
           subjectLabel: deletedTask.name,
           projectId: deletedTask.projectId,
           message: `Deleted task "${deletedTask.name}"`,

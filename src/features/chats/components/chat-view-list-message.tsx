@@ -539,7 +539,7 @@ export const ChatViewListMessage = ({
                                 className="flex flex-col gap-2"
                               >
                                 <span className="text-base font-medium">
-                                  {formatActivitySubject(subject).label}
+                                  {formatActivitySubject(subject).label + "s"}
                                 </span>
                                 <div className="flex items-center gap-4 flex-wrap max-w-200 w-full">
                                   {subArtifacts.map((artifact) => {
@@ -554,9 +554,9 @@ export const ChatViewListMessage = ({
                                     return (
                                       <Link
                                         key={artifact.activityId}
-                                        href={formatActivityLink[
-                                          activitySubject
-                                        ](artifact.activity.subjectId)}
+                                        href={formatActivityLink(
+                                          artifact.activity,
+                                        )}
                                         target="_blank"
                                       >
                                         <div className="flex items-center gap-2 px-2 py-0.5 bg-primary/10 text-primary">

@@ -5,6 +5,7 @@ import {
   parseAsIsoDateTime,
   parseAsString,
   parseAsStringEnum,
+  type inferParserType,
 } from "nuqs/server";
 
 export const defaultDayTasksParamsOptions = {
@@ -16,6 +17,9 @@ export const defaultDayTasksParamsOptions = {
   status: "all" as const,
   dateTimeStartRange: null,
   dateTimeEndRange: null,
+} satisfies TasksFilters & {
+  schedule: "any";
+  status: "all";
 };
 
 export const dayTasksSortByOptions = [
@@ -27,7 +31,7 @@ export const dayTasksSortByOptions = [
 ] as const;
 export type DayTasksSortByOption = (typeof dayTasksSortByOptions)[number];
 
-export const filterSearchParams = {
+export const tasksSearchParams = {
   search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   sortBy: parseAsStringEnum([...dayTasksSortByOptions])
     .withDefault("recently_created")
@@ -41,4 +45,6 @@ export const filterSearchParams = {
   dateTimeStartRange: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
   dateTimeEndRange: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
 };
-export const loadTasksSearchParams = createLoader(filterSearchParams);
+export type TasksFilters = inferParserType<typeof tasksSearchParams>;
+
+export const loadTasksSearchParams = createLoader(tasksSearchParams);

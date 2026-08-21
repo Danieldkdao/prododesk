@@ -3,10 +3,8 @@
 import { ActivityMutationOptions, db } from "@/db/db";
 import {
   AreaTable,
-  Color,
   DocumentTable,
   MilestoneTable,
-  ProjectStatus,
   ProjectTable,
   TaskTable,
 } from "@/db/schema";
@@ -18,14 +16,13 @@ import {
   PAGE_SIZE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
-import { ArchiveStatusFilterOption } from "@/lib/params";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds, isValidDate } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { cache } from "react";
-import { ProjectsSortByOption } from "../lib/projects-params";
+import { ProjectsFilters } from "../lib/projects-params";
 import {
   getAreaProjectTag,
   getProjectIdTag,
@@ -46,19 +43,14 @@ import {
   UpdateProjectSchemaType,
 } from "./schemas";
 
+type ReadProjectsFilters = ProjectsFilters & {
+  page: number;
+  areaIds?: string[];
+};
+
 const readCachedProjectsAction = async (
   userId: string,
-  filterOptions: {
-    search: string;
-    sortBy: ProjectsSortByOption;
-    colors: Color[];
-    statuses: ProjectStatus[];
-    archiveStatus: ArchiveStatusFilterOption;
-    dateTimeStartRange: Date | null;
-    dateTimeEndRange: Date | null;
-    page: number;
-    areaIds?: string[];
-  },
+  filterOptions: ReadProjectsFilters,
 ) => {
   "use cache";
   if (filterOptions.areaIds?.length) {
@@ -100,17 +92,9 @@ const readCachedProjectsAction = async (
     },
   };
 };
-export const readProjectsAction = async (filterOptions: {
-  search: string;
-  sortBy: ProjectsSortByOption;
-  colors: Color[];
-  statuses: ProjectStatus[];
-  archiveStatus: ArchiveStatusFilterOption;
-  dateTimeStartRange: Date | null;
-  dateTimeEndRange: Date | null;
-  page: number;
-  areaIds?: string[];
-}) => {
+export const readProjectsAction = async (
+  filterOptions: ReadProjectsFilters,
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
@@ -139,16 +123,16 @@ const readCachedProjectAction = async (userId: string, projectId: string) => {
     with: {
       user: true,
       tasks: {
-        orderBy: asc(priorityRank),
+        orderBy: [asc(priorityRank), asc(TaskTable.id)],
         limit: 5,
       },
       documents: {
-        orderBy: desc(DocumentTable.updatedAt),
+        orderBy: [desc(DocumentTable.updatedAt), desc(DocumentTable.id)],
         limit: 4,
       },
       milestones: {
         where: ne(MilestoneTable.status, "completed"),
-        orderBy: asc(MilestoneTable.position),
+        orderBy: [asc(MilestoneTable.position), asc(MilestoneTable.id)],
         limit: 4,
       },
       area: true,

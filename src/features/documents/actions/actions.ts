@@ -14,7 +14,7 @@ import { PartialNull, UnwrapAsync } from "@/lib/types";
 import { areValidIds, nullifyZodSchema } from "@/lib/utils";
 import { and, count, eq } from "drizzle-orm";
 import { cacheTag } from "next/cache";
-import { DocumentsSortByOption } from "../lib/documents-params";
+import { DocumentsFilters } from "../lib/documents-params";
 import {
   getDocumentIdTag,
   getUserDocumentTag,
@@ -28,15 +28,15 @@ import {
 } from "../server/documents";
 import { documentSchema, DocumentSchemaType } from "./schemas";
 
+type ReadDocumentsFilters = DocumentsFilters & {
+  projectIds?: string[];
+  areaIds?: string[];
+  page: number;
+};
+
 const readCachedDocumentsAction = async (
   userId: string,
-  filterOptions: {
-    search: string;
-    sortBy: DocumentsSortByOption;
-    projectIds?: string[];
-    areaIds?: string[];
-    page: number;
-  },
+  filterOptions: ReadDocumentsFilters,
 ) => {
   "use cache";
   cacheTag(getUserDocumentTag(userId));
@@ -73,13 +73,9 @@ const readCachedDocumentsAction = async (
     documents,
   };
 };
-export const readDocumentsAction = async (filterOptions: {
-  search: string;
-  sortBy: DocumentsSortByOption;
-  projectIds?: string[];
-  areaIds?: string[];
-  page: number;
-}) => {
+export const readDocumentsAction = async (
+  filterOptions: ReadDocumentsFilters,
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 

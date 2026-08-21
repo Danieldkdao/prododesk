@@ -1,23 +1,7 @@
 "use client";
 
 import { NotFound } from "@/components/not-found";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
-import { DEFAULT_PAGE } from "@/lib/constants";
-import {
-  CheckCircle2Icon,
-  ListXIcon,
-  Loader2Icon,
-  PlusIcon,
-} from "lucide-react";
-import { useCallback } from "react";
-import { ReadTasksActionReturnType, readTasksAction } from "../actions/actions";
-import { useTasksParams } from "../hooks/use-tasks-params";
-import { defaultDayTasksParamsOptions } from "../lib/tasks-params";
-import { Task } from "./task";
-import { TaskDialog } from "./task-dialog";
-import { ProjectSelectType } from "@/db/schema";
 import {
   Table,
   TableBody,
@@ -25,19 +9,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TaskTableRow } from "./task-table-row";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { DEFAULT_PAGE } from "@/lib/constants";
+import { ListXIcon, PlusIcon } from "lucide-react";
+import { useCallback } from "react";
+import { ReadTasksActionReturnType, readTasksAction } from "../actions/actions";
+import { useTasksParams } from "../hooks/use-tasks-params";
+import { defaultDayTasksParamsOptions } from "../lib/tasks-params";
 import { AreaProjectTaskSkeleton } from "./area-project-tasks-skeleton";
+import { TaskDialog } from "./task-dialog";
+import { TaskTableRow } from "./task-table-row";
+import { ProjectSelectType } from "@/db/schema";
 
-export const ProjectTasksInfiniteList = ({
-  project,
+export const TasksInfiniteList = ({
   initialTasks,
   initialHasNextPage,
-  allTasksCompleted,
+  currentProject,
+  areaIds,
 }: {
-  project: ProjectSelectType;
   initialTasks: ReadTasksActionReturnType["tasks"];
   initialHasNextPage: boolean;
-  allTasksCompleted: boolean;
+  currentProject?: ProjectSelectType;
+  areaIds?: string[];
 }) => {
   const [tasksFilters, setTasksFilters] = useTasksParams();
 
@@ -46,16 +39,16 @@ export const ProjectTasksInfiniteList = ({
       return readTasksAction({
         ...tasksFilters,
         page: nextPage,
-        projectIds: [project.id],
+        projectIds: currentProject ? [currentProject.id] : undefined,
+        areaIds,
       });
     },
-    [tasksFilters, project.id],
+    [tasksFilters, currentProject, areaIds],
   );
 
   const {
     items: tasks,
     page,
-    setContainerEl,
     setSentinelEl,
     isPending,
   } = useInfiniteScroll<ReadTasksActionReturnType["tasks"][number], "tasks">(
@@ -63,7 +56,7 @@ export const ProjectTasksInfiniteList = ({
     initialHasNextPage,
     fetchTasks,
     {
-      additionalScrollDeps: [tasksFilters],
+      additionalScrollDeps: [tasksFilters, currentProject, areaIds],
     },
   );
 
@@ -77,10 +70,10 @@ export const ProjectTasksInfiniteList = ({
   return page === DEFAULT_PAGE && !tasks.length && noFiltersApplied ? (
     <NotFound
       title="No tasks yet"
-      description="Create your first task for this project to get started!"
+      description="Create your first task to get started!"
       icon={<ListXIcon className="size-10" />}
     >
-      <TaskDialog defaultValues={{ project }}>
+      <TaskDialog defaultValues={{ project: currentProject }}>
         <Button>
           <PlusIcon />
           Create new task
@@ -88,19 +81,7 @@ export const ProjectTasksInfiniteList = ({
       </TaskDialog>
     </NotFound>
   ) : tasks.length ? (
-    <div ref={setContainerEl} className="flex flex-col gap-2">
-      {allTasksCompleted && (
-        <Alert
-          variant="success"
-          className="shadow-sm animate-in fade-in slide-in-from-top-2 duration-300"
-        >
-          <CheckCircle2Icon className="size-6" />
-          <AlertTitle>All tasks complete!</AlertTitle>
-          <AlertDescription>
-            You have finished all tasks for this project! Amazing work!
-          </AlertDescription>
-        </Alert>
-      )}
+    <div className="flex flex-col gap-2">
       {tasks.length ? (
         <Table>
           <TableHeader>
@@ -111,25 +92,28 @@ export const ProjectTasksInfiniteList = ({
               <TableHead>Description</TableHead>
               <TableHead>Scheduled At</TableHead>
               <TableHead>Due At</TableHead>
+              {!currentProject && <TableHead>Project</TableHead>}
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {tasks.map((task) => (
-              <TaskTableRow key={task.id} task={task} />
+              <TaskTableRow
+                key={task.id}
+                task={task}
+                showProject={!currentProject}
+              />
             ))}
             {isPending &&
               Array.from({ length: 8 }).map((_, index) => (
-                <AreaProjectTaskSkeleton key={index} />
+                <AreaProjectTaskSkeleton
+                  key={index}
+                  showProject={!currentProject}
+                />
               ))}
           </TableBody>
         </Table>
       ) : null}
-      {isPending && (
-        <div className="w-full flex items-center justify-center">
-          <Loader2Icon className="text-primary animate-spin" />
-        </div>
-      )}
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (

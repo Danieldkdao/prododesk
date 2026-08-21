@@ -4,9 +4,9 @@ import { archiveStatusFilterOptions } from "@/lib/params";
 import {
   createLoader,
   parseAsArrayOf,
-  parseAsIsoDate,
   parseAsString,
   parseAsStringEnum,
+  type inferParserType,
 } from "nuqs/server";
 
 export const projectsSortByOptions = [
@@ -16,7 +16,7 @@ export const projectsSortByOptions = [
 ] as const;
 export type ProjectsSortByOption = (typeof projectsSortByOptions)[number];
 
-const filterSearchParams = {
+export const projectsSearchParams = {
   search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   sortBy: parseAsStringEnum([...projectsSortByOptions])
     .withDefault("recently_created")
@@ -33,4 +33,6 @@ const filterSearchParams = {
   dateTimeStartRange: parseAsLocalDate.withOptions({ clearOnDefault: true }),
   dateTimeEndRange: parseAsLocalDate.withOptions({ clearOnDefault: true }),
 };
-export const loadProjectsSearchParams = createLoader(filterSearchParams);
+export type ProjectsFilters = inferParserType<typeof projectsSearchParams>;
+
+export const loadProjectsSearchParams = createLoader(projectsSearchParams);

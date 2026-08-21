@@ -1,5 +1,4 @@
 import { ErrorState } from "@/components/error-state";
-import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import { Button } from "@/components/ui/button";
 import { readProjectsAction } from "@/features/projects/actions/actions";
 import { ProjectDialog } from "@/features/projects/components/project-dialog";

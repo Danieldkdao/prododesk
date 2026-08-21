@@ -41,9 +41,10 @@ export const GET = async (
 
   const chatMessages = await db.query.ChatMessageTable.findMany({
     where: eq(ChatMessageTable.chatId, existingChat.id),
+    orderBy: [asc(ChatMessageTable.createdAt), asc(ChatMessageTable.id)],
     with: {
       parts: {
-        orderBy: asc(MessagePartTable.order),
+        orderBy: [asc(MessagePartTable.order), asc(MessagePartTable.id)],
       },
     },
   });

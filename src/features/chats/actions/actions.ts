@@ -21,7 +21,7 @@ import { areValidIds } from "@/lib/utils";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { GENERATE_CHAT_NAME_INSTRUCTIONS } from "@/services/ai/prompts";
 import { generateText } from "ai";
-import { and, asc, count, desc, eq, ilike, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { getChatIdTag, getUserChatTag } from "../server/cache/chats";
 import {
@@ -96,7 +96,7 @@ export const readChatAction = async (userId: string, chatId: string) => {
     where: and(eq(ChatTable.id, chatId), eq(ChatTable.userId, userId)),
     with: {
       messages: {
-        orderBy: asc(ChatMessageTable.createdAt),
+        orderBy: [asc(ChatMessageTable.createdAt), asc(ChatMessageTable.id)],
         with: {
           chatRun: {
             with: {
@@ -120,7 +120,7 @@ export const readChatAction = async (userId: string, chatId: string) => {
             },
           },
           parts: {
-            orderBy: asc(MessagePartTable.order),
+            orderBy: [asc(MessagePartTable.order), asc(MessagePartTable.id)],
           },
         },
       },

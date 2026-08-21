@@ -48,9 +48,11 @@ import { TaskDialog } from "./task-dialog";
 export const TasksFilters = ({
   defaultProject,
   onlySearch = false,
+  showAddButton = true,
 }: {
   defaultProject?: { id: string; name: string; icon?: string | null } | null;
   onlySearch?: boolean;
+  showAddButton?: boolean;
 }) => {
   const [calendarFilters] = useCalendarParams();
   const [filters, setFilters] = useTasksParams();
@@ -196,17 +198,21 @@ export const TasksFilters = ({
           </PopoverContent>
         </Popover>
       )}
-      {((calendarFilters.day &&
-        !(startOfDay(new Date()) > calendarFilters.day)) ||
-        !calendarFilters.day) && (
-        <TaskDialog
-          defaultValues={{ day: calendarFilters.day, project: defaultProject }}
-        >
-          <Button size="icon">
-            <PlusIcon />
-          </Button>
-        </TaskDialog>
-      )}
+      {showAddButton &&
+        ((calendarFilters.day &&
+          !(startOfDay(new Date()) > calendarFilters.day)) ||
+          !calendarFilters.day) && (
+          <TaskDialog
+            defaultValues={{
+              day: calendarFilters.day,
+              project: defaultProject,
+            }}
+          >
+            <Button size="icon">
+              <PlusIcon />
+            </Button>
+          </TaskDialog>
+        )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const DayTasksPanelContentSkeleton = () => {
+export const DayTasksContentSkeleton = () => {
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
       <div className="flex h-10 shrink-0 items-center justify-between gap-2 px-2">

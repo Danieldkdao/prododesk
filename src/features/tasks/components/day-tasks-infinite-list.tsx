@@ -21,13 +21,18 @@ import { Task } from "./task";
 import { TaskDialog } from "./task-dialog";
 import { useCallback } from "react";
 
-export const DayTasksPanelInfiniteList = ({
+export const DayTasksInfiniteList = ({
   initialDayTasks,
   initialHasNextPage,
+  readOptions,
   allTasksCompleted,
 }: {
   initialDayTasks: ReadTasksActionReturnType["tasks"];
   initialHasNextPage: boolean;
+  readOptions?: {
+    areaIds?: string[] | undefined;
+    projectIds?: string[] | undefined;
+  };
   allTasksCompleted: boolean;
 }) => {
   const [calendarFilters] = useCalendarParams();
@@ -39,9 +44,10 @@ export const DayTasksPanelInfiniteList = ({
         ...dayTasksFilters,
         page: nextPage,
         selectedDay: calendarFilters.day,
+        ...readOptions,
       });
     },
-    [calendarFilters.day, dayTasksFilters],
+    [calendarFilters.day, dayTasksFilters, readOptions],
   );
 
   const {
@@ -55,7 +61,7 @@ export const DayTasksPanelInfiniteList = ({
     initialHasNextPage,
     fetchTasks,
     {
-      additionalScrollDeps: [dayTasksFilters, calendarFilters],
+      additionalScrollDeps: [dayTasksFilters, calendarFilters, readOptions],
     },
   );
 
@@ -94,7 +100,7 @@ export const DayTasksPanelInfiniteList = ({
       )}
     </NotFound>
   ) : (
-    <div className="flex flex-col gap-2 flex-1 min-h-0 w-full p-2">
+    <div className="flex flex-col gap-2 flex-1 min-h-0 w-full">
       <TasksFilters />
       {dayTasks.length ? (
         <div

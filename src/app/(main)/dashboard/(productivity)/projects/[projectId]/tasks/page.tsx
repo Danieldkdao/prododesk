@@ -1,10 +1,10 @@
 import { ErrorState } from "@/components/error-state";
-import { ProjectTasksView } from "@/features/projects/components/project-tasks-view";
-import { readTasksAction } from "@/features/tasks/actions/actions";
+import { InfoCard } from "@/components/info-card";
+import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { AreaProjectTasksSkeleton } from "@/features/tasks/components/area-project-tasks-skeleton";
-import { loadTasksSearchParams } from "@/features/tasks/lib/tasks-params";
-import { DEFAULT_PAGE } from "@/lib/constants";
+import { TasksView } from "@/features/tasks/components/tasks-view";
 import { ParamsId, SearchParamsType } from "@/lib/types";
+import { areValidIds } from "@/lib/utils";
 import { Suspense } from "react";
 
 type ProjectIdParams = ParamsId<"projectId"> & SearchParamsType;
@@ -17,42 +17,27 @@ const ProjectIdTasksPage = (props: ProjectIdParams) => {
   );
 };
 
-const ProjectIdTasksSuspense = async ({
-  params,
-  searchParams,
-}: ProjectIdParams) => {
-  const { projectId } = await params;
-  const taskFilters = await loadTasksSearchParams(searchParams);
+const ProjectIdTasksSuspense = async (props: ProjectIdParams) => {
+  const { projectId } = await props.params;
 
-  const [listResponse, boardResponse] = await Promise.all([
-    readTasksAction({
-      page: DEFAULT_PAGE,
-      projectIds: [projectId],
-      ...taskFilters,
-    }),
-    readTasksAction({
-      page: DEFAULT_PAGE,
-      allTasks: true,
-      projectIds: [projectId],
-      ...taskFilters,
-    }),
-  ]);
-  if (!listResponse || !boardResponse) {
+  if (!areValidIds(projectId))
     return (
-      <ErrorState
-        title="An error occurred"
-        description="We were unable to load your tasks. Try refreshing the page or adding some tasks."
+      <InfoCard
+        title="Project not found"
+        description="We were unable to find the project you are looking for. Please check the URL and try again."
       />
     );
-  }
 
-  return (
-    <ProjectTasksView
-      projectId={projectId}
-      listResponse={listResponse}
-      boardResponse={boardResponse}
-    />
-  );
+  const existingProject = await confirmUserProjectOwnership(projectId);
+  if (!existingProject)
+    return (
+      <ErrorState
+        title="Project not found"
+        description="We were unable to find the project you are looking for. Please check the URL and try again."
+      />
+    );
+
+  return <TasksView showFilterAddButton {...props} />;
 };
 
 export default ProjectIdTasksPage;

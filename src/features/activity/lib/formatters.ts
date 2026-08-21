@@ -150,20 +150,33 @@ export const groupActivityBySubject = (artifacts: ArtifactActivityType[]) => {
   ) as [ActivitySubject, ArtifactActivityType[]][];
 };
 
-export const formatActivityLink: Record<
-  ActivitySubject,
-  (id: string | null) => string
-> = {
-  area: (areaId) =>
-    areaId ? `/dashboard/areas/${areaId}` : "/dashboard/areas",
-  document: (documentId) =>
-    documentId ? `/dashboard/documents/${documentId}` : `/dashboard/documents`,
-  milestone: (projectId) =>
-    projectId
-      ? `/dashboard/projects/${projectId}/milestones`
-      : "/dashboard/projects",
-  project: (projectId) =>
-    projectId ? `/dashboard/projects/${projectId}` : "/dashboard/projects",
-  task: (projectId) =>
-    projectId ? `/dashboard/projects/${projectId}` : "/dashboard/projects",
+export const formatActivityLink = (activity: ActivitySelectType) => {
+  const activitySubject = activity.subject;
+
+  switch (activitySubject) {
+    case "area":
+      return activity.subjectId
+        ? `/dashboard/areas/${activity.subjectId}`
+        : "/dashboard/areas";
+    case "document":
+      return activity.subjectId
+        ? `/dashboard/documents/${activity.subjectId}`
+        : "/dashboard/documents";
+    case "milestone":
+      return activity.projectId
+        ? `/dashboard/projects/${activity.projectId}/milestones`
+        : "/dashboard/projects";
+    case "project":
+      return activity.projectId
+        ? `/dashboard/projects/${activity.projectId}`
+        : "/dashboard/projects";
+    case "task":
+      return activity.projectId
+        ? `/dashboard/projects/${activity.projectId}`
+        : "/dashboard/tasks";
+    default:
+      throw new Error(
+        `Unknown activity subject: ${activitySubject satisfies never}`,
+      );
+  }
 };

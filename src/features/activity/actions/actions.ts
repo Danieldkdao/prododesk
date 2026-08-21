@@ -2,28 +2,11 @@
 
 import { db } from "@/db/db";
 import {
-  ActivityAction,
-  ActivitySource,
-  ActivitySubject,
   ActivityTable,
-  AreaSelectType,
-  ProjectSelectType,
   ProjectTable,
 } from "@/db/schema";
-import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  getTableColumns,
-  ilike,
-  inArray,
-  or,
-  SQL,
-} from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import {
   getAreaActivityTag,
@@ -31,24 +14,18 @@ import {
   getUserActivityTag,
 } from "../server/cache/activity";
 import { UnwrapAsync } from "@/lib/types";
-import { areValidIds } from "@/lib/utils";
-import { ActivitySortByOption } from "../lib/activity-params";
+import { ActivityFilters } from "../lib/activity-params";
 import { PAGE_SIZE } from "@/lib/constants";
-import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 import { readActivityDb } from "../server/activity";
+
+type ReadActivityFilters = ActivityFilters & {
+  projectIds?: string[];
+  areaIds?: string[];
+};
 
 const readCachedActivityAction = async (
   userId: string,
-  filterOptions: {
-    search: string;
-    sortBy: ActivitySortByOption;
-    sources: ActivitySource[];
-    actions: ActivityAction[];
-    subjects: ActivitySubject[];
-    projectIds?: string[];
-    areaIds?: string[];
-    page: number;
-  },
+  filterOptions: ReadActivityFilters,
 ) => {
   "use cache";
 
@@ -93,16 +70,9 @@ const readCachedActivityAction = async (
     },
   };
 };
-export const readActivityAction = async (filterOptions: {
-  search: string;
-  sortBy: ActivitySortByOption;
-  sources: ActivitySource[];
-  actions: ActivityAction[];
-  subjects: ActivitySubject[];
-  projectIds?: string[];
-  areaIds?: string[];
-  page: number;
-}) => {
+export const readActivityAction = async (
+  filterOptions: ReadActivityFilters,
+) => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 

@@ -33,7 +33,7 @@ export const readChatsDb = async (filterOptions: {
     .select()
     .from(ChatTable)
     .where(whereQuery)
-    .orderBy(desc(ChatTable.createdAt))
+    .orderBy(desc(ChatTable.createdAt), desc(ChatTable.id))
     .$dynamic();
 
   if (offset) {

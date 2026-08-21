@@ -76,6 +76,7 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
   const data = useChat<CustomUIMessage>({
     id: chatId,
     transport,
+    throttle: 50,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onData: async (part) => {
       if (part.type !== "data-chat-sync-required") return;

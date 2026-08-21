@@ -7,38 +7,48 @@ import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
 import { TooltipWrapper } from "../../../components/tooltip-wrapper";
 import { Button } from "../../../components/ui/button";
+import { CalendarDayTasksResizeList } from "../calendar-day-tasks-resize-list";
 import { useCalendarParams } from "../hooks/use-calendar-params";
-import {
-  calculateCalendarDayTasksValues,
-  getCalendarDayTasksData,
-} from "../lib/utils";
+import { calculateCalendarDayTasksValues } from "../lib/utils";
+import { CalendarViewOption } from "../lib/calendar-params";
 
 export const MainCalendarDay = ({
   date,
   tasks,
 }: {
   date: Date;
-  tasks: TaskSelectType[];
+  tasks: {
+    scheduled: TaskSelectType[];
+    due: TaskSelectType[];
+  };
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
   const [, setDayTasksFilters] = useTasksParams();
 
+  const allTasks = Array.from(
+    new Map(
+      [...tasks.scheduled, ...tasks.due].map((task) => [task.id, task]),
+    ).values(),
+  );
+
   const { isToday, isPastDay, isSameMonth } = calculateCalendarDayTasksValues(
     calendarFilters.month,
     date,
-    tasks,
+    allTasks,
   );
-  const { dayContent, bgColor } = getCalendarDayTasksData(
-    calendarFilters.month,
-    date,
-    tasks,
-  );
+
+  const tasksMap: Record<CalendarViewOption, TaskSelectType[]> = {
+    all: allTasks,
+    scheduled: tasks.scheduled,
+    due: tasks.due,
+  };
+
+  const tasksToShow = tasksMap[calendarFilters.view];
 
   return (
     <div
       className={cn(
-        "min-h-0 min-w-0 border p-2 cursor-pointer flex flex-col",
-        bgColor,
+        "min-h-0 min-w-0 border p-2 cursor-pointer flex flex-col gap-2",
         !isSameMonth && "bg-muted/30 dark:bg-card/50 text-muted-foreground",
       )}
       onClick={() => {
@@ -70,9 +80,7 @@ export const MainCalendarDay = ({
           )}
         </div>
       </div>
-      <div className="w-full flex flex-col flex-1 h-full items-center justify-center">
-        {dayContent}
-      </div>
+      <CalendarDayTasksResizeList tasks={tasksToShow} />
     </div>
   );
 };

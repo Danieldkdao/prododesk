@@ -5,9 +5,10 @@ import {
   parseAsArrayOf,
   parseAsString,
   parseAsStringEnum,
+  type inferParserType,
 } from "nuqs/server";
 
-const filterSearchParams = {
+export const milestonesSearchParams = {
   milestoneSearch: parseAsString
     .withDefault("")
     .withOptions({ clearOnDefault: true }),
@@ -17,4 +18,8 @@ const filterSearchParams = {
   dueAtOnAfter: parseAsLocalDate.withOptions({ clearOnDefault: true }),
   dueAtOnBefore: parseAsLocalDate.withOptions({ clearOnDefault: true }),
 };
-export const loadMilestonesSearchParams = createLoader(filterSearchParams);
+export type MilestonesFilters = inferParserType<
+  typeof milestonesSearchParams
+>;
+
+export const loadMilestonesSearchParams = createLoader(milestonesSearchParams);

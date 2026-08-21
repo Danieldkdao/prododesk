@@ -18,24 +18,28 @@ export const formatTaskPriority = (priority: TaskPriority) => {
         label: "Low",
         icon: ChevronDownCircleIcon,
         textColor: "text-blue-600 dark:text-blue-400",
+        borderColor: "border-blue-600 dark:border-blue-400",
       };
     case "medium":
       return {
         label: "Medium",
         icon: MinusCircleIcon,
         textColor: "text-amber-600 dark:text-amber-400",
+        borderColor: "border-amber-600 dark:border-amber-400",
       };
     case "high":
       return {
         label: "High",
         icon: ChevronUpCircleIcon,
         textColor: "text-orange-600 dark:text-orange-400",
+        borderColor: "border-orange-600 dark:border-orange-400",
       };
     case "urgent":
       return {
         label: "Urgent",
         icon: CircleAlertIcon,
         textColor: "text-red-600 dark:text-red-400",
+        borderColor: "border-red-600 dark:border-red-400",
       };
     default:
       throw new Error(`Unknown task priority: ${priority satisfies never}`);
