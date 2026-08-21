@@ -33,12 +33,10 @@ export const Task = ({
   task,
   disabled = false,
   includeDay = false,
-  index,
 }: {
   task: ReadTasksActionReturnType["tasks"][number];
   includeDay?: boolean;
   disabled?: boolean;
-  index: number;
 }) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -81,12 +79,9 @@ export const Task = ({
       />
       <div
         className={cn(
-          "group flex items-start gap-2 border-b py-3 last:border-b-0 shadow-sm animate-in fade-in slide-in-from-top-2",
+          "group flex items-start gap-2 border-b py-3 last:border-b-0 shadow-sm",
           disabled && "opacity-50",
         )}
-        style={{
-          animationDuration: `${200 * (index + 1)}ms`,
-        }}
       >
         <Select
           value={taskStatus}

@@ -51,6 +51,7 @@ import {
   groupActivityBySubject,
 } from "@/features/activity/lib/formatters";
 import { formatActivityLink } from "@/features/activity/lib/formatters";
+import Image from "next/image";
 
 export const ChatViewListMessage = ({
   msg,
@@ -102,21 +103,14 @@ export const ChatViewListMessage = ({
             />
           ) : (
             <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
-              {modelInfo ? (
-                <modelInfo.logo
-                  color={modelInfo.logoColor}
-                  className="size-5"
+              <div className="relative size-7 rounded-full shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="AI"
+                  fill
+                  className="object-contain"
                 />
-              ) : currentModelInfo ? (
-                <currentModelInfo.logo
-                  color={currentModelInfo.logoColor}
-                  className="size-5"
-                />
-              ) : (
-                <span className="text-base font-medium text-muted-foreground">
-                  AI
-                </span>
-              )}
+              </div>
             </div>
           )}
         </MessageAvatar>

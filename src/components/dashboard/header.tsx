@@ -1,16 +1,22 @@
-import { WorkspaceSearch } from "../workspace-search";
+import Image from "next/image";
 import { SidebarTrigger } from "../ui/sidebar";
+import { WorkspaceSearch } from "../workspace-search";
 import { UserProfile } from "./user-profile";
 
 export const DashboardHeader = () => {
   return (
-    <header className="border-b py-2 px-4 grid grid-cols-3 gap-2 items-center">
-      <div className="flex min-w-0 items-center gap-2">
-        <SidebarTrigger />
-        <h1 className="truncate text-2xl font-semibold">ProdoDesk</h1>
+    <header className="border-b py-2 px-4 flex items-center gap-4 w-full">
+      <div className="flex items-center gap-2 shrink-0">
+        <Image src="/logo.png" alt="Logo" width={32} height={32} />
+        <h1 className="truncate text-2xl font-semibold hidden md:block">
+          ProdoDesk
+        </h1>
       </div>
-      <WorkspaceSearch />
-      <div className="flex items-center w-full justify-end">
+      <div className="w-full flex-1 flex justify-center">
+        <WorkspaceSearch />
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <SidebarTrigger />
         <UserProfile />
       </div>
     </header>

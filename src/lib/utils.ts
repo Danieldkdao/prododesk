@@ -8,7 +8,6 @@ import {
   startOfDay as getStartOfDay,
   startOfMonth as getStartOfMonth,
   startOfWeek as getStartOfWeek,
-  transpose,
 } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import z from "zod";
@@ -56,15 +55,12 @@ export const formatMs = (ms: number) => {
 };
 
 export const getLocalDayBounds = (day: Date, timeZone: string) => {
-  const startOfDay = getStartOfDay(day, {
+  const startUtc = getStartOfDay(day, {
     in: tz(timeZone),
   });
-  const endOfDay = getEndOfDay(day, {
+  const endUtc = getEndOfDay(day, {
     in: tz(timeZone),
   });
-
-  const startUtc = transpose(startOfDay, tz("UTC"));
-  const endUtc = transpose(endOfDay, tz("UTC"));
 
   return {
     startUtc,
@@ -73,15 +69,12 @@ export const getLocalDayBounds = (day: Date, timeZone: string) => {
 };
 
 export const getLocalWeekBounds = (day: Date, timeZone: string) => {
-  const startOfWeek = getStartOfWeek(day, {
+  const startUtc = getStartOfWeek(day, {
     in: tz(timeZone),
   });
-  const endOfWeek = getEndOfWeek(day, {
+  const endUtc = getEndOfWeek(day, {
     in: tz(timeZone),
   });
-
-  const startUtc = transpose(startOfWeek, tz("UTC"));
-  const endUtc = transpose(endOfWeek, tz("UTC"));
 
   return {
     startUtc,
@@ -90,15 +83,12 @@ export const getLocalWeekBounds = (day: Date, timeZone: string) => {
 };
 
 export const getLocalMonthBounds = (day: Date, timeZone: string) => {
-  const startOfMonth = getStartOfMonth(day, {
+  const startUtc = getStartOfMonth(day, {
     in: tz(timeZone),
   });
-  const endOfMonth = getEndOfMonth(day, {
+  const endUtc = getEndOfMonth(day, {
     in: tz(timeZone),
   });
-
-  const startUtc = transpose(startOfMonth, tz("UTC"));
-  const endUtc = transpose(endOfMonth, tz("UTC"));
 
   return {
     startUtc,

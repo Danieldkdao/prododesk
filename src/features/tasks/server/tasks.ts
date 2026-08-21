@@ -258,12 +258,14 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
   const dueFilter = (startUtc: Date, endUtc: Date) =>
     and(gte(TaskTable.dueAt, startUtc), lte(TaskTable.dueAt, endUtc));
 
+  const defaultScheduledDueFilter = (startUtc: Date, endUtc: Date) =>
+    or(scheduledFilter(startUtc, endUtc), dueFilter(startUtc, endUtc));
+
   const viewMap: Record<
     CalendarViewOption,
     (startUtc: Date, endUtc: Date) => SQL<unknown> | undefined
   > = {
-    all: (startUtc: Date, endUtc: Date) =>
-      or(scheduledFilter(startUtc, endUtc), dueFilter(startUtc, endUtc)),
+    all: defaultScheduledDueFilter,
     scheduled: (startUtc: Date, endUtc: Date) =>
       scheduledFilter(startUtc, endUtc),
     due: (startUtc: Date, endUtc: Date) => dueFilter(startUtc, endUtc),
@@ -274,14 +276,18 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
   if (selectedDay && timeZone) {
     const { startUtc, endUtc } = getLocalDayBounds(selectedDay, timeZone);
 
-    dayFilter = view ? viewMap[view](startUtc, endUtc) : undefined;
+    dayFilter = view
+      ? viewMap[view](startUtc, endUtc)
+      : defaultScheduledDueFilter(startUtc, endUtc);
   }
 
   let monthFilter;
   if (selectedMonth && timeZone) {
     const { startUtc, endUtc } = getLocalMonthBounds(selectedMonth, timeZone);
 
-    monthFilter = view ? viewMap[view](startUtc, endUtc) : undefined;
+    monthFilter = view
+      ? viewMap[view](startUtc, endUtc)
+      : defaultScheduledDueFilter(startUtc, endUtc);
   }
 
   const milestoneFilter = unassignedOnly
