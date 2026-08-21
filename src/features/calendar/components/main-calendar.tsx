@@ -57,6 +57,7 @@ export const MainCalendar = ({
           <Button
             variant={fullScreen ? "ghost" : "outline"}
             size="icon-sm"
+            aria-label="Previous month"
             className={cn(!fullScreen && "border-2")}
             onClick={() => changeDateToUse(-1)}
           >
@@ -78,6 +79,7 @@ export const MainCalendar = ({
           <Button
             variant={fullScreen ? "ghost" : "outline"}
             onClick={() => changeDateToUse(1)}
+            aria-label="Next month"
             className={cn(!fullScreen && "border-2")}
             size="icon-sm"
           >

@@ -43,6 +43,14 @@ const TasksCalendarViewSuspense = async ({
     loadTasksSearchParams(searchParams),
   ]);
 
+  const projectIds = projectId ? [projectId] : undefined;
+  const areaIds = areaId ? [areaId] : undefined;
+
+  const readOptions = {
+    areaIds,
+    projectIds,
+  };
+
   const [monthDaysTasks, selectedDayTasks] = await Promise.all([
     readCalendarTasksAction({
       month: calendarFilters.month,
@@ -50,16 +58,16 @@ const TasksCalendarViewSuspense = async ({
       search: dayTasksFilters.search,
       statuses: dayTasksFilters.statuses,
       priorities: dayTasksFilters.priorities,
-      areaIds: areaId ? [areaId] : undefined,
-      projectIds: projectId ? [projectId] : undefined,
+      ...readOptions,
     }),
-    readTasksAction({
-      ...dayTasksFilters,
-      page: DEFAULT_PAGE,
-      selectedDay: calendarFilters.day,
-      areaIds: areaId ? [areaId] : undefined,
-      projectIds: projectId ? [projectId] : undefined,
-    }),
+    calendarFilters.day
+      ? readTasksAction({
+          ...dayTasksFilters,
+          page: DEFAULT_PAGE,
+          selectedDay: calendarFilters.day,
+          ...readOptions,
+        })
+      : Promise.resolve(null),
   ]);
 
   if (!monthDaysTasks) {
@@ -74,7 +82,7 @@ const TasksCalendarViewSuspense = async ({
   return (
     <div className="h-full min-h-0 overflow-hidden">
       <MainCalendar monthDaysTasks={monthDaysTasks} />
-      <DayTasksDialog dayTasks={selectedDayTasks} />
+      <DayTasksDialog dayTasks={selectedDayTasks} readOptions={readOptions} />
     </div>
   );
 };

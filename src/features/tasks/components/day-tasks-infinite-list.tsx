@@ -24,10 +24,15 @@ import { useCallback } from "react";
 export const DayTasksInfiniteList = ({
   initialDayTasks,
   initialHasNextPage,
+  readOptions,
   allTasksCompleted,
 }: {
   initialDayTasks: ReadTasksActionReturnType["tasks"];
   initialHasNextPage: boolean;
+  readOptions?: {
+    areaIds?: string[] | undefined;
+    projectIds?: string[] | undefined;
+  };
   allTasksCompleted: boolean;
 }) => {
   const [calendarFilters] = useCalendarParams();
@@ -39,9 +44,10 @@ export const DayTasksInfiniteList = ({
         ...dayTasksFilters,
         page: nextPage,
         selectedDay: calendarFilters.day,
+        ...readOptions,
       });
     },
-    [calendarFilters.day, dayTasksFilters],
+    [calendarFilters.day, dayTasksFilters, readOptions],
   );
 
   const {
@@ -55,7 +61,7 @@ export const DayTasksInfiniteList = ({
     initialHasNextPage,
     fetchTasks,
     {
-      additionalScrollDeps: [dayTasksFilters, calendarFilters],
+      additionalScrollDeps: [dayTasksFilters, calendarFilters, readOptions],
     },
   );
 

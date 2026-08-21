@@ -9,9 +9,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { taskPriorities, taskStatuses } from "@/db/shared";
-import { BoardProperty } from "@/features/projects/lib/types";
+import { BoardProperty } from "@/features/tasks/lib/types";
 import {
   ReadTasksActionReturnType,
+  TaskBoardData,
+  TaskBoardFilters,
   updateTasksPriorityAction,
   updateTasksStatusAction,
 } from "@/features/tasks/actions/actions";
@@ -21,18 +23,24 @@ import {
   formatTaskStatus,
 } from "@/features/tasks/lib/formatters";
 import { CircleIcon, FlagIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export const TasksBoardViewClient = ({
   response,
+  filters,
   projectId,
 }: {
-  response: ReadTasksActionReturnType;
+  response: TaskBoardData;
+  filters: TaskBoardFilters;
   projectId?: string;
 }) => {
-  const { tasks, metadata } = response;
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isChangingProperty, startTransition] = useTransition();
 
-  const [boardViewKind, setBoardViewKind] = useState<BoardProperty>("status");
+  const boardViewKind = response.property;
 
   const boardViewKinds = [
     {
@@ -51,7 +59,7 @@ export const TasksBoardViewClient = ({
     (kind) => kind.value === boardViewKind,
   );
 
-  const currentProject = metadata.projects?.find(
+  const currentProject = response.projects.find(
     (project) => project.id === projectId,
   );
   if (projectId && !currentProject)
@@ -66,7 +74,21 @@ export const TasksBoardViewClient = ({
     <div className="flex flex-col gap-4">
       <Select
         value={boardViewKind}
-        onValueChange={(value) => setBoardViewKind(value as BoardProperty)}
+        disabled={isChangingProperty}
+        onValueChange={(value) => {
+          const nextProperty = value as BoardProperty;
+          const params = new URLSearchParams(searchParams.toString());
+
+          if (nextProperty === "status") {
+            params.delete("boardBy");
+          } else {
+            params.set("boardBy", nextProperty);
+          }
+
+          startTransition(() => {
+            router.push(`${pathname}${params.size ? `?${params}` : ""}`);
+          });
+        }}
       >
         <SelectTrigger className="w-fit border-none flex items-center gap-2">
           <p className="text-base font-medium text-muted-foreground">
@@ -94,7 +116,9 @@ export const TasksBoardViewClient = ({
       </Select>
       {boardViewKind === "status" ? (
         <TaskBoard
-          initialTasks={tasks}
+          key={response.queryKey}
+          initialData={response}
+          filters={filters}
           property="status"
           propertyOptions={taskStatuses}
           project={currentProject}
@@ -103,7 +127,9 @@ export const TasksBoardViewClient = ({
         />
       ) : (
         <TaskBoard
-          initialTasks={tasks}
+          key={response.queryKey}
+          initialData={response}
+          filters={filters}
           property="priority"
           project={currentProject}
           propertyOptions={taskPriorities}

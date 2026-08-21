@@ -25,7 +25,11 @@ export const MainCalendarDay = ({
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
   const [, setDayTasksFilters] = useTasksParams();
 
-  const allTasks = [...tasks.scheduled, ...tasks.due];
+  const allTasks = Array.from(
+    new Map(
+      [...tasks.scheduled, ...tasks.due].map((task) => [task.id, task]),
+    ).values(),
+  );
 
   const { isToday, isPastDay, isSameMonth } = calculateCalendarDayTasksValues(
     calendarFilters.month,

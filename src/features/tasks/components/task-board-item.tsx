@@ -13,7 +13,7 @@ import {
   formatTaskStatus,
   getTaskPriorityBadgeClasses,
 } from "../lib/formatters";
-import { BoardProperty } from "@/features/projects/lib/types";
+import { BoardProperty } from "@/features/tasks/lib/types";
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
 
 export const TaskBoardItem = ({

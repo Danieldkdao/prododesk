@@ -10,8 +10,13 @@ import { DayTasksInfiniteList } from "./day-tasks-infinite-list";
 
 export const DayTasksContent = ({
   dayTasks,
+  readOptions,
 }: {
   dayTasks: ReadTasksActionReturnType | null;
+  readOptions?: {
+    areaIds?: string[] | undefined;
+    projectIds?: string[] | undefined;
+  };
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
 
@@ -44,6 +49,7 @@ export const DayTasksContent = ({
         initialDayTasks={selectedDayTasks}
         initialHasNextPage={metadata.hasNextPage}
         allTasksCompleted={metadata.allTasksCompleted}
+        readOptions={readOptions}
         key={metadata.clientKey}
       />
     </div>

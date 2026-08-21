@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { DEFAULT_PAGE } from "@/lib/constants";
-import { ListXIcon, Loader2Icon, PlusIcon } from "lucide-react";
+import { ListXIcon, PlusIcon } from "lucide-react";
 import { useCallback } from "react";
 import { ReadTasksActionReturnType, readTasksAction } from "../actions/actions";
 import { useTasksParams } from "../hooks/use-tasks-params";
@@ -19,13 +19,18 @@ import { defaultDayTasksParamsOptions } from "../lib/tasks-params";
 import { AreaProjectTaskSkeleton } from "./area-project-tasks-skeleton";
 import { TaskDialog } from "./task-dialog";
 import { TaskTableRow } from "./task-table-row";
+import { ProjectSelectType } from "@/db/schema";
 
 export const TasksInfiniteList = ({
   initialTasks,
   initialHasNextPage,
+  currentProject,
+  areaIds,
 }: {
   initialTasks: ReadTasksActionReturnType["tasks"];
   initialHasNextPage: boolean;
+  currentProject?: ProjectSelectType;
+  areaIds?: string[];
 }) => {
   const [tasksFilters, setTasksFilters] = useTasksParams();
 
@@ -34,9 +39,11 @@ export const TasksInfiniteList = ({
       return readTasksAction({
         ...tasksFilters,
         page: nextPage,
+        projectIds: currentProject ? [currentProject.id] : undefined,
+        areaIds,
       });
     },
-    [tasksFilters],
+    [tasksFilters, currentProject, areaIds],
   );
 
   const {
@@ -49,17 +56,24 @@ export const TasksInfiniteList = ({
     initialHasNextPage,
     fetchTasks,
     {
-      additionalScrollDeps: [tasksFilters],
+      additionalScrollDeps: [tasksFilters, currentProject, areaIds],
     },
   );
 
-  return page === DEFAULT_PAGE && !tasks.length ? (
+  const noFiltersApplied =
+    !tasksFilters.search.trim() &&
+    !tasksFilters.priorities.length &&
+    !tasksFilters.statuses.length &&
+    !tasksFilters.dateTimeEndRange &&
+    !tasksFilters.dateTimeStartRange;
+
+  return page === DEFAULT_PAGE && !tasks.length && noFiltersApplied ? (
     <NotFound
       title="No tasks yet"
       description="Create your first task to get started!"
       icon={<ListXIcon className="size-10" />}
     >
-      <TaskDialog>
+      <TaskDialog defaultValues={{ project: currentProject }}>
         <Button>
           <PlusIcon />
           Create new task
@@ -78,26 +92,28 @@ export const TasksInfiniteList = ({
               <TableHead>Description</TableHead>
               <TableHead>Scheduled At</TableHead>
               <TableHead>Due At</TableHead>
-              <TableHead>Project</TableHead>
+              {!currentProject && <TableHead>Project</TableHead>}
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {tasks.map((task) => (
-              <TaskTableRow key={task.id} task={task} showProject />
+              <TaskTableRow
+                key={task.id}
+                task={task}
+                showProject={!currentProject}
+              />
             ))}
             {isPending &&
               Array.from({ length: 8 }).map((_, index) => (
-                <AreaProjectTaskSkeleton key={index} showProject />
+                <AreaProjectTaskSkeleton
+                  key={index}
+                  showProject={!currentProject}
+                />
               ))}
           </TableBody>
         </Table>
       ) : null}
-      {isPending && (
-        <div className="w-full flex items-center justify-center">
-          <Loader2Icon className="text-primary animate-spin" />
-        </div>
-      )}
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (

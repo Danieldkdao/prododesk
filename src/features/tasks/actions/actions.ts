@@ -1,7 +1,16 @@
 "use server";
 
 import { ActivityMutationOptions, db } from "@/db/db";
-import { ProjectTable, TaskPriority, TaskStatus, TaskTable } from "@/db/schema";
+import {
+  ProjectSelectType,
+  ProjectTable,
+  taskPriorities,
+  TaskPriority,
+  TaskSelectType,
+  TaskStatus,
+  taskStatuses,
+  TaskTable,
+} from "@/db/schema";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -33,6 +42,13 @@ import {
 } from "./schemas";
 import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
 import { CalendarFilters } from "@/features/calendar/lib/calendar-params";
+import { tz } from "@date-fns/tz";
+import {
+  BoardProperty,
+  TaskBoardColumnValue,
+  TaskBoardCursor,
+} from "../lib/types";
+import { TASK_BOARD_PAGE_SIZE } from "../lib/constants";
 
 type ReadCalendarTasksFilters = Pick<CalendarFilters, "view"> & {
   month: CalendarFilters["month"];
@@ -49,6 +65,37 @@ type ReadTasksFilters = TasksFilters & {
   selectedDay?: CalendarFilters["day"];
   projectIds?: string[];
   areaIds?: string[];
+};
+
+export type TaskBoardFilters = Omit<TasksFilters, "sortBy"> & {
+  projectIds?: string[];
+  areaIds?: string[];
+};
+
+export type TaskBoardTask = TaskSelectType & {
+  project: ProjectSelectType | null;
+};
+
+export type TaskBoardColumnPage = {
+  tasks: TaskBoardTask[];
+  nextCursor: TaskBoardCursor | null;
+  hasNextPage: boolean;
+};
+
+export type TaskBoardData = {
+  property: BoardProperty;
+  columns: Partial<Record<TaskBoardColumnValue, TaskBoardColumnPage>>;
+  projects: ProjectSelectType[];
+  queryKey: string;
+};
+
+export type ReadTaskBoardOptions = TaskBoardFilters & {
+  property: BoardProperty;
+};
+
+export type ReadTaskBoardColumnOptions = ReadTaskBoardOptions & {
+  column: TaskBoardColumnValue;
+  cursor?: TaskBoardCursor | null;
 };
 
 export const createTaskAction = async (
@@ -292,28 +339,48 @@ const readCachedCalendarTasks = async (
 
   const { tasks } = response;
 
+  type CalendarTask = (typeof tasks)[number];
+  type DayBucket = {
+    scheduled: CalendarTask[];
+    due: CalendarTask[];
+  };
+
+  const tasksByDay = new Map<string, DayBucket>();
+  const timeZoneContext = tz(timeZone);
+
+  const addTaskToDay = (
+    date: Date,
+    kind: keyof DayBucket,
+    task: CalendarTask,
+  ) => {
+    const key = format(date, "yyyy-MM-dd", {
+      in: timeZoneContext,
+    });
+
+    const bucket = tasksByDay.get(key) ?? {
+      scheduled: [],
+      due: [],
+    };
+    bucket[kind].push(task);
+    tasksByDay.set(key, bucket);
+  };
+
+  for (const task of tasks) {
+    if (task.scheduledAt) {
+      addTaskToDay(task.scheduledAt, "scheduled", task);
+    }
+    if (task.dueAt) {
+      addTaskToDay(task.dueAt, "due", task);
+    }
+  }
+
   const monthDaysWithTasks = monthDays.map((day) => {
-    const scheduledTasks = tasks.filter((task) => {
-      const { startUtc, endUtc } = getLocalDayBounds(day, timeZone);
-      return (
-        task.scheduledAt &&
-        task.scheduledAt >= startUtc &&
-        task.scheduledAt <= endUtc
-      );
-    });
-
-    const dueTasks = tasks.filter((task) => {
-      const { startUtc, endUtc } = getLocalDayBounds(day, timeZone);
-
-      return task.dueAt && task.dueAt >= startUtc && task.dueAt <= endUtc;
-    });
+    const key = format(day, "yyyy-MM-dd");
 
     return {
       day,
-      tasks: {
-        scheduled: scheduledTasks,
-        due: dueTasks,
-      },
+      tasks:
+        tasksByDay.get(key) ?? ({ scheduled: [], due: [] } satisfies DayBucket),
     };
   });
 
@@ -411,6 +478,113 @@ export const readTasksAction = async (filterOptions: ReadTasksFilters) => {
   return readCachedTasksAction(userId, user.timeZone, filterOptions);
 };
 export type ReadTasksActionReturnType = UnwrapAsync<typeof readTasksAction>;
+
+const getTaskBoardColumns = (property: BoardProperty) =>
+  property === "status" ? taskStatuses : taskPriorities;
+
+const readTaskBoardColumnPage = async (
+  userId: string,
+  timeZone: string,
+  options: ReadTaskBoardColumnOptions,
+) => {
+  const { property, column, cursor, ...filters } = options;
+  const validColumns = getTaskBoardColumns(property) as readonly string[];
+
+  if (!validColumns.includes(column)) return null;
+
+  const response = await readTasksDb({
+    ...filters,
+    userId,
+    timeZone,
+    limit: TASK_BOARD_PAGE_SIZE + 1,
+    board: {
+      property,
+      column,
+      cursor,
+    },
+  });
+  if (!response) return null;
+
+  const hasNextPage = response.tasks.length > TASK_BOARD_PAGE_SIZE;
+  const tasks = response.tasks.slice(0, TASK_BOARD_PAGE_SIZE);
+  const lastTask = tasks.at(-1);
+
+  return {
+    page: {
+      tasks,
+      hasNextPage,
+      nextCursor:
+        hasNextPage && lastTask
+          ? {
+              createdAt: lastTask.createdAt,
+              id: lastTask.id,
+            }
+          : null,
+    } satisfies TaskBoardColumnPage,
+    projects: response.projects,
+  };
+};
+const readCachedTaskBoardAction = async (
+  userId: string,
+  timeZone: string,
+  options: ReadTaskBoardOptions,
+) => {
+  "use cache";
+  cacheTag(getUserTaskTag(userId));
+
+  const columns = getTaskBoardColumns(options.property);
+
+  const responses = await Promise.all(
+    columns.map((column) =>
+      readTaskBoardColumnPage(userId, timeZone, { ...options, column }),
+    ),
+  );
+  if (responses.some((response) => !response)) return null;
+
+  const columnPages = Object.fromEntries(
+    columns.map((column, index) => [column, responses[index]!.page]),
+  ) as TaskBoardData["columns"];
+
+  return {
+    property: options.property,
+    columns: columnPages,
+    projects: responses[0]?.projects ?? [],
+    queryKey: JSON.stringify({
+      ...options,
+      priorities: [...options.priorities].sort(),
+      statuses: [...options.statuses].sort(),
+      projectIds: options.projectIds ? [...options.projectIds].sort() : null,
+      areaIds: options.areaIds ? [...options.areaIds].sort() : null,
+    }),
+  } satisfies TaskBoardData;
+};
+export const readTaskBoardAction = async (options: ReadTaskBoardOptions) => {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) return null;
+
+  return readCachedTaskBoardAction(userId, user.timeZone, options);
+};
+
+export const readCachedTaskBoardColumnAction = async (
+  userId: string,
+  timeZone: string,
+  options: ReadTaskBoardColumnOptions,
+) => {
+  "use cache";
+  cacheTag(getUserTaskTag(userId));
+
+  const response = await readTaskBoardColumnPage(userId, timeZone, options);
+
+  return response?.page ?? null;
+};
+export const readTaskBoardColumnAction = async (
+  options: ReadTaskBoardColumnOptions,
+) => {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) return null;
+
+  return readCachedTaskBoardColumnAction(userId, user.timeZone, options);
+};
 
 export const updateTasksStatusAction = async (
   taskId: string | string[],

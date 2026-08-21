@@ -13,6 +13,10 @@ import { DayTasksContent } from "./day-tasks-content";
 
 export const DayTasksDialog = (props: {
   dayTasks: ReadTasksActionReturnType | null;
+  readOptions?: {
+    areaIds?: string[] | undefined;
+    projectIds?: string[] | undefined;
+  };
 }) => {
   const [filters, setFilters] = useCalendarParams();
 

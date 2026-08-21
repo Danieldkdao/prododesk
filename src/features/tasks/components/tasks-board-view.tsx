@@ -2,7 +2,7 @@ import { ParamsId, SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
 import { loadTasksSearchParams } from "../lib/tasks-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
-import { readTasksAction } from "../actions/actions";
+import { readTaskBoardAction, readTasksAction } from "../actions/actions";
 import { ErrorState } from "@/components/error-state";
 import { TasksBoardViewClient } from "./tasks-board-view-client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,14 +76,27 @@ const TasksBoardViewSuspense = async ({
   const projectId = params ? (await params).projectId : undefined;
   const areaId = params ? (await params).areaId : undefined;
 
-  const filters = await loadTasksSearchParams(searchParams);
+  const [filters, rawSearchParams] = await Promise.all([
+    loadTasksSearchParams(searchParams),
+    searchParams,
+  ]);
 
-  const response = await readTasksAction({
-    ...filters,
-    page: DEFAULT_PAGE,
-    allTasks: true,
+  const property =
+    rawSearchParams.boardBy === "priority" ? "priority" : "status";
+
+  const boardFilters = {
+    search: filters.search,
+    priorities: filters.priorities,
+    statuses: filters.statuses,
+    dateTimeStartRange: filters.dateTimeStartRange,
+    dateTimeEndRange: filters.dateTimeEndRange,
     projectIds: projectId ? [projectId] : undefined,
     areaIds: areaId ? [areaId] : undefined,
+  };
+
+  const response = await readTaskBoardAction({
+    ...boardFilters,
+    property,
   });
   if (!response)
     return (
@@ -96,6 +109,7 @@ const TasksBoardViewSuspense = async ({
   return (
     <TasksBoardViewClient
       response={response}
+      filters={boardFilters}
       projectId={projectId ?? undefined}
     />
   );

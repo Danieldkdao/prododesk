@@ -19,6 +19,7 @@ import {
   areValidIds,
   getLocalDayBounds,
   getLocalMonthBounds,
+  isValidDate,
 } from "@/lib/utils";
 import {
   and,
@@ -30,6 +31,7 @@ import {
   ilike,
   inArray,
   isNull,
+  lt,
   lte,
   or,
   sql,
@@ -42,6 +44,19 @@ import {
   CalendarFilters,
   CalendarViewOption,
 } from "@/features/calendar/lib/calendar-params";
+import {
+  taskPriorities,
+  TaskPriority,
+  taskStatuses,
+  TaskStatus,
+} from "@/db/schema";
+import { BoardProperty, TaskBoardCursor } from "../lib/types";
+
+type TaskBoardDbQuery = {
+  property: BoardProperty;
+  column: TaskStatus | TaskPriority;
+  cursor?: TaskBoardCursor | null;
+};
 
 type ReadTasksDbFilters = Partial<TasksFilters> & {
   page?: number;
@@ -54,6 +69,7 @@ type ReadTasksDbFilters = Partial<TasksFilters> & {
   areaIds?: string[];
   userId?: string;
   timeZone?: string;
+  board?: TaskBoardDbQuery;
   limit?: number;
 };
 
@@ -97,6 +113,7 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
     userId,
     timeZone,
     limit = PAGE_SIZE,
+    board,
   } = filterOptions;
   let userIdToUse: string | null = null;
   if (userId) {
@@ -150,6 +167,36 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
     ? inArray(TaskTable.status, statuses)
     : undefined;
 
+  const validBoardColumn = board
+    ? board.property === "status"
+      ? taskStatuses.includes(board.column as TaskStatus)
+      : taskPriorities.includes(board.column as TaskPriority)
+    : true;
+
+  if (!validBoardColumn) return null;
+
+  const boardColumnFilter = board
+    ? board.property === "status"
+      ? eq(TaskTable.status, board.column as TaskStatus)
+      : eq(TaskTable.priority, board.column as TaskPriority)
+    : undefined;
+
+  if (
+    board?.cursor &&
+    (!areValidIds(board.cursor.id) || !isValidDate(board.cursor.createdAt))
+  )
+    return null;
+
+  const boardCursorFilter = board?.cursor
+    ? or(
+        lt(TaskTable.createdAt, board.cursor.createdAt),
+        and(
+          eq(TaskTable.createdAt, board.cursor.createdAt),
+          lt(TaskTable.id, board.cursor.id),
+        ),
+      )
+    : undefined;
+
   let existingProjects: ProjectSelectType[] = [];
 
   if (projectIds?.length) {
@@ -201,37 +248,38 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
     dateTimeEndRange ? lte(TaskTable.scheduledAt, dateTimeEndRange) : undefined,
   );
 
+  const scheduledFilter = (startUtc: Date, endUtc: Date) =>
+    and(
+      gte(TaskTable.scheduledAt, startUtc),
+      lte(TaskTable.scheduledAt, endUtc),
+    );
+  const dueFilter = (startUtc: Date, endUtc: Date) =>
+    and(gte(TaskTable.dueAt, startUtc), lte(TaskTable.dueAt, endUtc));
+
+  const viewMap: Record<
+    CalendarViewOption,
+    (startUtc: Date, endUtc: Date) => SQL<unknown> | undefined
+  > = {
+    all: (startUtc: Date, endUtc: Date) =>
+      or(scheduledFilter(startUtc, endUtc), dueFilter(startUtc, endUtc)),
+    scheduled: (startUtc: Date, endUtc: Date) =>
+      scheduledFilter(startUtc, endUtc),
+    due: (startUtc: Date, endUtc: Date) => dueFilter(startUtc, endUtc),
+  };
+
   let dayFilter;
 
   if (selectedDay && timeZone) {
     const { startUtc, endUtc } = getLocalDayBounds(selectedDay, timeZone);
 
-    dayFilter = and(
-      gte(TaskTable.scheduledAt, startUtc),
-      lte(TaskTable.scheduledAt, endUtc),
-    );
+    dayFilter = view ? viewMap[view](startUtc, endUtc) : undefined;
   }
 
   let monthFilter;
-  if (selectedMonth && timeZone && view) {
+  if (selectedMonth && timeZone) {
     const { startUtc, endUtc } = getLocalMonthBounds(selectedMonth, timeZone);
 
-    const scheduledFilter = and(
-      gte(TaskTable.scheduledAt, startUtc),
-      lte(TaskTable.scheduledAt, endUtc),
-    );
-    const dueFilter = and(
-      gte(TaskTable.dueAt, startUtc),
-      lte(TaskTable.dueAt, endUtc),
-    );
-
-    const viewMap: Record<CalendarViewOption, SQL<unknown> | undefined> = {
-      all: or(scheduledFilter, dueFilter),
-      scheduled: scheduledFilter,
-      due: dueFilter,
-    };
-
-    monthFilter = viewMap[view];
+    monthFilter = view ? viewMap[view](startUtc, endUtc) : undefined;
   }
 
   const milestoneFilter = unassignedOnly
@@ -249,6 +297,8 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
     timeRangeFilter,
     milestoneFilter,
     areasFilter,
+    boardColumnFilter,
+    boardCursorFilter,
   );
 
   let query = db
@@ -264,7 +314,11 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
   if (offset) {
     query = query.offset(offset);
   }
-  if (sortBy) {
+  if (board) {
+    query = query
+      .orderBy(desc(TaskTable.createdAt), desc(TaskTable.id))
+      .$dynamic();
+  } else if (sortBy) {
     query = query.orderBy(...sortByMap[sortBy]).$dynamic();
   }
 

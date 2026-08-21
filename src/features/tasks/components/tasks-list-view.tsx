@@ -13,8 +13,6 @@ import { readTasksAction } from "../actions/actions";
 import { loadTasksSearchParams } from "../lib/tasks-params";
 import { AreaProjectTaskSkeleton } from "./area-project-tasks-skeleton";
 import { TasksInfiniteList } from "./tasks-infinite-list";
-import { AreaTasksInfiniteList } from "./area-tasks-infinite-list";
-import { ProjectTasksInfiniteList } from "./project-tasks-infinite-list";
 
 type TasksListViewProps = {
   params?: Promise<
@@ -96,23 +94,12 @@ const ListViewSuspense = async ({
     (project) => project.id === projectId,
   );
 
-  if (areaId)
-    return (
-      <AreaTasksInfiniteList
-        key={metadata.clientKey}
-        areaId={areaId}
-        {...listProps}
-      />
-    );
-  if (currentProject)
-    return (
-      <ProjectTasksInfiniteList
-        key={metadata.clientKey}
-        project={currentProject}
-        {...listProps}
-        allTasksCompleted={metadata.allTasksCompleted}
-      />
-    );
-
-  return <TasksInfiniteList key={metadata.clientKey} {...listProps} />;
+  return (
+    <TasksInfiniteList
+      key={metadata.clientKey}
+      currentProject={currentProject}
+      areaIds={areaId ? [areaId] : undefined}
+      {...listProps}
+    />
+  );
 };
