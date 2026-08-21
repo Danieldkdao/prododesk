@@ -1,23 +1,24 @@
 "use client";
 
-import { ProjectSelectType, TaskSelectType } from "@/db/schema";
-import { TaskDialog } from "./task-dialog";
-import { ReactElement, ReactNode, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { ProjectSelectType, TaskSelectType } from "@/db/schema";
 import { EditIcon, EllipsisVerticalIcon, Trash2Icon } from "lucide-react";
+import { ReactElement, useState } from "react";
 import { DeleteTaskButton } from "./delete-task-button";
+import { TaskDialog } from "./task-dialog";
+import { ReadTasksActionReturnType } from "../actions/actions";
 
 export const TaskOptions = ({
   task,
   children,
 }: {
-  task: TaskSelectType & { project?: ProjectSelectType | null };
+  task: ReadTasksActionReturnType["tasks"][number];
   children?: ReactElement;
 }) => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
@@ -26,7 +27,7 @@ export const TaskOptions = ({
     <>
       <TaskDialog
         existingTask={task}
-        defaultValues={{ project: task.project }}
+        defaultValues={{ project: task.project, milestone: task.milestone }}
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
       />

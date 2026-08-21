@@ -3,6 +3,7 @@ import { readProjectMilestonesAction } from "@/features/milestones/actions/actio
 import { MilestonesSkeleton } from "@/features/milestones/components/milestones-skeleton";
 import { MilestonesView } from "@/features/milestones/components/milestones-view";
 import { loadMilestonesSearchParams } from "@/features/milestones/lib/milestones-params";
+import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { readTasksAction } from "@/features/tasks/actions/actions";
 import {
   defaultDayTasksParamsOptions,
@@ -27,17 +28,28 @@ const ProjectIdMilestonesSuspense = async ({
   searchParams,
 }: ProjectIdMilestonesProps) => {
   const { projectId } = await params;
+  const existingProject = await confirmUserProjectOwnership(projectId);
+  if (!existingProject)
+    return (
+      <ErrorState
+        title="An error occurred"
+        description="This project does not exist. Try refreshing the page or checking the URL."
+      />
+    );
   const filters = await loadMilestonesSearchParams(searchParams);
   const { search } = await loadTasksSearchParams(searchParams);
 
-  const milestonesResponse = await readProjectMilestonesAction(projectId, {
-    ...filters,
-    search: filters.milestoneSearch,
-    page: DEFAULT_PAGE,
-  });
+  const milestonesResponse = await readProjectMilestonesAction(
+    existingProject.id,
+    {
+      ...filters,
+      search: filters.milestoneSearch,
+      page: DEFAULT_PAGE,
+    },
+  );
   const tasksResponse = await readTasksAction({
     ...defaultDayTasksParamsOptions,
-    projectIds: [projectId],
+    projectIds: [existingProject.id],
     search,
     page: DEFAULT_PAGE,
     unassignedOnly: true,
@@ -53,7 +65,7 @@ const ProjectIdMilestonesSuspense = async ({
 
   return (
     <MilestonesView
-      projectId={projectId}
+      project={existingProject}
       milestonesResponse={milestonesResponse}
       tasksResponse={tasksResponse}
     />

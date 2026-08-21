@@ -1,4 +1,6 @@
+import { ActivitySelectType, ProjectSelectType } from "@/db/schema";
 import { ActivityAction, ActivitySource, ActivitySubject } from "@/db/shared";
+import { formatDistanceToNow } from "date-fns";
 import {
   EditIcon,
   FileTextIcon,
@@ -13,12 +15,6 @@ import {
   UserIcon,
 } from "lucide-react";
 import { ActivitySortByOption } from "./activity-params";
-import {
-  ActivitySelectType,
-  ArtifactSelectType,
-  ProjectSelectType,
-} from "@/db/schema";
-import { formatDistanceToNow } from "date-fns";
 import { ArtifactActivityType } from "./types";
 
 export const formatActivitySource = (source: ActivitySource) => {
@@ -172,7 +168,7 @@ export const formatActivityLink = (activity: ActivitySelectType) => {
         : "/dashboard/projects";
     case "task":
       return activity.projectId
-        ? `/dashboard/projects/${activity.projectId}`
+        ? `/dashboard/projects/${activity.projectId}/tasks`
         : "/dashboard/tasks";
     default:
       throw new Error(

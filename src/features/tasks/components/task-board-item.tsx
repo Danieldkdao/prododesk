@@ -15,6 +15,7 @@ import {
 } from "../lib/formatters";
 import { BoardProperty } from "@/features/tasks/lib/types";
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
+import { ReadTasksActionReturnType } from "../actions/actions";
 
 export const TaskBoardItem = ({
   task,
@@ -22,7 +23,7 @@ export const TaskBoardItem = ({
   minimizeSmallScreens = false,
   property,
 }: {
-  task: TaskSelectType & { project?: ProjectSelectType | null };
+  task: ReadTasksActionReturnType["tasks"][number];
   className?: string;
   minimizeSmallScreens?: boolean;
   property?: BoardProperty;

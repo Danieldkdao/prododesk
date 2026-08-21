@@ -36,7 +36,6 @@ import { cn } from "@/lib/utils";
 import { differenceInCalendarDays, format, parse } from "date-fns";
 import {
   ClockIcon,
-  FileIcon,
   FileTextIcon,
   ListCheckIcon,
   MilestoneIcon,

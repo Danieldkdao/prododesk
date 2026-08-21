@@ -2,6 +2,7 @@
 
 import { ActivityMutationOptions, db } from "@/db/db";
 import {
+  MilestoneSelectType,
   ProjectSelectType,
   ProjectTable,
   taskPriorities,
@@ -74,6 +75,7 @@ export type TaskBoardFilters = Omit<TasksFilters, "sortBy"> & {
 
 export type TaskBoardTask = TaskSelectType & {
   project: ProjectSelectType | null;
+  milestone: MilestoneSelectType | null;
 };
 
 export type TaskBoardColumnPage = {
@@ -565,7 +567,7 @@ export const readTaskBoardAction = async (options: ReadTaskBoardOptions) => {
   return readCachedTaskBoardAction(userId, user.timeZone, options);
 };
 
-export const readCachedTaskBoardColumnAction = async (
+const readCachedTaskBoardColumnAction = async (
   userId: string,
   timeZone: string,
   options: ReadTaskBoardColumnOptions,

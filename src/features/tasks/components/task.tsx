@@ -75,7 +75,7 @@ export const Task = ({
     <>
       <TaskDialog
         existingTask={task}
-        defaultValues={{ project: task.project }}
+        defaultValues={{ project: task.project, milestone: task.milestone }}
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
       />

@@ -37,7 +37,7 @@ const AreaIdTasksSuspense = async (props: AreaIdTasksParams) => {
       />
     );
 
-  return <TasksView showFilterAddButton showProject {...props} />;
+  return <TasksView showFilterAddButton {...props} />;
 };
 
 export default AreaIdTasksPage;

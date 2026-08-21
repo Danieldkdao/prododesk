@@ -26,12 +26,12 @@ import { readProjectsAction } from "../actions/actions";
 
 export const ProjectCommandSelect = ({
   initialProject,
-  projectId,
-  onProjectIdChange,
+  value: value,
+  onValueChange,
 }: {
   initialProject?: { name: string; icon?: string | null } | null;
-  projectId?: string | null | undefined;
-  onProjectIdChange: (value: unknown) => void;
+  value?: string | null | undefined;
+  onValueChange: (value: unknown) => void;
 }) => {
   const [commandOpen, setCommandOpen] = useState(false);
   const [isSearchPending, startSearchTransition] = useTransition();
@@ -97,7 +97,7 @@ export const ProjectCommandSelect = ({
     wait: 250,
   });
 
-  const selectedProject = projects.find((project) => project.id === projectId);
+  const selectedProject = projects.find((project) => project.id === value);
 
   return (
     <Popover open={commandOpen} onOpenChange={setCommandOpen}>
@@ -114,7 +114,7 @@ export const ProjectCommandSelect = ({
                 {selectedProject.name}
               </span>
             </div>
-          ) : initialProject ? (
+          ) : initialProject && value ? (
             <div className="flex min-w-0 items-center gap-2">
               {initialProject?.icon ? (
                 <span className="shrink-0">{initialProject.icon}</span>
@@ -168,7 +168,7 @@ export const ProjectCommandSelect = ({
                             "bg-primary/15 hover:bg-primary/10 data-selected:bg-primary/10",
                         )}
                         onSelect={() => {
-                          onProjectIdChange(project.id);
+                          onValueChange(isSelected ? null : project.id);
                           setCommandOpen(false);
                           setSearch("");
                         }}

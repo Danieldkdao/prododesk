@@ -104,7 +104,7 @@ export const AreaCommandSelect = ({
                 {selectedArea.name}
               </span>
             </div>
-          ) : initialValue ? (
+          ) : initialValue && value ? (
             <div className="flex min-w-0 items-center gap-2">
               {initialValue?.icon ? (
                 <span className="shrink-0">{initialValue.icon}</span>
@@ -158,7 +158,7 @@ export const AreaCommandSelect = ({
                             "bg-primary/15 hover:bg-primary/10 data-selected:bg-primary/10",
                         )}
                         onSelect={() => {
-                          onValueChange(area.id);
+                          onValueChange(isSelected ? null : area.id);
                           setCommandOpen(false);
                           setSearch("");
                         }}

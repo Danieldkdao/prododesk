@@ -6,14 +6,15 @@ import { TasksCalendarView } from "./tasks-calendar-view";
 import { TasksFilters } from "./tasks-filters";
 import { TasksListView } from "./tasks-list-view";
 import { DEFAULT_TAB_VALUE } from "../lib/constants";
+import { ProjectSelectType } from "@/db/schema";
 
 export const TasksView = async ({
   showFilterAddButton = false,
-  showProject = false,
+  project,
   ...props
 }: SearchParamsType & {
   showFilterAddButton?: boolean;
-  showProject?: boolean;
+  project?: ProjectSelectType;
 }) => {
   const searchParams = await props.searchParams;
 
@@ -25,7 +26,7 @@ export const TasksView = async ({
         <TasksFilters showAddButton={showFilterAddButton} />
         <TaskViewTabs value={tab} />
       </div>
-      {tab === "list" && <TasksListView showProject={showProject} {...props} />}
+      {tab === "list" && <TasksListView showProject={!project} {...props} />}
       {tab === "board" && <TasksBoardView {...props} />}
       {tab === "calendar" && <TasksCalendarView {...props} />}
     </div>

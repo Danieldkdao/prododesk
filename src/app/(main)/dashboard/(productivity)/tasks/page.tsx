@@ -23,7 +23,7 @@ const TasksPage = (props: SearchParamsType) => {
           <AreaProjectTasksSkeleton showProject showAddButton={false} />
         }
       >
-        <TasksView showProject {...props} />
+        <TasksView {...props} />
       </Suspense>
     </div>
   );

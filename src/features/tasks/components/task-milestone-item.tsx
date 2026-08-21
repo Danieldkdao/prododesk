@@ -4,7 +4,11 @@ import {
   formatTaskStatus,
   getTaskPriorityBadgeClasses,
 } from "../lib/formatters";
-import { ProjectSelectType, TaskSelectType } from "@/db/schema";
+import {
+  MilestoneSelectType,
+  ProjectSelectType,
+  TaskSelectType,
+} from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { TaskOptions } from "./task-options";
@@ -14,7 +18,10 @@ import { EllipsisIcon } from "lucide-react";
 export const TaskMilestoneItem = ({
   task,
 }: {
-  task: TaskSelectType & { project: ProjectSelectType | null };
+  task: TaskSelectType & {
+    project: ProjectSelectType | null;
+    milestone: MilestoneSelectType | null;
+  };
 }) => {
   const { ref } = useDraggable({
     id: task.id,

@@ -133,7 +133,9 @@ export const ResourcesCommandList = ({
                         item,
                         onSelect: (item) => {
                           router.push(
-                            `/dashboard/projects${item.projectId ? `/${item.projectId}/tasks` : ""}`,
+                            item.projectId
+                              ? `/dashboard/projects/${item.projectId}/tasks`
+                              : "/dashboard/tasks",
                           );
                           setOpen(false);
                         },

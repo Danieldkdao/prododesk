@@ -225,7 +225,10 @@ export const MilestoneCard = ({
               {tasks.length ? (
                 <div className="flex flex-col gap-2">
                   {tasks.map((task) => (
-                    <TaskMilestoneItem key={task.id} task={task} />
+                    <TaskMilestoneItem
+                      key={task.id}
+                      task={{ ...task, milestone }}
+                    />
                   ))}
                 </div>
               ) : (

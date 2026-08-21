@@ -268,7 +268,11 @@ export const TaskBoard = <
                 {columnTasks.map((task) => (
                   <TaskBoardItem
                     key={task.id}
-                    task={{ ...task, project: project ?? task.project }}
+                    task={{
+                      ...task,
+                      project: project ?? task.project,
+                      milestone: task.milestone,
+                    }}
                     property={property}
                   />
                 ))}

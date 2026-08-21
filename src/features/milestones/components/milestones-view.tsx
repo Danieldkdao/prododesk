@@ -24,11 +24,11 @@ import { isSortableOperation } from "@dnd-kit/react/sortable";
 import { ProjectSelectType, TaskSelectType } from "@/db/schema";
 
 export const MilestonesView = ({
-  projectId,
+  project,
   milestonesResponse,
   tasksResponse,
 }: {
-  projectId: string;
+  project: ProjectSelectType;
   milestonesResponse: ReadProjectMilestonesActionType;
   tasksResponse: ReadTasksActionReturnType;
 }) => {
@@ -104,7 +104,7 @@ export const MilestonesView = ({
         .catch(() => {})
         .then(async () => {
           const response = await moveMilestoneAction(
-            projectId,
+            project.id,
             milestoneId,
             newPosition,
           );
@@ -124,7 +124,7 @@ export const MilestonesView = ({
           }
         });
     },
-    [projectId],
+    [project],
   );
 
   const handleTaskMilestoneUpdates = useCallback(
@@ -209,10 +209,10 @@ export const MilestonesView = ({
       <div className="flex flex-col lg:flex-row gap-2 lg:gap-4 w-full">
         <div className="flex w-full min-w-0 flex-col gap-4 lg:h-[calc(100dvh-12rem)] lg:max-w-100">
           <div className="hidden lg:block">
-            <TasksFilters onlySearch />
+            <TasksFilters defaultProject={project} onlySearch />
           </div>
           <MilestoneTasksInfiniteList
-            projectId={projectId}
+            projectId={project.id}
             tasks={tasks}
             setTasks={setTasks}
             initialHasNextPage={tasksMetadata.hasNextPage}
@@ -221,9 +221,9 @@ export const MilestonesView = ({
         </div>
         <Separator orientation="vertical" />
         <div className="w-full flex flex-col gap-4 flex-1">
-          <MilestonesFilters projectId={projectId} />
+          <MilestonesFilters projectId={project.id} />
           <MilestonesInfiniteList
-            projectId={projectId}
+            projectId={project.id}
             milestones={milestones}
             setMilestones={setMilestones}
             initialHasNextPage={milestonesMetadata.hasNextPage}

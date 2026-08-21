@@ -119,7 +119,7 @@ const ProjectIdHeaderSuspense = async ({ params }: ProjectIdParams) => {
           </div>
           <div className="flex flex-col gap-4 flex-1 min-w-0">
             <div className="flex items-center gap-4">
-              <h1 className="text-[2.5rem] leading-0 font-semibold">
+              <h1 className="text-[2.5rem] leading-none font-semibold">
                 {project.name}
               </h1>
               <div

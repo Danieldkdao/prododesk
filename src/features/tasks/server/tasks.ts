@@ -1,6 +1,7 @@
 import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
   AreaSelectType,
+  MilestoneTable,
   ProjectSelectType,
   ProjectTable,
   TaskInsertType,
@@ -148,6 +149,7 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
         ilike(TaskTable.name, `%${normalizedSearch}%`),
         ilike(TaskTable.description, `%${normalizedSearch}%`),
         ilike(ProjectTable.name, `%${normalizedSearch}%`),
+        ilike(MilestoneTable.name, `%${normalizedSearch}%`),
       )
     : undefined;
 
@@ -305,9 +307,11 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
     .select({
       ...getTableColumns(TaskTable),
       project: getTableColumns(ProjectTable),
+      milestone: getTableColumns(MilestoneTable),
     })
     .from(TaskTable)
     .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+    .leftJoin(MilestoneTable, eq(MilestoneTable.id, TaskTable.milestoneId))
     .where(whereQuery)
     .$dynamic();
 

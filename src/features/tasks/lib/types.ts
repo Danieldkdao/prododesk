@@ -1,4 +1,4 @@
-import { TaskPriority, TaskStatus } from "@/db/shared";
+import { MilestoneStatus, TaskPriority, TaskStatus } from "@/db/shared";
 import { taskViewTabs } from "./constants";
 import { TaskSelectType } from "@/db/schema";
 
@@ -10,6 +10,7 @@ export type BoardProperty = Extract<
 export type TaskFormDefaultValues = {
   day?: Date | null;
   project?: { id: string; name: string; icon?: string | null } | null;
+  milestone?: { id: string; name: string; status: MilestoneStatus } | null;
   status?: TaskStatus | null;
   priority?: TaskPriority | null;
 };

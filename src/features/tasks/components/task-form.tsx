@@ -6,6 +6,7 @@ import { EmojiPickerPopover } from "@/components/ui/emoji-picker-popover";
 import {
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
 } from "@/components/ui/field";
@@ -32,6 +33,7 @@ import { createTaskAction, updateTaskAction } from "../actions/actions";
 import { taskSchema, TaskSchemaType } from "../actions/schemas";
 import { formatTaskPriority, formatTaskStatus } from "../lib/formatters";
 import { TaskFormDefaultValues } from "../lib/types";
+import { MilestoneCommandSelect } from "@/features/milestones/components/milestone-command-select";
 
 export const TaskForm = ({
   defaultValues,
@@ -52,6 +54,7 @@ export const TaskForm = ({
       description: "",
       emoji: "",
       projectId: defaultValues?.project?.id ?? null,
+      milestoneId: defaultValues?.milestone?.id ?? null,
       scheduledAt: defaultValues?.day ?? null,
       dueAt: null,
     },
@@ -251,13 +254,38 @@ export const TaskForm = ({
             <FieldContent>
               <ProjectCommandSelect
                 initialProject={defaultValues?.project}
-                projectId={field.value}
-                onProjectIdChange={field.onChange}
+                value={field.value}
+                onValueChange={field.onChange}
               />
             </FieldContent>
             {fieldState.error && <FieldError errors={[fieldState.error]} />}
           </Field>
         )}
+      />
+      <Controller
+        control={form.control}
+        name="milestoneId"
+        render={({ field, fieldState }) => {
+          const projectIdValue = form.watch("projectId");
+
+          return (
+            <Field data-invalid={!!fieldState.error}>
+              <FieldLabel>Milestone</FieldLabel>
+              <FieldContent>
+                <MilestoneCommandSelect
+                  initialValue={defaultValues?.milestone}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  projectId={projectIdValue}
+                />
+              </FieldContent>
+              <FieldDescription>
+                Only enabled when you have a project ID selected.
+              </FieldDescription>
+              {fieldState.error && <FieldError errors={[fieldState.error]} />}
+            </Field>
+          );
+        }}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Controller

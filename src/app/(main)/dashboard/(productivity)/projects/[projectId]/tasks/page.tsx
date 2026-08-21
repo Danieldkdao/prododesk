@@ -37,7 +37,7 @@ const ProjectIdTasksSuspense = async (props: ProjectIdParams) => {
       />
     );
 
-  return <TasksView showFilterAddButton {...props} />;
+  return <TasksView showFilterAddButton project={existingProject} {...props} />;
 };
 
 export default ProjectIdTasksPage;
