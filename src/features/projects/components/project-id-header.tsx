@@ -124,7 +124,7 @@ const ProjectIdHeaderSuspense = async ({ params }: ProjectIdParams) => {
               </h1>
               <div
                 className={cn(
-                  "flex items-center gap-2 border-2 py-1 px-2",
+                  "hidden md:flex items-center gap-2 border-2 py-1 px-2",
                   projectStatusBorderColor,
                   projectStatusBgColor,
                   projectStatusTextColor,
