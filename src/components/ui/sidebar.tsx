@@ -98,22 +98,17 @@ function SidebarProvider({
     [setOpenProp, open, iconsOnly],
   );
 
-  const openMobile = iconsOnly ? false : _openMobile;
-  const setOpenMobile = React.useCallback(
-    (value: boolean) => {
-      if (iconsOnly) return;
-      _setOpenMobile(value);
-    },
-    [iconsOnly],
-  );
+  const openMobile = _openMobile;
+  const setOpenMobile = React.useCallback((value: boolean) => {
+    _setOpenMobile(value);
+  }, []);
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    if (iconsOnly) return;
-
     if (isMobile) {
       setOpenMobile(!openMobile);
     } else {
+      if (iconsOnly) return;
       setOpen(!open);
     }
   }, [isMobile, setOpen, setOpenMobile, iconsOnly, open, openMobile]);
@@ -300,8 +295,8 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar, iconsOnly } = useSidebar();
-  if (iconsOnly) return null;
+  const { toggleSidebar, iconsOnly, isMobile } = useSidebar();
+  if (iconsOnly && !isMobile) return null;
 
   return (
     <Button

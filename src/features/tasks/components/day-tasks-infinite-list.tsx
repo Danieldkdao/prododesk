@@ -121,8 +121,8 @@ export const DayTasksInfiniteList = ({
               </AlertDescription>
             </Alert>
           )}
-          {dayTasks.map((task, index) => (
-            <Task key={task.id} task={task} index={index} />
+          {dayTasks.map((task) => (
+            <Task key={task.id} task={task} />
           ))}
           {isPending && (
             <div className="w-full flex items-center justify-center">

@@ -6,7 +6,7 @@ import { ReactNode } from "react";
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
   return (
     <SidebarProvider iconsOnly>
-      <div className="h-dvh w-full flex flex-col min-h-0 overflow-hidden">
+      <div className="h-dvh w-full flex flex-col min-h-0 overflow-hidden bg-accent/40">
         <DashboardHeader />
         <div className="relative h-full flex-1 w-full flex min-h-0 overflow-hidden">
           <DashboardSidebar />

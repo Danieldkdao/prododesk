@@ -32,7 +32,7 @@ export const DayTasksContent = ({
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-4 overflow-hidden">
+    <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 overflow-hidden">
       <div className="shrink-0 h-10 flex items-center justify-between gap-2">
         <h2 className="text-2xl font-semibold">
           {format(calendarFilters.day, "PPP")}

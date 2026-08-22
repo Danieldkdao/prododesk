@@ -27,7 +27,10 @@ export const DayTasksDialog = (props: {
       open={!!filters.day}
       onOpenChange={(open) => !open && setFilters({ day: null })}
     >
-      <DialogContent showCloseButton={false}>
+      <DialogContent
+        showCloseButton={false}
+        className="h-[calc(100dvh-2rem)] grid-rows-[minmax(0,1fr)] overflow-hidden sm:h-[42rem]"
+      >
         <DialogHeader className="sr-only">
           <DialogTitle>{format(filters.day, "MMMM d, yyyy")}</DialogTitle>
         </DialogHeader>

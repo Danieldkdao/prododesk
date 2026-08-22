@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectStatus, TaskStatus } from "@/db/shared";
+import { DashboardActivityItem } from "@/features/activity/components/dashboard-activity-item";
 import {
   formatActivityMessage,
   formatActivitySubject,
@@ -19,6 +20,7 @@ import {
 import { readAreaAction } from "@/features/areas/actions/actions";
 import { CreateDocumentButton } from "@/features/documents/components/create-document-button";
 import { OverviewDocumentsTable } from "@/features/documents/overview-documents-table";
+import { DashboardProjectCard } from "@/features/projects/components/dashboard-project-card";
 import { ProjectDialog } from "@/features/projects/components/project-dialog";
 import { formatProjectStatus } from "@/features/projects/lib/formatters";
 import { OverviewTasksTable } from "@/features/tasks/components/overview-tasks-table";
@@ -304,28 +306,12 @@ const AreaIdSuspense = async ({ params }: AreaIdParams) => {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-5 flex flex-col gap-2">
-              {activity.map((a) => {
-                const { icon: SubjectIcon } = formatActivitySubject(a.subject);
-
-                return (
-                  <Fragment key={a.id}>
-                    <div
-                      key={a.id}
-                      className="flex items-start gap-2 w-full min-w-0 leading-7"
-                    >
-                      <span className="h-[1lh] flex items-center shrink-0">
-                        <SubjectIcon className="text-muted-foreground" />
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-lg text-muted-foreground">
-                          {formatActivityMessage(a)}
-                        </p>
-                      </div>
-                    </div>
-                    <Separator className="last:hidden" />
-                  </Fragment>
-                );
-              })}
+              {activity.map((a) => (
+                <Fragment key={a.id}>
+                  <DashboardActivityItem activity={a} />
+                  <Separator className="last:hidden" />
+                </Fragment>
+              ))}
             </CardContent>
             <CardFooter className="px-5">
               <LinkButton
@@ -353,60 +339,9 @@ const AreaIdSuspense = async ({ params }: AreaIdParams) => {
               <CardTitle className="text-xl font-semibold">Projects</CardTitle>
             </CardHeader>
             <CardContent className="px-4 grid grid-cols-1 @xl:grid-cols-2">
-              {projects.map((project) => {
-                const { icon: Icon, text } = formatProjectStatus(
-                  project.status,
-                );
-
-                return (
-                  <Link
-                    key={project.id}
-                    href={`/dashboard/projects/${project.id}`}
-                    className="group min-w-0"
-                  >
-                    <div className="h-full flex items-start gap-3 transition-colors hover:bg-muted/40 p-4">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
-                        {project.icon || (
-                          <FolderKanbanIcon className="size-5" />
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-0.5 w-full min-w-0">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="truncate text-xl font-semibold">
-                              {project.name}
-                            </span>
-                            <ArrowUpRightIcon className="size-5 shrink-0 text-muted-foreground transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                          </div>
-                          <p
-                            className={cn(
-                              "line-clamp-2 text-base leading-relaxed text-muted-foreground",
-                              !project.outcome && "italic",
-                            )}
-                          >
-                            {project.outcome || "No outcome provided."}
-                          </p>
-                          <div className="flex items-center gap-0.5 mt-1">
-                            <div className="flex items-center gap-2">
-                              <Icon className="size-4 text-muted-foreground" />
-                              <span className="text-base text-muted-foreground">
-                                {text}
-                              </span>
-                            </div>
-                            <DotIcon className="text-muted-foreground/30 size-5" />
-                            <div className="flex items-center gap-2">
-                              <ClockIcon className="size-4 text-muted-foreground" />
-                              <span className="text-base text-muted-foreground">
-                                {formatDistanceToNow(project.updatedAt)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+              {projects.map((project) => (
+                <DashboardProjectCard key={project.id} project={project} />
+              ))}
             </CardContent>
             <CardFooter className="px-5">
               <LinkButton

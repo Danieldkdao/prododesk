@@ -107,7 +107,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "icons": "link:@types/@lobehub/icons",
-    "sass": "^1.102.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

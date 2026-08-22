@@ -33,7 +33,7 @@ export const WorkspaceSearch = () => {
     <>
       <SearchCommandModal open={searchModalOpen} setOpen={setSearchModalOpen} />
       <InputGroup
-        className="border-border! px-2 flex items-center justify-center cursor-pointer"
+        className="border-border! px-2 flex items-center justify-center cursor-pointer w-full flex-1 max-w-180"
         onClick={() => setSearchModalOpen(true)}
       >
         <InputGroupAddon>
