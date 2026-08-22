@@ -2,6 +2,7 @@
 
 import { db } from "@/db/db";
 import { MilestoneTable, ProjectTable, TaskTable } from "@/db/schema";
+import { readProjectsDb } from "@/features/projects/server/projects";
 import { Task } from "@/features/tasks/components/task";
 import { getUserTaskTag } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
@@ -118,4 +119,25 @@ export const readDateTasksAction = async (date?: string) => {
   if (!userId || !user) return null;
 
   return readCachedDateTasksAction(userId, user.timeZone, date);
+};
+
+const readCachedDashboardProjectsAction = async (userId: string) => {
+  "use cache";
+  cacheTag(getUserTaskTag(userId));
+
+  const response = await readProjectsDb({
+    userId,
+    limit: 3,
+    archiveStatus: "active",
+  });
+  if (!response) return null;
+  const { projects } = response;
+
+  return projects;
+};
+export const readDashboardProjectsAction = async () => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  return readCachedDashboardProjectsAction(userId);
 };
