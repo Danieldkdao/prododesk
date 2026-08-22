@@ -87,18 +87,15 @@ export const Task = ({
               {formatTaskPriority(task.priority).label}
             </Badge>
           </div>
-
-          {task.description && (
-            <p
-              className={cn(
-                "text-base leading-5",
-                isTaskComplete ? "text-emerald-600" : "text-muted-foreground",
-                !task.description && "italic",
-              )}
-            >
-              {task.description || "No description provided."}
-            </p>
-          )}
+          <p
+            className={cn(
+              "text-base leading-5",
+              isTaskComplete ? "text-emerald-600" : "text-muted-foreground",
+              !task.description && "italic",
+            )}
+          >
+            {task.description || "No description provided."}
+          </p>
           {isTaskComplete ? (
             <div className="flex items-center gap-1 text-sm text-emerald-600">
               <CheckIcon className="size-3.5" />

@@ -4,10 +4,12 @@ import { db } from "@/db/db";
 import { MilestoneTable, ProjectTable, TaskTable } from "@/db/schema";
 import { readActivityDb } from "@/features/activity/server/activity";
 import { getUserActivityTag } from "@/features/activity/server/cache/activity";
+import { getUserProjectTag } from "@/features/projects/server/cache/projects";
 import { readProjectsDb } from "@/features/projects/server/projects";
 import { getUserTaskTag } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { getLocalDayBounds } from "@/lib/utils";
+import { tz, TZDate } from "@date-fns/tz";
 import { parse } from "date-fns";
 import {
   and,
@@ -83,7 +85,9 @@ const readCachedDateTasksAction = async (
   "use cache";
   cacheTag(getUserTaskTag(userId));
 
-  const dateToUse = date ? parse(date, "yyyy-MM-dd", new Date()) : new Date();
+  const dateToUse = date
+    ? parse(date, "yyyy-MM-dd", TZDate.tz(timeZone), { in: tz(timeZone) })
+    : new Date();
   const { startUtc, endUtc } = getLocalDayBounds(dateToUse, timeZone);
 
   const todayTasks = await db
@@ -124,7 +128,7 @@ export const readDateTasksAction = async (date?: string) => {
 
 const readCachedDashboardProjectsAction = async (userId: string) => {
   "use cache";
-  cacheTag(getUserTaskTag(userId));
+  cacheTag(getUserProjectTag(userId));
 
   const response = await readProjectsDb({
     userId,

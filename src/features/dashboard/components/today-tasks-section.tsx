@@ -93,7 +93,7 @@ const TodayTasksSectionSuspense = async () => {
             description="You don't have any tasks scheduled or due today. Create a new one to get started."
             className="border-none"
           >
-            <TaskDialog defaultValues={{ day: addHours(new Date(), 1) }}>
+            <TaskDialog defaultValues={{ day: new Date() }}>
               <Button variant="ghost" className="w-full">
                 <PlusIcon />
                 New Task
@@ -103,7 +103,7 @@ const TodayTasksSectionSuspense = async () => {
         )}
       </CardContent>
       <CardFooter className="border-t-2 p-0!">
-        <TaskDialog defaultValues={{ day: addHours(new Date(), 1) }}>
+        <TaskDialog defaultValues={{ day: new Date() }}>
           <Button variant="ghost" className="w-full">
             <PlusIcon />
             New Task

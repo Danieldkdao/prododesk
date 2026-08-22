@@ -11,11 +11,23 @@ function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
 }
 
-function DialogTrigger({ className, ...props }: DialogPrimitive.Trigger.Props) {
+function DialogTrigger({
+  className,
+  render,
+  ...props
+}: DialogPrimitive.Trigger.Props) {
+  let resolvedRender = render;
+  if (render && typeof render !== "function") {
+    const candidate = React.Children.toArray(render)[0];
+
+    resolvedRender = React.isValidElement(candidate) ? candidate : undefined;
+  }
+
   return (
     <DialogPrimitive.Trigger
       data-slot="dialog-trigger"
       className={cn("cursor-pointer", className)}
+      render={resolvedRender}
       {...props}
     />
   );

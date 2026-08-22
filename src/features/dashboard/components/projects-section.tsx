@@ -84,7 +84,7 @@ const ProjectsSectionSuspense = async () => {
       ) : (
         <OverviewSuspenseEmptyData
           icon={FolderKanbanIcon}
-          title="No Projects for Today"
+          title="No Active Projects"
           description="You don't have any projects that are currently active. Create a new one to get started."
           className="border-none"
         >

@@ -20,6 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { Suspense } from "react";
+import { LinkButton } from "@/components/link-button";
 
 const DashboardPage = () => {
   return (
@@ -58,9 +59,11 @@ const DashboardSuspense = async () => {
   if (!user)
     return (
       <ErrorState
-        title="No access"
+        title="Unauthorized Error"
         description="Please sign in to view this page"
-      />
+      >
+        <LinkButton href="/sign-in">Sign In</LinkButton>
+      </ErrorState>
     );
 
   return (
