@@ -21,6 +21,7 @@ type ReadActivityFilters = ActivityFilters & {
 
 const readCachedActivityAction = async (
   userId: string,
+  timeZone: string,
   filterOptions: ReadActivityFilters,
 ) => {
   "use cache";
@@ -36,6 +37,7 @@ const readCachedActivityAction = async (
   const response = await readActivityDb({
     ...filterOptions,
     userId,
+    timeZone,
     limit: PAGE_SIZE + 1,
   });
   if (!response) return null;
@@ -63,10 +65,10 @@ const readCachedActivityAction = async (
 export const readActivityAction = async (
   filterOptions: ReadActivityFilters,
 ) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) return null;
 
-  return readCachedActivityAction(userId, filterOptions);
+  return readCachedActivityAction(userId, user.timeZone, filterOptions);
 };
 export type ReadActivityActionReturnType = UnwrapAsync<
   typeof readActivityAction

@@ -14,6 +14,14 @@ import {
 export const activitySortByOptions = ["most_recent", "oldest"] as const;
 export type ActivitySortByOption = (typeof activitySortByOptions)[number];
 
+export const activityGroupByOptions = [
+  "all_time",
+  "today",
+  "yesterday",
+  "this_week",
+] as const;
+export type ActivityGroupByOption = (typeof activityGroupByOptions)[number];
+
 export const activitySearchParams = {
   search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   sortBy: parseAsStringEnum([...activitySortByOptions])
@@ -27,6 +35,9 @@ export const activitySearchParams = {
     .withOptions({ clearOnDefault: true }),
   subjects: parseAsArrayOf(parseAsStringEnum([...activitySubjects]))
     .withDefault([])
+    .withOptions({ clearOnDefault: true }),
+  groupBy: parseAsStringEnum([...activityGroupByOptions])
+    .withDefault("all_time")
     .withOptions({ clearOnDefault: true }),
 };
 export type ActivityFilters = inferParserType<typeof activitySearchParams>;

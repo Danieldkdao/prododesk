@@ -122,7 +122,7 @@ export const ActivityListTable = ({
             title="No activity found"
             description="We were unable to find any activity that match the selected filters. Try changing the filters or update this project."
           >
-            <Button onClick={resetFilters} className="w-full">
+            <Button onClick={resetFilters} className="w-full" variant="outline">
               Reset filters
             </Button>
           </NotFound>

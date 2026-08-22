@@ -11,10 +11,17 @@ import {
 import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 import { findChatRunDb } from "@/features/chats/server/chat-runs";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
+import { PaginationCursor } from "@/features/tasks/lib/types";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
 import { runMutationCacheInvalidation } from "@/lib/data-cache";
-import { areValidIds } from "@/lib/utils";
+import {
+  areValidIds,
+  getLocalDayBounds,
+  getLocalWeekBounds,
+} from "@/lib/utils";
+import { tz } from "@date-fns/tz";
+import { subDays } from "date-fns";
 import {
   and,
   asc,
@@ -29,15 +36,20 @@ import {
   or,
   SQL,
 } from "drizzle-orm";
-import { ActivityFilters, ActivitySortByOption } from "../lib/activity-params";
+import { TZDate } from "react-day-picker";
+import {
+  ActivityFilters,
+  ActivityGroupByOption,
+  ActivitySortByOption,
+} from "../lib/activity-params";
 import { revalidateActivityCache } from "./cache/activity";
-import { PaginationCursor } from "@/features/tasks/lib/types";
 
 type ReadActivityDbFilters = Partial<ActivityFilters> & {
   projectIds?: string[];
   areaIds?: string[];
   limit?: number;
   userId?: string;
+  timeZone?: string;
   after?: Date;
   before?: Date;
   cursor?: PaginationCursor | null;
@@ -50,24 +62,19 @@ export const readActivityDb = async (filterOptions: ReadActivityDbFilters) => {
     sources,
     actions,
     subjects,
+    groupBy,
     projectIds,
     areaIds,
     limit = PAGE_SIZE,
     after,
     before,
     userId,
+    timeZone,
     cursor,
   } = filterOptions;
-  let userIdToUse: string | null = null;
-  if (userId) {
-    userIdToUse = userId;
-  } else {
-    const { userId } = await getCurrentUser();
-    if (!userId) return null;
-
-    userIdToUse = userId;
-  }
-  if (!userIdToUse) return null;
+  const userIdToUse = userId ?? (await getCurrentUser()).userId;
+  const timeZoneToUse = timeZone ?? (await getCurrentUser()).user?.timeZone;
+  if (!userIdToUse || !timeZoneToUse) return null;
 
   const normalizedSearch = search?.trim();
   const searchFilter = normalizedSearch
@@ -93,6 +100,39 @@ export const readActivityDb = async (filterOptions: ReadActivityDbFilters) => {
   const subjectsFilter = subjects?.length
     ? inArray(ActivityTable.subject, subjects)
     : undefined;
+
+  const today = TZDate.tz(timeZoneToUse);
+  const yesterday = subDays(TZDate.tz(timeZoneToUse), 1, {
+    in: tz(timeZoneToUse),
+  });
+
+  const { startUtc: todayStartUtc, endUtc: todayEndUtc } = getLocalDayBounds(
+    today,
+    timeZoneToUse,
+  );
+  const { startUtc: yesterdayStartUtc, endUtc: yesterdayEndUtc } =
+    getLocalDayBounds(yesterday, timeZoneToUse);
+  const { startUtc: weekStartUtc, endUtc: weekEndUtc } = getLocalWeekBounds(
+    today,
+    timeZoneToUse,
+  );
+
+  const groupByMap: Record<ActivityGroupByOption, SQL<unknown> | undefined> = {
+    all_time: undefined,
+    today: and(
+      gte(ActivityTable.createdAt, todayStartUtc),
+      lte(ActivityTable.createdAt, todayEndUtc),
+    ),
+    yesterday: and(
+      gte(ActivityTable.createdAt, yesterdayStartUtc),
+      lte(ActivityTable.createdAt, yesterdayEndUtc),
+    ),
+    this_week: and(
+      gte(ActivityTable.createdAt, weekStartUtc),
+      lte(ActivityTable.createdAt, weekEndUtc),
+    ),
+  };
+  const groupByFilter = groupBy ? groupByMap[groupBy] : undefined;
 
   const timeFilter =
     after || before
@@ -160,6 +200,7 @@ export const readActivityDb = async (filterOptions: ReadActivityDbFilters) => {
     sourcesFilter,
     actionsFilter,
     subjectsFilter,
+    groupByFilter,
     timeFilter,
     cursorFilter,
   );

@@ -14,7 +14,7 @@ import {
   Trash2Icon,
   UserIcon,
 } from "lucide-react";
-import { ActivitySortByOption } from "./activity-params";
+import { ActivityGroupByOption, ActivitySortByOption } from "./activity-params";
 import { ArtifactActivityType } from "./types";
 
 export const formatActivitySource = (source: ActivitySource) => {
@@ -102,6 +102,23 @@ export const formatActivitySortByOption = (option: ActivitySortByOption) => {
     default:
       throw new Error(
         `Unknown activity sort by option: ${option satisfies never}`,
+      );
+  }
+};
+
+export const formatActivityGroupByOption = (option: ActivityGroupByOption) => {
+  switch (option) {
+    case "all_time":
+      return "All time";
+    case "today":
+      return "Today";
+    case "yesterday":
+      return "Yesterday";
+    case "this_week":
+      return "This week";
+    default:
+      throw new Error(
+        `Unknown activity group by option: ${option satisfies never}`,
       );
   }
 };

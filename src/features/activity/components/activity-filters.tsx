@@ -17,11 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  ActivityGroupByOption,
+  activityGroupByOptions,
   ActivitySortByOption,
   activitySortByOptions,
 } from "../lib/activity-params";
 import {
   formatActivityAction,
+  formatActivityGroupByOption,
   formatActivitySortByOption,
   formatActivitySource,
   formatActivitySubject,
@@ -50,7 +53,7 @@ export const ActivityFilters = () => {
     <div className="w-full flex items-center gap-2">
       <SearchInput
         initialSearch={filters.search}
-        onValueChange={(search) => setFilters({ search, page: DEFAULT_PAGE })}
+        onValueChange={(search) => setFilters({ search })}
         placeholder="Search by activity message"
       />
       <Popover>
@@ -69,7 +72,6 @@ export const ActivityFilters = () => {
               onValueChange={(value) =>
                 setFilters({
                   sortBy: value as ActivitySortByOption,
-                  page: DEFAULT_PAGE,
                 })
               }
             >
@@ -82,6 +84,28 @@ export const ActivityFilters = () => {
                 {activitySortByOptions.map((option) => (
                   <SelectItem key={option} value={option}>
                     {formatActivitySortByOption(option)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="font-medium">Group By</span>
+            <Select
+              value={filters.groupBy}
+              onValueChange={(value) =>
+                setFilters({ groupBy: value as ActivityGroupByOption })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Group by">
+                  <span>{formatActivityGroupByOption(filters.groupBy)}</span>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {activityGroupByOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {formatActivityGroupByOption(option)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -114,7 +138,6 @@ export const ActivityFilters = () => {
               onValuesChange={(values) =>
                 setFilters({
                   actions: values as ActivityAction[],
-                  page: DEFAULT_PAGE,
                 })
               }
             >
@@ -137,7 +160,6 @@ export const ActivityFilters = () => {
               onValuesChange={(values) =>
                 setFilters({
                   subjects: values as ActivitySubject[],
-                  page: DEFAULT_PAGE,
                 })
               }
             >
