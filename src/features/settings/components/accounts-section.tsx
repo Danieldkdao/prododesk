@@ -8,21 +8,24 @@ import { Separator } from "@/components/ui/separator";
 import { authClient } from "@/lib/auth/auth-client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { KeyRoundIcon, Trash2Icon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useTransition } from "react";
 import { toast } from "sonner";
 import { SocialProvider, socialProviders } from "../lib/constants";
 import { formatSocialProvider } from "../lib/formatters";
+import { PasswordDialog } from "./password-dialog";
+import { RemovePasswordAccountButton } from "./remove-password-account-button";
 
-export const SocialSection = () => {
+export const AccountsSection = () => {
   return (
     <Suspense>
-      <SocialSectionSuspense />
+      <AccountsSectionSuspense />
     </Suspense>
   );
 };
 
-const SocialSectionSuspense = () => {
+const AccountsSectionSuspense = () => {
   const queryClient = useQueryClient();
   const { data, error, isPending } = useQuery({
     queryKey: ["socials"],
@@ -81,10 +84,56 @@ const SocialSectionSuspense = () => {
   };
 
   const connectedAccounts = data.data;
+  const passwordAccount = connectedAccounts.find(
+    (account) => account.providerId === "credential",
+  );
+  const hasSocialLogin = connectedAccounts.some(
+    (account) => account.providerId !== "credential",
+  );
 
   return (
     <Card className="border">
       <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-2 min-w-0 w-full">
+          <div className="flex items-center gap-2 flex-1">
+            <KeyRoundIcon className="size-10" />
+            <div className="flex flex-col gap-2">
+              <span className="text-base font-semibold leading-none">
+                Email & Password
+              </span>
+              {passwordAccount ? (
+                <span className="text-sm font-medium text-emerald-600 leading-none">
+                  Connected on {format(passwordAccount.createdAt, "PP 'at' p")}
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-sm font-medium leading-none">
+                  Not connected
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <PasswordDialog hasPasswordAccount={!!passwordAccount}>
+              <Button
+                variant="outline"
+                className="flex-1"
+                disabled={isLinkPending}
+              >
+                {passwordAccount ? "Update" : "Set"}
+              </Button>
+            </PasswordDialog>
+            {passwordAccount && hasSocialLogin && (
+              <RemovePasswordAccountButton
+                variant="destructive"
+                size="icon"
+                disabled={!passwordAccount || !hasSocialLogin}
+              >
+                <Trash2Icon />
+              </RemovePasswordAccountButton>
+            )}
+          </div>
+        </div>
+        <Separator />
         {socialProviders.map((provider) => {
           const connectedAccount = connectedAccounts.find(
             (account) => account.providerId === provider,

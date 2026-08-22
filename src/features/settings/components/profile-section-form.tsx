@@ -1,15 +1,7 @@
 "use client";
 
-import { Controller, useForm } from "react-hook-form";
-import { profileSchema, ProfileSchemaType } from "../actions/schemas";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { UserAvatar } from "@/components/user-avatar";
-import { user } from "@/db/schema";
-import {
-  ReadUserProfileActionReturnType,
-  updateUserProfileAction,
-} from "../actions/actions";
 import {
   Field,
   FieldContent,
@@ -19,11 +11,18 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { LoadingSwap } from "@/components/ui/loading-swap";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
+import { UserAvatar } from "@/components/user-avatar";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
+import {
+  ReadUserProfileActionReturnType,
+  updateUserProfileAction,
+} from "../actions/actions";
+import { profileSchema, ProfileSchemaType } from "../actions/schemas";
 
 export const ProfileSectionForm = ({
   userProfile,
@@ -127,9 +126,8 @@ export const ProfileSectionForm = ({
                 </FieldContent>
                 <FieldDescription>
                   This description will help our AI understand you better so it
-                  can produce better output. You can include preferences,
-                  things-to-avoid, and some general context it should know about
-                  you.
+                  can produce better output. You can include preferences, things
+                  to avoid, and some general context it should know about you.
                 </FieldDescription>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>

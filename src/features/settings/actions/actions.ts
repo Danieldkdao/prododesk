@@ -11,6 +11,8 @@ import {
 import { UnwrapAsync } from "@/lib/types";
 import { eq } from "drizzle-orm";
 import { profileSchema, ProfileSchemaType } from "./schemas";
+import { auth } from "@/lib/auth/auth";
+import { headers } from "next/headers";
 
 export const readUserProfileAction = async () => {
   const { userId } = await getCurrentUser();
@@ -77,6 +79,108 @@ export const updateUserProfileAction = async (
     return {
       error: false,
       message: "Profile updated successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
+
+export const setPasswordAction = async (newPassword: string) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const requestHeaders = await headers();
+
+  const accounts = await auth.api.listUserAccounts({
+    headers: requestHeaders,
+  });
+  const alreadyHasPassword = accounts.some(
+    (account) => account.providerId === "credential",
+  );
+  if (alreadyHasPassword) {
+    return {
+      error: true,
+      message: "This account already has a password set.",
+    };
+  }
+
+  try {
+    await auth.api.setPassword({
+      body: {
+        newPassword,
+      },
+      headers: requestHeaders,
+    });
+
+    return {
+      error: false,
+      message: "Password set successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
+
+export const removePasswordAccountAction = async () => {
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const requestHeaders = await headers();
+
+  const accounts = await auth.api.listUserAccounts({
+    headers: requestHeaders,
+  });
+  const credentialAccount = accounts.find(
+    (account) => account.providerId === "credential",
+  );
+  if (!credentialAccount) {
+    return {
+      error: true,
+      message: "This account does not have a password.",
+    };
+  }
+
+  const hasSocialAccounts = accounts.some(
+    (account) => account.providerId !== "credential",
+  );
+  if (!hasSocialAccounts) {
+    return {
+      error: true,
+      message:
+        "You cannot remove your password account because you do not have any other social accounts linked. Please link a social account first.",
+    };
+  }
+
+  try {
+    await auth.api.unlinkAccount({
+      body: {
+        providerId: "credential",
+        accountId: credentialAccount.accountId,
+      },
+      headers: requestHeaders,
+    });
+
+    return {
+      error: false,
+      message: "Password account removed successfully.",
     };
   } catch (error) {
     console.error(error);
