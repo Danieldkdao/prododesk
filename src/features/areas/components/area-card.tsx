@@ -48,7 +48,7 @@ export const AreaCard = ({
   ];
 
   return (
-    <Card className="p-0 border bg-card h-full relative">
+    <Card className="border p-0 bg-card h-full relative">
       <CardContent className="p-0 flex h-full">
         <Link href={`/dashboard/areas/${area.id}`}>
           <span className="absolute inset-0" />

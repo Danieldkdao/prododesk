@@ -52,37 +52,33 @@ const StatsSectionSuspense = async () => {
       value: openTaskCount,
       icon: CircleDashedIcon,
       textColor: "text-blue-600 dark:text-blue-400",
-      bgColor: "bg-blue-100 dark:bg-blue-950",
     },
     {
       label: "Completed tasks",
       value: completedTaskCount,
       icon: CircleCheckIcon,
       textColor: "text-emerald-600 dark:text-emerald-400",
-      bgColor: "bg-emerald-100 dark:bg-emerald-950",
     },
     {
       label: "Overdue tasks",
       value: overdueTaskCount,
       icon: CircleAlertIcon,
       textColor: "text-rose-600 dark:text-rose-400",
-      bgColor: "bg-rose-100 dark:bg-rose-950",
     },
     {
       label: "Active projects",
       value: activeProjectCount,
       icon: CircleStarIcon,
       textColor: "text-violet-600 dark:text-violet-400",
-      bgColor: "bg-violet-100 dark:bg-violet-950",
     },
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat) => (
-        <Card key={stat.label} className={cn("py-4 bg-accent")}>
+        <Card key={stat.label} className="border-2 py-4 min-w-0">
           <CardContent className="flex items-center gap-4 px-4">
-            <stat.icon className={cn("size-14", stat.textColor)} />
+            <stat.icon className={cn("size-14 shrink-0", stat.textColor)} />
             <div className="flex flex-col gap-px">
               <span className={cn("text-3xl font-semibold", stat.textColor)}>
                 {stat.value}

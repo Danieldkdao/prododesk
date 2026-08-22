@@ -1,5 +1,6 @@
 import { ErrorState } from "@/components/error-state";
 import { StatsSection } from "@/features/dashboard/components/stats-section";
+import { TodayTasksSection } from "@/features/dashboard/components/today-tasks-section";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { Suspense } from "react";
 
@@ -40,6 +41,9 @@ const DashboardSuspense = async () => {
         </p>
       </div>
       <StatsSection />
+      <div className="@container grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
+        <TodayTasksSection />
+      </div>
     </div>
   );
 };

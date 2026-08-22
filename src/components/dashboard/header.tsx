@@ -5,7 +5,7 @@ import { UserProfile } from "./user-profile";
 
 export const DashboardHeader = () => {
   return (
-    <header className="border-b py-2 px-4 flex items-center gap-4 w-full">
+    <header className="border-b py-2 px-4 flex items-center gap-4 w-full bg-card/50">
       <div className="flex items-center gap-2 shrink-0">
         <Image src="/logo.png" alt="Logo" width={32} height={32} />
         <h1 className="truncate text-2xl font-semibold hidden md:block">

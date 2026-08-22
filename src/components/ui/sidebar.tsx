@@ -99,12 +99,9 @@ function SidebarProvider({
   );
 
   const openMobile = _openMobile;
-  const setOpenMobile = React.useCallback(
-    (value: boolean) => {
-      _setOpenMobile(value);
-    },
-    [],
-  );
+  const setOpenMobile = React.useCallback((value: boolean) => {
+    _setOpenMobile(value);
+  }, []);
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {

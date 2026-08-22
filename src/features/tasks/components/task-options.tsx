@@ -7,12 +7,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ProjectSelectType, TaskSelectType } from "@/db/schema";
 import { EditIcon, EllipsisVerticalIcon, Trash2Icon } from "lucide-react";
 import { ReactElement, useState } from "react";
+import { ReadTasksActionReturnType } from "../actions/actions";
 import { DeleteTaskButton } from "./delete-task-button";
 import { TaskDialog } from "./task-dialog";
-import { ReadTasksActionReturnType } from "../actions/actions";
 
 export const TaskOptions = ({
   task,

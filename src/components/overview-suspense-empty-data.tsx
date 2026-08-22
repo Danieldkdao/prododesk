@@ -1,20 +1,23 @@
 import { LucideIcon } from "lucide-react";
 import { ReactNode } from "react";
 import { Card, CardContent } from "./ui/card";
+import { cn } from "@/lib/utils";
 
 export const OverviewSuspenseEmptyData = ({
   icon: Icon,
   title,
   description,
   children,
+  className,
 }: {
   icon: LucideIcon;
   title: string;
   description: string;
   children?: ReactNode;
+  className?: string;
 }) => {
   return (
-    <Card className="border">
+    <Card className={cn("border", className)}>
       <CardContent className="h-full w-full flex items-center justify-center">
         <div className="w-full flex flex-col items-center justify-center gap-2">
           <Icon className="size-15" />

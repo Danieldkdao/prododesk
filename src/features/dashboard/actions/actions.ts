@@ -1,11 +1,24 @@
 "use server";
 
 import { db } from "@/db/db";
-import { ProjectTable, TaskTable } from "@/db/schema";
+import { MilestoneTable, ProjectTable, TaskTable } from "@/db/schema";
 import { Task } from "@/features/tasks/components/task";
+import { getUserTaskTag } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { getLocalDayBounds } from "@/lib/utils";
-import { and, count, eq, gte, isNull, lte, ne, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  eq,
+  getTableColumns,
+  gte,
+  isNull,
+  lte,
+  ne,
+  or,
+} from "drizzle-orm";
+import { cacheTag } from "next/cache";
 
 export const readDashboardStatsAction = async () => {
   const { userId } = await getCurrentUser();
@@ -59,27 +72,48 @@ export const readDashboardStatsAction = async () => {
   };
 };
 
-export const readTodayTasksAction = async () => {
-  const { userId, user } = await getCurrentUser();
-  if (!userId || !user) return null;
+export const readCachedTodayTasksAction = async (
+  userId: string,
+  timeZone: string,
+) => {
+  "use cache";
+  cacheTag(getUserTaskTag(userId));
 
   const today = new Date();
-  const { startUtc, endUtc } = getLocalDayBounds(today, user.timeZone);
+  const { startUtc, endUtc } = getLocalDayBounds(today, timeZone);
 
   const todayTasks = await db
-    .select()
+    .select({
+      ...getTableColumns(TaskTable),
+      project: getTableColumns(ProjectTable),
+      milestone: getTableColumns(MilestoneTable),
+    })
     .from(TaskTable)
+    .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+    .leftJoin(MilestoneTable, eq(MilestoneTable.id, TaskTable.milestoneId))
     .where(
       and(
         eq(TaskTable.userId, userId),
         or(
-          lte(TaskTable.scheduledAt, startUtc),
-          lte(TaskTable.dueAt, startUtc),
-          gte(TaskTable.scheduledAt, endUtc),
-          gte(TaskTable.dueAt, endUtc),
+          and(
+            gte(TaskTable.scheduledAt, startUtc),
+            lte(TaskTable.scheduledAt, endUtc),
+          ),
+          and(gte(TaskTable.dueAt, startUtc), lte(TaskTable.dueAt, endUtc)),
         ),
       ),
+    )
+    .orderBy(
+      asc(TaskTable.scheduledAt),
+      asc(TaskTable.dueAt),
+      asc(TaskTable.id),
     );
 
   return todayTasks;
+};
+export const readTodayTasksAction = async () => {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) return null;
+
+  return readCachedTodayTasksAction(userId, user.timeZone);
 };
