@@ -1,5 +1,6 @@
 import { ErrorState } from "@/components/error-state";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TaskStatus } from "@/db/shared";
 import { cn } from "@/lib/utils";
 import {
@@ -13,14 +14,34 @@ import { readDashboardStatsAction } from "../actions/actions";
 
 export const StatsSection = () => {
   return (
-    <Suspense fallback={<StatsSectionLoading />}>
+    <Suspense fallback={<StatsSectionSkeleton />}>
       <StatsSectionSuspense />
     </Suspense>
   );
 };
 
-const StatsSectionLoading = () => {
-  return <div>loading</div>;
+export const StatsSectionSkeleton = () => {
+  return (
+    <div
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      aria-label="Loading dashboard statistics"
+      aria-busy="true"
+    >
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index} className="border-2 py-4 min-w-0">
+          <CardContent className="flex items-center gap-4 px-4">
+            <Skeleton className="size-14 shrink-0 rounded-full" />
+            <div className="flex flex-col gap-2 min-w-0">
+              <Skeleton className="h-9 w-14" />
+              <Skeleton
+                className={index % 2 === 0 ? "h-6 w-24" : "h-6 w-32"}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 };
 
 const StatsSectionSuspense = async () => {

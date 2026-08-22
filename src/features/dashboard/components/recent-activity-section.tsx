@@ -2,22 +2,50 @@ import { ErrorState } from "@/components/error-state";
 import { LinkButton } from "@/components/link-button";
 import { OverviewSuspenseEmptyData } from "@/components/overview-suspense-empty-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardActivityItem } from "@/features/activity/components/dashboard-activity-item";
 import { ActivityIcon } from "lucide-react";
-import { Fragment, Suspense } from "react";
+import { Suspense } from "react";
 import { readDashboardActivityAction } from "../actions/actions";
 
 export const RecentActivitySection = () => {
   return (
-    <Suspense fallback={<RecentActivitySectionLoading />}>
+    <Suspense fallback={<RecentActivitySectionSkeleton />}>
       <RecentActivitySectionSuspense />
     </Suspense>
   );
 };
 
-const RecentActivitySectionLoading = () => {
-  return <div>loading</div>;
+export const RecentActivitySectionSkeleton = () => {
+  return (
+    <Card
+      className="border-2 pt-6 pb-0 min-w-0 gap-0 h-full max-h-175 overflow-hidden"
+      aria-label="Loading recent activity"
+      aria-busy="true"
+    >
+      <CardHeader className="px-4 flex items-center gap-2 justify-between border-b">
+        <Skeleton className="h-7 w-36" />
+        <Skeleton className="h-9 w-20" />
+      </CardHeader>
+      <CardContent className="px-0 min-w-0">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="border-y last:border-b-0 p-4">
+            <div className="flex items-start gap-2 w-full min-w-0 leading-7">
+              <span className="h-[1lh] flex items-center shrink-0">
+                <Skeleton className="size-6 rounded-full" />
+              </span>
+              <div className="flex-1 min-w-0 flex flex-col gap-2 py-0.5">
+                <Skeleton
+                  className={index % 2 === 0 ? "h-5 w-full" : "h-5 w-4/5"}
+                />
+                {index % 2 === 0 && <Skeleton className="h-5 w-2/3" />}
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
 };
 
 const RecentActivitySectionSuspense = async () => {

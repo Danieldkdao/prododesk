@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardTask } from "@/features/tasks/components/dashboard-task";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
 import { addHours } from "date-fns";
@@ -18,14 +19,50 @@ import { readDateTasksAction } from "../actions/actions";
 
 export const TodayTasksSection = () => {
   return (
-    <Suspense fallback={<TodayTasksSectionLoading />}>
+    <Suspense fallback={<TodayTasksSectionSkeleton />}>
       <TodayTasksSectionSuspense />
     </Suspense>
   );
 };
 
-const TodayTasksSectionLoading = () => {
-  return <div>loading</div>;
+export const TodayTasksSectionSkeleton = () => {
+  return (
+    <Card
+      className="border-2 pt-6 pb-0 min-w-0 gap-0 h-full max-h-175 overflow-hidden"
+      aria-label="Loading today's tasks"
+      aria-busy="true"
+    >
+      <CardHeader className="px-4 flex items-center gap-2 justify-between border-b">
+        <Skeleton className="h-7 w-36" />
+        <Skeleton className="h-9 w-20" />
+      </CardHeader>
+      <CardContent className="px-0 min-w-0 overflow-hidden">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="w-full p-4 border-t border-b last:border-b-0 min-w-0 flex gap-2"
+          >
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <Skeleton className="size-6 shrink-0 mt-2 rounded-full" />
+              <div className="flex flex-col gap-2 min-w-0 flex-1">
+                <Skeleton
+                  className={index % 2 === 0 ? "h-7 w-3/5" : "h-7 w-4/5"}
+                />
+                <Skeleton className="h-5 w-40 max-w-full" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="size-9 shrink-0" />
+            </div>
+          </div>
+        ))}
+      </CardContent>
+      <CardFooter className="border-t-2 p-0! justify-center">
+        <Skeleton className="h-9 w-28 my-2" />
+      </CardFooter>
+    </Card>
+  );
 };
 
 const TodayTasksSectionSuspense = async () => {

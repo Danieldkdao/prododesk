@@ -1,9 +1,23 @@
 import { ErrorState } from "@/components/error-state";
 import { NextUpSection } from "@/features/dashboard/components/next-up-section";
-import { ProjectsSection } from "@/features/dashboard/components/projects-section";
-import { RecentActivitySection } from "@/features/dashboard/components/recent-activity-section";
-import { StatsSection } from "@/features/dashboard/components/stats-section";
-import { TodayTasksSection } from "@/features/dashboard/components/today-tasks-section";
+import { NextUpSectionSkeleton } from "@/features/dashboard/components/next-up-section";
+import {
+  ProjectsSection,
+  ProjectsSectionSkeleton,
+} from "@/features/dashboard/components/projects-section";
+import {
+  RecentActivitySection,
+  RecentActivitySectionSkeleton,
+} from "@/features/dashboard/components/recent-activity-section";
+import {
+  StatsSection,
+  StatsSectionSkeleton,
+} from "@/features/dashboard/components/stats-section";
+import {
+  TodayTasksSection,
+  TodayTasksSectionSkeleton,
+} from "@/features/dashboard/components/today-tasks-section";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { Suspense } from "react";
 
@@ -20,7 +34,23 @@ const DashboardPage = () => {
 };
 
 const DashboardLoading = () => {
-  return <div>loading</div>;
+  return (
+    <div className="w-full min-w-0 flex flex-col gap-8" aria-busy="true">
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-10 w-72 max-w-full" />
+        <Skeleton className="h-7 w-96 max-w-full" />
+      </div>
+      <StatsSectionSkeleton />
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
+        <TodayTasksSectionSkeleton />
+        <NextUpSectionSkeleton />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
+        <ProjectsSectionSkeleton />
+        <RecentActivitySectionSkeleton />
+      </div>
+    </div>
+  );
 };
 
 const DashboardSuspense = async () => {
