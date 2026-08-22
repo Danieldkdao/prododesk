@@ -9,11 +9,14 @@ import {
 } from "@/components/ui/table";
 import { PAGE_SIZE } from "@/lib/constants";
 import { ActivitySkeleton } from "./activity-skeleton";
+import { ActivityViewOption } from "../lib/activity-params";
 
 export const ActivityListSkeleton = ({
   showProject = false,
+  view = "table",
 }: {
   showProject?: boolean;
+  view?: ActivityViewOption;
 }) => {
   return (
     <div className="flex flex-col gap-4">
@@ -38,6 +41,7 @@ export const ActivityListSkeleton = ({
               key={index}
               showProject={showProject}
               index={index}
+              view={view}
             />
           ))}
         </TableBody>

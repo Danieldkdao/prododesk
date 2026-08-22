@@ -147,13 +147,17 @@ export const readDashboardProjectsAction = async () => {
   return readCachedDashboardProjectsAction(userId);
 };
 
-const readCachedDashboardActivityAction = async (userId: string) => {
+const readCachedDashboardActivityAction = async (
+  userId: string,
+  timeZone: string,
+) => {
   "use cache";
   cacheTag(getUserActivityTag(userId));
 
   const response = await readActivityDb({
     userId,
     limit: 5,
+    timeZone,
   });
   if (!response) return null;
 
@@ -162,8 +166,8 @@ const readCachedDashboardActivityAction = async (userId: string) => {
 };
 
 export const readDashboardActivityAction = async () => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) return null;
 
-  return readCachedDashboardActivityAction(userId);
+  return readCachedDashboardActivityAction(userId, user.timeZone);
 };

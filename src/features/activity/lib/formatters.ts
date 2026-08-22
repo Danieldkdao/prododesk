@@ -123,6 +123,19 @@ export const formatActivityGroupByOption = (option: ActivityGroupByOption) => {
   }
 };
 
+export const formatActivityViewOption = (option: "table" | "compact") => {
+  switch (option) {
+    case "table":
+      return "Table";
+    case "compact":
+      return "Compact";
+    default:
+      throw new Error(
+        `Unknown activity view option: ${option satisfies never}`,
+      );
+  }
+};
+
 export const formatActivityMessage = ({
   message,
   source,

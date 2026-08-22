@@ -22,6 +22,9 @@ export const activityGroupByOptions = [
 ] as const;
 export type ActivityGroupByOption = (typeof activityGroupByOptions)[number];
 
+export const activityViewOptions = ["table", "compact"] as const;
+export type ActivityViewOption = (typeof activityViewOptions)[number];
+
 export const activitySearchParams = {
   search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   sortBy: parseAsStringEnum([...activitySortByOptions])
@@ -38,6 +41,9 @@ export const activitySearchParams = {
     .withOptions({ clearOnDefault: true }),
   groupBy: parseAsStringEnum([...activityGroupByOptions])
     .withDefault("all_time")
+    .withOptions({ clearOnDefault: true }),
+  view: parseAsStringEnum([...activityViewOptions])
+    .withDefault("table")
     .withOptions({ clearOnDefault: true }),
 };
 export type ActivityFilters = inferParserType<typeof activitySearchParams>;

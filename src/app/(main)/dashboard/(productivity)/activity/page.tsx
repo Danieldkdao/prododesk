@@ -2,7 +2,7 @@ import { ErrorState } from "@/components/error-state";
 import { readActivityAction } from "@/features/activity/actions/actions";
 import { ActivityFilters } from "@/features/activity/components/activity-filters";
 import { ActivityListSkeleton } from "@/features/activity/components/activity-list-skeleton";
-import { ActivityListTable } from "@/features/activity/components/activity-list-table";
+import { ActivityListTable } from "@/features/activity/components/activity-list-view";
 import { loadActivitySearchParams } from "@/features/activity/lib/activity-params";
 import { SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";

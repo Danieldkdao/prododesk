@@ -2,22 +2,13 @@
 
 import { NotFound } from "@/components/not-found";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   readActivityAction,
   ReadActivityActionReturnType,
 } from "../actions/actions";
 import { useActivityParams } from "../hooks/use-activity-params";
-import { ActivityTableRow } from "./activity-table-row";
-import { useEffect, useRef, useState, useTransition } from "react";
-import { ActivitySkeleton } from "./activity-skeleton";
-import { PAGE_SIZE } from "@/lib/constants";
+import { ActivityListViews } from "./activity-list-views";
 
 export const ActivityListTable = ({
   response,
@@ -88,35 +79,7 @@ export const ActivityListTable = ({
     <div>
       <div className="flex flex-col w-full">
         {activity.length ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {showProject && <TableHead>Project</TableHead>}
-                <TableHead>Activity</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>When</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {activity.map((a) => (
-                <ActivityTableRow
-                  key={a.id}
-                  activity={a}
-                  showProject={showProject}
-                />
-              ))}
-              {isPending &&
-                Array.from({ length: PAGE_SIZE }).map((_, index) => (
-                  <ActivitySkeleton
-                    key={index}
-                    showProject={showProject}
-                    index={index}
-                  />
-                ))}
-            </TableBody>
-          </Table>
+          <ActivityListViews activity={activity} showProject={showProject} />
         ) : (
           <NotFound
             title="No activity found"
