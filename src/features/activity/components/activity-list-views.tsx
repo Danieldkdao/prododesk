@@ -11,7 +11,10 @@ import {
 import { PAGE_SIZE } from "@/lib/constants";
 import { ReadActivityActionReturnType } from "../actions/actions";
 import { useActivityParams } from "../hooks/use-activity-params";
-import { ActivitySkeleton } from "./activity-skeleton";
+import {
+  ActivityCompactItemSkeleton,
+  ActivityTableRowSkeleton,
+} from "./activity-skeleton";
 import { ActivityTableRow } from "./activity-table-row";
 import { DashboardActivityItem } from "./dashboard-activity-item";
 import { Separator } from "@/components/ui/separator";
@@ -51,11 +54,10 @@ export const ActivityListViews = ({
           ))}
           {isPending &&
             Array.from({ length: PAGE_SIZE }).map((_, index) => (
-              <ActivitySkeleton
+              <ActivityTableRowSkeleton
                 key={index}
                 showProject={showProject}
                 index={index}
-                view={view}
               />
             ))}
         </TableBody>
@@ -75,12 +77,7 @@ export const ActivityListViews = ({
         ))}
         {isPending &&
           Array.from({ length: PAGE_SIZE }).map((_, index) => (
-            <ActivitySkeleton
-              key={index}
-              showProject={showProject}
-              index={index}
-              view={view}
-            />
+            <ActivityCompactItemSkeleton key={index} index={index} />
           ))}
       </div>
     );

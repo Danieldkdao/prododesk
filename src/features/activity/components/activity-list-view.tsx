@@ -46,7 +46,11 @@ export const ActivityListTable = ({
             projectIds,
             cursor,
           });
-          if (!response) return;
+          if (!response) {
+            setCursor(null);
+            setHasNextPage(false);
+            return;
+          }
 
           const { activity: newActivity, metadata: newMetadata } = response;
 
