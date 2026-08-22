@@ -11,25 +11,36 @@ import {
 import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
 import { findChatRunDb } from "@/features/chats/server/chat-runs";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
+import { PaginationCursor } from "@/features/tasks/lib/types";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
 import { runMutationCacheInvalidation } from "@/lib/data-cache";
-import { areValidIds } from "@/lib/utils";
+import {
+  areValidIds,
+  getLocalDayBounds,
+  getLocalWeekBounds,
+} from "@/lib/utils";
+import { tz } from "@date-fns/tz";
+import { subDays } from "date-fns";
 import {
   and,
   asc,
   desc,
   eq,
   getTableColumns,
+  gt,
   gte,
   ilike,
   inArray,
+  lt,
   lte,
   or,
   SQL,
 } from "drizzle-orm";
+import { TZDate } from "react-day-picker";
 import {
   ActivityFilters,
+  ActivityGroupByOption,
   ActivitySortByOption,
 } from "../lib/activity-params";
 import { revalidateActivityCache } from "./cache/activity";
@@ -39,42 +50,32 @@ type ReadActivityDbFilters = Partial<ActivityFilters> & {
   areaIds?: string[];
   limit?: number;
   userId?: string;
+  timeZone?: string;
   after?: Date;
   before?: Date;
+  cursor?: PaginationCursor | null;
 };
 
-export const readActivityDb = async (
-  filterOptions: ReadActivityDbFilters,
-) => {
+export const readActivityDb = async (filterOptions: ReadActivityDbFilters) => {
   const {
     search,
     sortBy = "most_recent",
     sources,
     actions,
     subjects,
+    groupBy,
     projectIds,
     areaIds,
     limit = PAGE_SIZE,
     after,
     before,
     userId,
-    page,
+    timeZone,
+    cursor,
   } = filterOptions;
-  let userIdToUse: string | null = null;
-  if (userId) {
-    userIdToUse = userId;
-  } else {
-    const { userId } = await getCurrentUser();
-    if (!userId) return null;
-
-    userIdToUse = userId;
-  }
-  if (!userIdToUse) return null;
-
-  let offset: number | null = null;
-  if (page) {
-    offset = (page - 1) * limit;
-  }
+  const userIdToUse = userId ?? (await getCurrentUser()).userId;
+  const timeZoneToUse = timeZone ?? (await getCurrentUser()).user?.timeZone;
+  if (!userIdToUse || !timeZoneToUse) return null;
 
   const normalizedSearch = search?.trim();
   const searchFilter = normalizedSearch
@@ -100,6 +101,39 @@ export const readActivityDb = async (
   const subjectsFilter = subjects?.length
     ? inArray(ActivityTable.subject, subjects)
     : undefined;
+
+  const today = TZDate.tz(timeZoneToUse);
+  const yesterday = subDays(TZDate.tz(timeZoneToUse), 1, {
+    in: tz(timeZoneToUse),
+  });
+
+  const { startUtc: todayStartUtc, endUtc: todayEndUtc } = getLocalDayBounds(
+    today,
+    timeZoneToUse,
+  );
+  const { startUtc: yesterdayStartUtc, endUtc: yesterdayEndUtc } =
+    getLocalDayBounds(yesterday, timeZoneToUse);
+  const { startUtc: weekStartUtc, endUtc: weekEndUtc } = getLocalWeekBounds(
+    today,
+    timeZoneToUse,
+  );
+
+  const groupByMap: Record<ActivityGroupByOption, SQL<unknown> | undefined> = {
+    all_time: undefined,
+    today: and(
+      gte(ActivityTable.createdAt, todayStartUtc),
+      lte(ActivityTable.createdAt, todayEndUtc),
+    ),
+    yesterday: and(
+      gte(ActivityTable.createdAt, yesterdayStartUtc),
+      lte(ActivityTable.createdAt, yesterdayEndUtc),
+    ),
+    this_week: and(
+      gte(ActivityTable.createdAt, weekStartUtc),
+      lte(ActivityTable.createdAt, weekEndUtc),
+    ),
+  };
+  const groupByFilter = groupBy ? groupByMap[groupBy] : undefined;
 
   const timeFilter =
     after || before
@@ -148,6 +182,19 @@ export const readActivityDb = async (
       )
     : undefined;
 
+  const compare = sortBy === "oldest" ? gt : lt;
+
+  let cursorFilter: SQL<unknown> | undefined = undefined;
+  if (cursor) {
+    cursorFilter = or(
+      and(
+        eq(ActivityTable.createdAt, cursor.createdAt),
+        compare(ActivityTable.id, cursor.id),
+      ),
+      compare(ActivityTable.createdAt, cursor.createdAt),
+    );
+  }
+
   const whereQuery = and(
     eq(ActivityTable.userId, userIdToUse),
     projectsFilter,
@@ -156,7 +203,9 @@ export const readActivityDb = async (
     sourcesFilter,
     actionsFilter,
     subjectsFilter,
+    groupByFilter,
     timeFilter,
+    cursorFilter,
   );
 
   let query = db
@@ -171,10 +220,6 @@ export const readActivityDb = async (
 
   if (sortBy) {
     query = query.orderBy(...sortByMap[sortBy]).$dynamic();
-  }
-
-  if (offset) {
-    query = query.offset(offset).$dynamic();
   }
 
   const activity = await query.limit(limit);

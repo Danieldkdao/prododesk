@@ -1,7 +1,7 @@
 "use client";
 
 import { ProjectSelectType, TaskSelectType } from "@/db/schema";
-import { BoardProperty, TaskBoardCursor } from "@/features/tasks/lib/types";
+import { BoardProperty, PaginationCursor } from "@/features/tasks/lib/types";
 import { DragDropProvider } from "@dnd-kit/react";
 import { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,7 +17,7 @@ import { TaskBoardColumn } from "./task-board-column";
 import { TaskBoardItem } from "./task-board-item";
 
 type ColumnPagination = {
-  nextCursor: TaskBoardCursor | null;
+  nextCursor: PaginationCursor | null;
   hasNextPage: boolean;
   isLoading: boolean;
   hasLoadError: boolean;

@@ -1,10 +1,9 @@
 import { ErrorState } from "@/components/error-state";
 import { readActivityAction } from "@/features/activity/actions/actions";
 import { ActivityFilters } from "@/features/activity/components/activity-filters";
-import { ActivityProjectSectionSkeleton } from "@/features/activity/components/activity-project-section-skeleton";
-import { ActivityListTable } from "@/features/activity/components/activity-list-table";
+import { ActivityListTable } from "@/features/activity/components/activity-list-view";
+import { ActivityListSkeleton } from "@/features/activity/components/activity-list-skeleton";
 import { loadActivitySearchParams } from "@/features/activity/lib/activity-params";
-import { DEFAULT_PAGE } from "@/lib/constants";
 import { ParamsId, SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
 
@@ -12,7 +11,7 @@ type ProjectIdActivityParams = ParamsId<"projectId"> & SearchParamsType;
 
 const ProjectIdActivityPage = (props: ProjectIdActivityParams) => {
   return (
-    <Suspense fallback={<ActivityProjectSectionSkeleton />}>
+    <Suspense fallback={<ActivityListSkeleton />}>
       <ProjectIdActivitySuspense {...props} />
     </Suspense>
   );
@@ -29,6 +28,7 @@ const ProjectIdActivitySuspense = async ({
   const response = await readActivityAction({
     ...filters,
     projectIds: [projectId],
+    cursor: null,
   });
   if (!response) {
     return (
@@ -44,7 +44,11 @@ const ProjectIdActivitySuspense = async ({
   return (
     <div className="flex flex-col gap-4 w-full">
       <ActivityFilters />
-      <ActivityListTable key={metadata.clientKey} response={response} />
+      <ActivityListTable
+        key={metadata.clientKey}
+        projectIds={[projectId]}
+        response={response}
+      />
     </div>
   );
 };

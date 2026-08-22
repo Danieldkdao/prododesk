@@ -51,12 +51,12 @@ import {
   taskStatuses,
   TaskStatus,
 } from "@/db/schema";
-import { BoardProperty, TaskBoardCursor } from "../lib/types";
+import { BoardProperty, PaginationCursor } from "../lib/types";
 
 type TaskBoardDbQuery = {
   property: BoardProperty;
   column: TaskStatus | TaskPriority;
-  cursor?: TaskBoardCursor | null;
+  cursor?: PaginationCursor | null;
 };
 
 type ReadTasksDbFilters = Partial<TasksFilters> & {

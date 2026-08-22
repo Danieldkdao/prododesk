@@ -3,11 +3,9 @@ import {
   activitySources,
   activitySubjects,
 } from "@/db/shared";
-import { DEFAULT_PAGE } from "@/lib/constants";
 import {
   createLoader,
   parseAsArrayOf,
-  parseAsInteger,
   parseAsString,
   parseAsStringEnum,
   type inferParserType,
@@ -15,6 +13,17 @@ import {
 
 export const activitySortByOptions = ["most_recent", "oldest"] as const;
 export type ActivitySortByOption = (typeof activitySortByOptions)[number];
+
+export const activityGroupByOptions = [
+  "all_time",
+  "today",
+  "yesterday",
+  "this_week",
+] as const;
+export type ActivityGroupByOption = (typeof activityGroupByOptions)[number];
+
+export const activityViewOptions = ["table", "compact"] as const;
+export type ActivityViewOption = (typeof activityViewOptions)[number];
 
 export const activitySearchParams = {
   search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
@@ -30,8 +39,11 @@ export const activitySearchParams = {
   subjects: parseAsArrayOf(parseAsStringEnum([...activitySubjects]))
     .withDefault([])
     .withOptions({ clearOnDefault: true }),
-  page: parseAsInteger
-    .withDefault(DEFAULT_PAGE)
+  groupBy: parseAsStringEnum([...activityGroupByOptions])
+    .withDefault("all_time")
+    .withOptions({ clearOnDefault: true }),
+  view: parseAsStringEnum([...activityViewOptions])
+    .withDefault("table")
     .withOptions({ clearOnDefault: true }),
 };
 export type ActivityFilters = inferParserType<typeof activitySearchParams>;

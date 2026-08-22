@@ -1,30 +1,27 @@
 "use server";
 
-import { db } from "@/db/db";
-import {
-  ActivityTable,
-  ProjectTable,
-} from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
-import { count, eq } from "drizzle-orm";
+import { PAGE_SIZE } from "@/lib/constants";
+import { UnwrapAsync } from "@/lib/types";
 import { cacheTag } from "next/cache";
+import { ActivityFilters } from "../lib/activity-params";
+import { readActivityDb } from "../server/activity";
 import {
   getAreaActivityTag,
   getProjectActivityTag,
   getUserActivityTag,
 } from "../server/cache/activity";
-import { UnwrapAsync } from "@/lib/types";
-import { ActivityFilters } from "../lib/activity-params";
-import { PAGE_SIZE } from "@/lib/constants";
-import { readActivityDb } from "../server/activity";
+import { PaginationCursor } from "@/features/tasks/lib/types";
 
 type ReadActivityFilters = ActivityFilters & {
   projectIds?: string[];
   areaIds?: string[];
+  cursor: PaginationCursor | null;
 };
 
 const readCachedActivityAction = async (
   userId: string,
+  timeZone: string,
   filterOptions: ReadActivityFilters,
 ) => {
   "use cache";
@@ -37,23 +34,19 @@ const readCachedActivityAction = async (
     cacheTag(getAreaActivityTag(areaId));
   });
 
-  const page = filterOptions.page;
-
-  const response = await readActivityDb({ ...filterOptions, userId });
+  const response = await readActivityDb({
+    ...filterOptions,
+    userId,
+    timeZone,
+    limit: PAGE_SIZE + 1,
+  });
   if (!response) return null;
 
-  const { activity, whereQuery } = response;
+  const { activity: a } = response;
 
-  const [totalActivity] = await db
-    .select({ count: count() })
-    .from(ActivityTable)
-    .leftJoin(ProjectTable, eq(ProjectTable.id, ActivityTable.projectId))
-    .where(whereQuery);
-
-  const totalActivityCount = totalActivity.count;
-
-  const hasPrevPage = page > 1;
-  const hasNextPage = page * PAGE_SIZE < totalActivityCount;
+  const hasNextPage = a.length > PAGE_SIZE;
+  const activity = a.slice(0, PAGE_SIZE);
+  const cursor = hasNextPage ? (activity.at(-1) ?? null) : null;
   const clientKey = JSON.stringify({
     filters: filterOptions,
     results: activity.map(({ id, createdAt }) => ({ id, createdAt })),
@@ -63,9 +56,8 @@ const readCachedActivityAction = async (
   return {
     activity,
     metadata: {
-      hasPrevPage,
       hasNextPage,
-      totalActivityCount,
+      cursor,
       clientKey,
     },
   };
@@ -73,10 +65,10 @@ const readCachedActivityAction = async (
 export const readActivityAction = async (
   filterOptions: ReadActivityFilters,
 ) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) return null;
 
-  return readCachedActivityAction(userId, filterOptions);
+  return readCachedActivityAction(userId, user.timeZone, filterOptions);
 };
 export type ReadActivityActionReturnType = UnwrapAsync<
   typeof readActivityAction
