@@ -2,6 +2,7 @@ import { Providers } from "@/components/providers";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
 import { Fraunces, Outfit, Space_Mono } from "next/font/google";
+import "@/styles/editor.scss";
 import "./globals.css";
 
 const spaceMono = Space_Mono({
