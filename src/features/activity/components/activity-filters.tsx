@@ -62,7 +62,11 @@ export const ActivityFilters = () => {
         <Popover>
           <PopoverTrigger
             render={
-              <Button variant="outline" size="icon">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Activity filters"
+              >
                 <FilterIcon />
               </Button>
             }

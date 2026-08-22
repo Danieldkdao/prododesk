@@ -44,9 +44,9 @@ const readCachedActivityAction = async (
 
   const { activity: a } = response;
 
-  const cursor = a.at(-1);
-  const hasNextPage = a.length === PAGE_SIZE + 1;
+  const hasNextPage = a.length > PAGE_SIZE;
   const activity = a.slice(0, PAGE_SIZE);
+  const cursor = hasNextPage ? (activity.at(-1) ?? null) : null;
   const clientKey = JSON.stringify({
     filters: filterOptions,
     results: activity.map(({ id, createdAt }) => ({ id, createdAt })),

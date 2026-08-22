@@ -28,6 +28,7 @@ import {
   desc,
   eq,
   getTableColumns,
+  gt,
   gte,
   ilike,
   inArray,
@@ -181,14 +182,16 @@ export const readActivityDb = async (filterOptions: ReadActivityDbFilters) => {
       )
     : undefined;
 
+  const compare = sortBy === "oldest" ? gt : lt;
+
   let cursorFilter: SQL<unknown> | undefined = undefined;
   if (cursor) {
     cursorFilter = or(
       and(
         eq(ActivityTable.createdAt, cursor.createdAt),
-        lt(ActivityTable.id, cursor.id),
+        compare(ActivityTable.id, cursor.id),
       ),
-      lt(ActivityTable.createdAt, cursor.createdAt),
+      compare(ActivityTable.createdAt, cursor.createdAt),
     );
   }
 

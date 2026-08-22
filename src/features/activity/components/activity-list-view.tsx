@@ -72,6 +72,7 @@ export const ActivityListTable = ({
       sortBy: "most_recent",
       sources: [],
       subjects: [],
+      groupBy: "all_time",
     });
   };
 
