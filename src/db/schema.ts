@@ -12,3 +12,4 @@ export * from "./schemas/document";
 export * from "./schemas/milestone";
 export * from "./schemas/activity";
 export * from "./schemas/artifact";
+export * from "./schemas/settings";
