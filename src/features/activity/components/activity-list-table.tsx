@@ -1,9 +1,7 @@
 "use client";
 
-import { ArrowLeftIcon } from "@/components/tiptap/tiptap-icons/arrow-left-icon";
-import { ArrowRightIcon } from "@/components/tiptap/tiptap-icons/arrow-right-icon";
+import { NotFound } from "@/components/not-found";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -11,30 +9,73 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ReadActivityActionReturnType } from "../actions/actions";
+import {
+  readActivityAction,
+  ReadActivityActionReturnType,
+} from "../actions/actions";
 import { useActivityParams } from "../hooks/use-activity-params";
 import { ActivityTableRow } from "./activity-table-row";
-import { DEFAULT_PAGE, PAGE_SIZE } from "@/lib/constants";
-import { NotFound } from "@/components/not-found";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { ActivitySkeleton } from "./activity-skeleton";
+import { PAGE_SIZE } from "@/lib/constants";
 
 export const ActivityListTable = ({
   response,
+  areaIds,
+  projectIds,
   showProject = false,
 }: {
   response: ReadActivityActionReturnType;
+  areaIds?: string[];
+  projectIds?: string[];
   showProject?: boolean;
 }) => {
+  const { activity: initialActivity, metadata } = response;
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = useActivityParams();
+  const [activity, setActivity] = useState(initialActivity);
+  const [cursor, setCursor] = useState(metadata.cursor);
+  const [hasNextPage, setHasNextPage] = useState(metadata.hasNextPage);
 
-  const { activity, metadata } = response;
+  const [isPending, startTransition] = useTransition();
 
-  const movePage = (amount: 1 | -1) => {
-    setFilters({ page: filters.page + amount });
-  };
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !cursor || !hasNextPage || isPending) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+
+        startTransition(async () => {
+          const response = await readActivityAction({
+            ...filters,
+            areaIds,
+            projectIds,
+            cursor,
+          });
+          if (!response) return;
+
+          const { activity: newActivity, metadata: newMetadata } = response;
+
+          setActivity((prev) => [...prev, ...newActivity]);
+          setCursor(newMetadata.cursor);
+          setHasNextPage(newMetadata.hasNextPage);
+        });
+      },
+      {
+        rootMargin: "400px",
+      },
+    );
+
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [cursor, filters, hasNextPage, isPending, areaIds, projectIds]);
 
   const resetFilters = () => {
     setFilters({
-      page: DEFAULT_PAGE,
       search: "",
       actions: [],
       sortBy: "most_recent",
@@ -43,63 +84,51 @@ export const ActivityListTable = ({
     });
   };
 
-  return activity.length ? (
-    <div className="flex flex-col gap-4 w-full">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showProject && <TableHead>Project</TableHead>}
-            <TableHead>Activity</TableHead>
-            <TableHead>Source</TableHead>
-            <TableHead>Action</TableHead>
-            <TableHead>Subject</TableHead>
-            <TableHead>When</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {activity.map((a) => (
-            <ActivityTableRow
-              key={a.id}
-              activity={a}
-              showProject={showProject}
-            />
-          ))}
-        </TableBody>
-      </Table>
-      <Separator />
-      <div className="flex items-center gap-2 justify-between">
-        <span className="text-muted-foreground">
-          Showing {(filters.page - 1) * PAGE_SIZE + activity.length} results of{" "}
-          {metadata.totalActivityCount} total
-        </span>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => movePage(-1)}
-            disabled={!metadata.hasPrevPage}
+  return (
+    <div>
+      <div className="flex flex-col w-full">
+        {activity.length ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showProject && <TableHead>Project</TableHead>}
+                <TableHead>Activity</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Subject</TableHead>
+                <TableHead>When</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {activity.map((a) => (
+                <ActivityTableRow
+                  key={a.id}
+                  activity={a}
+                  showProject={showProject}
+                />
+              ))}
+              {isPending &&
+                Array.from({ length: PAGE_SIZE }).map((_, index) => (
+                  <ActivitySkeleton
+                    key={index}
+                    showProject={showProject}
+                    index={index}
+                  />
+                ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <NotFound
+            title="No activity found"
+            description="We were unable to find any activity that match the selected filters. Try changing the filters or update this project."
           >
-            <ArrowLeftIcon />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => movePage(1)}
-            disabled={!metadata.hasNextPage}
-          >
-            <ArrowRightIcon />
-          </Button>
-        </div>
+            <Button onClick={resetFilters} className="w-full">
+              Reset filters
+            </Button>
+          </NotFound>
+        )}
       </div>
+      <div ref={sentinelRef} className="w-full h-px" />
     </div>
-  ) : (
-    <NotFound
-      title="No activity found"
-      description="We were unable to find any activity that match the selected filters. Try changing the filters or update this project."
-    >
-      <Button onClick={resetFilters} className="w-full">
-        Reset filters
-      </Button>
-    </NotFound>
   );
 };

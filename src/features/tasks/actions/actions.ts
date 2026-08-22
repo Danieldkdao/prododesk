@@ -47,7 +47,7 @@ import { tz } from "@date-fns/tz";
 import {
   BoardProperty,
   TaskBoardColumnValue,
-  TaskBoardCursor,
+  PaginationCursor,
 } from "../lib/types";
 import { TASK_BOARD_PAGE_SIZE } from "../lib/constants";
 
@@ -80,7 +80,7 @@ export type TaskBoardTask = TaskSelectType & {
 
 export type TaskBoardColumnPage = {
   tasks: TaskBoardTask[];
-  nextCursor: TaskBoardCursor | null;
+  nextCursor: PaginationCursor | null;
   hasNextPage: boolean;
 };
 
@@ -97,7 +97,7 @@ export type ReadTaskBoardOptions = TaskBoardFilters & {
 
 export type ReadTaskBoardColumnOptions = ReadTaskBoardOptions & {
   column: TaskBoardColumnValue;
-  cursor?: TaskBoardCursor | null;
+  cursor?: PaginationCursor | null;
 };
 
 export const createTaskAction = async (

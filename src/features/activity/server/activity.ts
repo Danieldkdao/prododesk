@@ -24,15 +24,14 @@ import {
   gte,
   ilike,
   inArray,
+  lt,
   lte,
   or,
   SQL,
 } from "drizzle-orm";
-import {
-  ActivityFilters,
-  ActivitySortByOption,
-} from "../lib/activity-params";
+import { ActivityFilters, ActivitySortByOption } from "../lib/activity-params";
 import { revalidateActivityCache } from "./cache/activity";
+import { PaginationCursor } from "@/features/tasks/lib/types";
 
 type ReadActivityDbFilters = Partial<ActivityFilters> & {
   projectIds?: string[];
@@ -41,11 +40,10 @@ type ReadActivityDbFilters = Partial<ActivityFilters> & {
   userId?: string;
   after?: Date;
   before?: Date;
+  cursor?: PaginationCursor | null;
 };
 
-export const readActivityDb = async (
-  filterOptions: ReadActivityDbFilters,
-) => {
+export const readActivityDb = async (filterOptions: ReadActivityDbFilters) => {
   const {
     search,
     sortBy = "most_recent",
@@ -58,7 +56,7 @@ export const readActivityDb = async (
     after,
     before,
     userId,
-    page,
+    cursor,
   } = filterOptions;
   let userIdToUse: string | null = null;
   if (userId) {
@@ -70,11 +68,6 @@ export const readActivityDb = async (
     userIdToUse = userId;
   }
   if (!userIdToUse) return null;
-
-  let offset: number | null = null;
-  if (page) {
-    offset = (page - 1) * limit;
-  }
 
   const normalizedSearch = search?.trim();
   const searchFilter = normalizedSearch
@@ -148,6 +141,17 @@ export const readActivityDb = async (
       )
     : undefined;
 
+  let cursorFilter: SQL<unknown> | undefined = undefined;
+  if (cursor) {
+    cursorFilter = or(
+      and(
+        eq(ActivityTable.createdAt, cursor.createdAt),
+        lt(ActivityTable.id, cursor.id),
+      ),
+      lt(ActivityTable.createdAt, cursor.createdAt),
+    );
+  }
+
   const whereQuery = and(
     eq(ActivityTable.userId, userIdToUse),
     projectsFilter,
@@ -157,6 +161,7 @@ export const readActivityDb = async (
     actionsFilter,
     subjectsFilter,
     timeFilter,
+    cursorFilter,
   );
 
   let query = db
@@ -171,10 +176,6 @@ export const readActivityDb = async (
 
   if (sortBy) {
     query = query.orderBy(...sortByMap[sortBy]).$dynamic();
-  }
-
-  if (offset) {
-    query = query.offset(offset).$dynamic();
   }
 
   const activity = await query.limit(limit);

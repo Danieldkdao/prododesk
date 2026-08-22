@@ -3,11 +3,9 @@ import {
   activitySources,
   activitySubjects,
 } from "@/db/shared";
-import { DEFAULT_PAGE } from "@/lib/constants";
 import {
   createLoader,
   parseAsArrayOf,
-  parseAsInteger,
   parseAsString,
   parseAsStringEnum,
   type inferParserType,
@@ -29,9 +27,6 @@ export const activitySearchParams = {
     .withOptions({ clearOnDefault: true }),
   subjects: parseAsArrayOf(parseAsStringEnum([...activitySubjects]))
     .withDefault([])
-    .withOptions({ clearOnDefault: true }),
-  page: parseAsInteger
-    .withDefault(DEFAULT_PAGE)
     .withOptions({ clearOnDefault: true }),
 };
 export type ActivityFilters = inferParserType<typeof activitySearchParams>;

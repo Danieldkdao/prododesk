@@ -18,7 +18,7 @@ export type TaskFormDefaultValues = {
 export type TaskViewTab = (typeof taskViewTabs)[number];
 
 export type TaskBoardColumnValue = TaskSelectType[BoardProperty];
-export type TaskBoardCursor = {
+export type PaginationCursor = {
   createdAt: Date;
   id: string;
 };
