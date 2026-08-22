@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectStatus, TaskStatus } from "@/db/shared";
+import { DashboardActivityItem } from "@/features/activity/components/dashboard-activity-item";
 import {
   formatActivityMessage,
   formatActivitySubject,
@@ -305,28 +306,12 @@ const AreaIdSuspense = async ({ params }: AreaIdParams) => {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-5 flex flex-col gap-2">
-              {activity.map((a) => {
-                const { icon: SubjectIcon } = formatActivitySubject(a.subject);
-
-                return (
-                  <Fragment key={a.id}>
-                    <div
-                      key={a.id}
-                      className="flex items-start gap-2 w-full min-w-0 leading-7"
-                    >
-                      <span className="h-[1lh] flex items-center shrink-0">
-                        <SubjectIcon className="text-muted-foreground" />
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-lg text-muted-foreground">
-                          {formatActivityMessage(a)}
-                        </p>
-                      </div>
-                    </div>
-                    <Separator className="last:hidden" />
-                  </Fragment>
-                );
-              })}
+              {activity.map((a) => (
+                <Fragment key={a.id}>
+                  <DashboardActivityItem activity={a} />
+                  <Separator className="last:hidden" />
+                </Fragment>
+              ))}
             </CardContent>
             <CardFooter className="px-5">
               <LinkButton

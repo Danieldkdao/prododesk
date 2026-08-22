@@ -2,12 +2,13 @@
 
 import { db } from "@/db/db";
 import { MilestoneTable, ProjectTable, TaskTable } from "@/db/schema";
+import { readActivityDb } from "@/features/activity/server/activity";
+import { getUserActivityTag } from "@/features/activity/server/cache/activity";
 import { readProjectsDb } from "@/features/projects/server/projects";
-import { Task } from "@/features/tasks/components/task";
 import { getUserTaskTag } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { getLocalDayBounds } from "@/lib/utils";
-import { format, parse } from "date-fns";
+import { parse } from "date-fns";
 import {
   and,
   asc,
@@ -140,4 +141,25 @@ export const readDashboardProjectsAction = async () => {
   if (!userId) return null;
 
   return readCachedDashboardProjectsAction(userId);
+};
+
+const readCachedDashboardActivityAction = async (userId: string) => {
+  "use cache";
+  cacheTag(getUserActivityTag(userId));
+
+  const response = await readActivityDb({
+    userId,
+    limit: 5,
+  });
+  if (!response) return null;
+
+  const { activity } = response;
+  return activity;
+};
+
+export const readDashboardActivityAction = async () => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  return readCachedDashboardActivityAction(userId);
 };
