@@ -88,7 +88,10 @@ export const UserProfile = () => {
         <div className="w-full">
           <DropdownMenuItem
             render={
-              <Link href="settings" className="flex items-center gap-2">
+              <Link
+                href="/dashboard/settings"
+                className="flex items-center gap-2"
+              >
                 <SettingsIcon />
                 Settings
               </Link>

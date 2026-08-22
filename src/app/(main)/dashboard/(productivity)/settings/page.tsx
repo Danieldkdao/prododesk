@@ -1,4 +1,5 @@
 import { ProfileSection } from "@/features/settings/components/profile-section";
+import { SocialSection } from "@/features/settings/components/social-section";
 import React from "react";
 
 const SettingsPage = () => {
@@ -11,6 +12,7 @@ const SettingsPage = () => {
         </p>
       </div>
       <ProfileSection />
+      <SocialSection />
     </div>
   );
 };

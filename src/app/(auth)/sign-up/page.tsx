@@ -16,6 +16,7 @@ import {
   PasswordInputStrengthChecker,
 } from "@/components/ui/password-input";
 import { Separator } from "@/components/ui/separator";
+import { SocialProvider } from "@/features/settings/lib/constants";
 import { authClient } from "@/lib/auth/auth-client";
 import { GENERAL_ERROR_MESSAGE } from "@/lib/constants";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -64,7 +65,7 @@ const SignUpPage = () => {
     });
   };
 
-  const handleSocialSignIn = async (provider: "google" | "github") => {
+  const handleSocialSignIn = async (provider: SocialProvider) => {
     setIsSocialSignIn(true);
     await authClient.signIn.social({
       provider,

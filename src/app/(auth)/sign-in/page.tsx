@@ -23,6 +23,7 @@ import { GENERAL_ERROR_MESSAGE } from "@/lib/constants";
 import Link from "next/link";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { VerifyAccount } from "@/components/auth/verify-account";
+import { SocialProvider } from "@/features/settings/lib/constants";
 
 const formSchema = z.object({
   email: z.email({ error: "Please enter a valid email." }),
@@ -83,7 +84,7 @@ const SignInPage = () => {
     });
   };
 
-  const handleSocialSignIn = async (provider: "google" | "github") => {
+  const handleSocialSignIn = async (provider: SocialProvider) => {
     setIsSocialSignIn(true);
     await authClient.signIn.social({
       provider,
