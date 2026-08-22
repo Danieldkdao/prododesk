@@ -31,7 +31,7 @@ export const ChatSearchButton = () => {
   return (
     <SidebarMenuButton
       tooltip="Search chats"
-      className="flex items-center gap-2 w-full"
+      className="flex items-center gap-2 w-full cursor-pointer"
       onClick={() => setOpen(true)}
     >
       <div className="flex items-center gap-2 flex-1">

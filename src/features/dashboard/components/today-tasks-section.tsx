@@ -1,20 +1,20 @@
 import { ErrorState } from "@/components/error-state";
+import { LinkButton } from "@/components/link-button";
+import { OverviewSuspenseEmptyData } from "@/components/overview-suspense-empty-data";
+import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { DashboardTask } from "@/features/tasks/components/dashboard-task";
-import { Suspense } from "react";
-import { readTodayTasksAction } from "../actions/actions";
-import { LinkButton } from "@/components/link-button";
-import { OverviewSuspenseEmptyData } from "@/components/overview-suspense-empty-data";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
-import { Button } from "@/components/ui/button";
-import { ListCheckIcon, PlusIcon } from "lucide-react";
 import { addHours } from "date-fns";
+import { ListCheckIcon, PlusIcon } from "lucide-react";
+import { Suspense } from "react";
+import { readDateTasksAction } from "../actions/actions";
 
 export const TodayTasksSection = () => {
   return (
@@ -29,7 +29,7 @@ const TodayTasksSectionLoading = () => {
 };
 
 const TodayTasksSectionSuspense = async () => {
-  const tasks = await readTodayTasksAction();
+  const tasks = await readDateTasksAction();
   if (!tasks)
     return (
       <ErrorState
@@ -39,14 +39,14 @@ const TodayTasksSectionSuspense = async () => {
     );
 
   return (
-    <Card className="border-2 pt-6 pb-0 min-w-0">
+    <Card className="border-2 pt-6 pb-0 min-w-0 gap-0 h-full max-h-175 overflow-hidden">
       <CardHeader className="px-4 flex items-center gap-2 justify-between border-b">
         <CardTitle className="text-xl">Today&apos;s focus</CardTitle>
         <LinkButton href="/dashboard/tasks" variant="ghost">
           View all
         </LinkButton>
       </CardHeader>
-      <CardContent className="px-0 min-w-0">
+      <CardContent className="px-0 min-w-0 overflow-y-auto">
         {tasks.length ? (
           tasks.map((task) => <DashboardTask key={task.id} task={task} />)
         ) : (
@@ -65,6 +65,14 @@ const TodayTasksSectionSuspense = async () => {
           </OverviewSuspenseEmptyData>
         )}
       </CardContent>
+      <CardFooter className="border-t-2 p-0!">
+        <TaskDialog defaultValues={{ day: addHours(new Date(), 1) }}>
+          <Button variant="ghost" className="w-full">
+            <PlusIcon />
+            New Task
+          </Button>
+        </TaskDialog>
+      </CardFooter>
     </Card>
   );
 };

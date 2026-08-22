@@ -6,6 +6,7 @@ import { Task } from "@/features/tasks/components/task";
 import { getUserTaskTag } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { getLocalDayBounds } from "@/lib/utils";
+import { format, parse } from "date-fns";
 import {
   and,
   asc,
@@ -72,15 +73,16 @@ export const readDashboardStatsAction = async () => {
   };
 };
 
-export const readCachedTodayTasksAction = async (
+const readCachedDateTasksAction = async (
   userId: string,
   timeZone: string,
+  date?: string,
 ) => {
   "use cache";
   cacheTag(getUserTaskTag(userId));
 
-  const today = new Date();
-  const { startUtc, endUtc } = getLocalDayBounds(today, timeZone);
+  const dateToUse = date ? parse(date, "yyyy-MM-dd", new Date()) : new Date();
+  const { startUtc, endUtc } = getLocalDayBounds(dateToUse, timeZone);
 
   const todayTasks = await db
     .select({
@@ -111,9 +113,9 @@ export const readCachedTodayTasksAction = async (
 
   return todayTasks;
 };
-export const readTodayTasksAction = async () => {
+export const readDateTasksAction = async (date?: string) => {
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) return null;
 
-  return readCachedTodayTasksAction(userId, user.timeZone);
+  return readCachedDateTasksAction(userId, user.timeZone, date);
 };

@@ -25,11 +25,10 @@ export const Task = ({
   includeDay?: boolean;
   disabled?: boolean;
 }) => {
+  const [taskStatus, setTaskStatus] = useState(task.status);
   const [statusSelectOpen, setStatusSelectOpen] = useState(false);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const { triggerConfetti } = useConfetti();
-
-  const taskStatus = task.status;
 
   const priorityBadgeClasses = getTaskPriorityBadgeClasses(task.priority);
   const isTaskComplete = taskStatus === "completed";
@@ -58,6 +57,8 @@ export const Task = ({
             }
           }}
           childrenClassName={cn(isTaskComplete && "text-emerald-600")}
+          outsideStatus={taskStatus}
+          setOutsideStatus={setTaskStatus}
           outsideOpen={statusSelectOpen}
           setOutsideOpen={setStatusSelectOpen}
         />
