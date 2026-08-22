@@ -11,6 +11,7 @@ import {
   FolderKanbanIcon,
   FileTextIcon,
   ListCheckIcon,
+  SettingsIcon,
 } from "lucide-react";
 
 export const SidebarLinks = () => {
@@ -51,6 +52,11 @@ export const SidebarLinks = () => {
       label: "Prododesk AI",
       icon: SparklesIcon,
       href: "/dashboard/ai/new",
+    },
+    {
+      label: "Settings",
+      icon: SettingsIcon,
+      href: "/dashboard/settings",
     },
   ];
 
