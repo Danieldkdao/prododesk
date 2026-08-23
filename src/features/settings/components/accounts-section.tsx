@@ -16,6 +16,7 @@ import { SocialProvider, socialProviders } from "../lib/constants";
 import { formatSocialProvider } from "../lib/formatters";
 import { PasswordDialog } from "./password-dialog";
 import { RemovePasswordAccountButton } from "./remove-password-account-button";
+import { cn } from "@/lib/utils";
 
 export const AccountsSection = () => {
   return (
@@ -138,13 +139,22 @@ const AccountsSectionSuspense = () => {
           const connectedAccount = connectedAccounts.find(
             (account) => account.providerId === provider,
           );
-          const { label, icon: Icon, color } = formatSocialProvider(provider);
+          const {
+            label,
+            icon: Icon,
+            color,
+            survivesDarkMode,
+          } = formatSocialProvider(provider);
 
           return (
             <Fragment key={provider}>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-2 min-w-0 w-full">
                 <div className="flex items-center gap-2 flex-1">
-                  <Icon color={color} size={40} />
+                  <Icon
+                    color={color}
+                    size={40}
+                    className={cn(!survivesDarkMode && "text-foreground!")}
+                  />
                   <div className="flex flex-col gap-2">
                     <span className="text-base font-semibold leading-none">
                       {label}

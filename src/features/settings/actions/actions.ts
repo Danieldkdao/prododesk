@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { profileSchema, ProfileSchemaType } from "./schemas";
 import { auth } from "@/lib/auth/auth";
 import { headers } from "next/headers";
+import { resetAccountDataDb } from "../server/settings";
 
 export const readUserProfileAction = async () => {
   const { userId } = await getCurrentUser();
@@ -189,4 +190,27 @@ export const removePasswordAccountAction = async () => {
       message: GENERAL_ERROR_MESSAGE,
     };
   }
+};
+
+export const resetAccountDataAction = async () => {
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const deletedData = await resetAccountDataDb();
+  if (!deletedData) {
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+
+  return {
+    error: false,
+    message: "Account data reset successfully.",
+  };
 };

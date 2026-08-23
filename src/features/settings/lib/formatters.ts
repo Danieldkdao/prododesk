@@ -8,11 +8,13 @@ export const formatSocialProvider = (provider: SocialProvider) => {
         label: "GitHub",
         icon: Github,
         color: Github.colorPrimary,
+        survivesDarkMode: false,
       };
     case "google":
       return {
         label: "Google",
         icon: Google.Color,
+        survivesDarkMode: true,
       };
     default:
       throw new Error(`Unknown social provider: ${provider satisfies never}`);

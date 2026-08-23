@@ -1,6 +1,7 @@
 import { ProfileSection } from "@/features/settings/components/profile-section";
 import { AccountsSection } from "@/features/settings/components/accounts-section";
 import React from "react";
+import { DangerSection } from "@/features/settings/components/danger-section";
 
 const SettingsPage = () => {
   return (
@@ -13,6 +14,7 @@ const SettingsPage = () => {
       </div>
       <ProfileSection />
       <AccountsSection />
+      <DangerSection />
     </div>
   );
 };

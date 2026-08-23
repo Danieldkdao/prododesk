@@ -17,7 +17,7 @@ export const OverviewSuspenseEmptyData = ({
   className?: string;
 }) => {
   return (
-    <Card className={cn("border", className)}>
+    <Card className={cn("border h-full w-full", className)}>
       <CardContent className="h-full w-full flex items-center justify-center">
         <div className="w-full flex flex-col items-center justify-center gap-2">
           <Icon className="size-15" />

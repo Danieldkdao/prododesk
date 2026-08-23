@@ -100,14 +100,8 @@ export const readDocumentsDb = async (
 
   const sortByMap: Record<DocumentsSortByOption, SQL<unknown>[]> = {
     oldest: [asc(DocumentTable.createdAt), asc(DocumentTable.id)],
-    recently_created: [
-      desc(DocumentTable.createdAt),
-      desc(DocumentTable.id),
-    ],
-    recently_updated: [
-      desc(DocumentTable.updatedAt),
-      desc(DocumentTable.id),
-    ],
+    recently_created: [desc(DocumentTable.createdAt), desc(DocumentTable.id)],
+    recently_updated: [desc(DocumentTable.updatedAt), desc(DocumentTable.id)],
   };
 
   const normalizedSearch = search?.trim();
@@ -212,12 +206,6 @@ export const insertDocumentDb = async (
 ) => {
   const { source = "user", tx, chatRunId } = options ?? {};
   try {
-    const existingProject = document.projectId
-      ? await confirmUserProjectOwnership(document.projectId, undefined, tx)
-      : null;
-    if (document.projectId && !existingProject)
-      throw new Error("No existing project found.");
-
     const insertDocument = async (pgtx: DbTransaction) => {
       const [insertedDocument] = await pgtx
         .insert(DocumentTable)
@@ -253,7 +241,6 @@ export const insertDocumentDb = async (
         insertedDocument.userId,
         insertedDocument.id,
         insertedDocument.projectId,
-        existingProject?.areaId,
       );
     });
 
@@ -270,6 +257,12 @@ export const updateDocumentDb = async (
   options?: ActivityMutationOptions,
 ) => {
   const { source = "user", tx, chatRunId } = options ?? {};
+  const existingProject = document.projectId
+    ? await confirmUserProjectOwnership(document.projectId, undefined, tx)
+    : null;
+  if (document.projectId && !existingProject)
+    throw new Error("No existing project found.");
+
   const existingDocument = await confirmUserDocumentOwnership(
     documentId,
     undefined,

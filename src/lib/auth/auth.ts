@@ -1,5 +1,6 @@
 import { envServer } from "@/data/env/server";
 import { db } from "@/db/db";
+import { sendAccountDeletionEmail } from "@/services/mailjet/emails/account-deletion-email";
 import { sendVerificationOtp } from "@/services/mailjet/emails/verification-emails";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -12,6 +13,13 @@ export const auth = betterAuth({
         type: "string",
         required: true,
         input: true,
+      },
+    },
+    deleteUser: {
+      enabled: true,
+      deleteTokenExpiresIn: 15 * 60,
+      sendDeleteAccountVerification: async ({ user, url }) => {
+        await sendAccountDeletionEmail({ email: user.email, url });
       },
     },
   },

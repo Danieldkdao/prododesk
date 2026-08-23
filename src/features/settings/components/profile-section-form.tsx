@@ -23,6 +23,9 @@ import {
   updateUserProfileAction,
 } from "../actions/actions";
 import { profileSchema, ProfileSchemaType } from "../actions/schemas";
+import { format } from "date-fns";
+import { DotIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const ProfileSectionForm = ({
   userProfile,
@@ -127,7 +130,7 @@ export const ProfileSectionForm = ({
                 <FieldDescription>
                   This description will help our AI understand you better so it
                   can produce better output. You can include preferences, things
-                  to avoid, and some general context it should know about you.
+                  to avoid, or some general context it should know about you.
                 </FieldDescription>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>

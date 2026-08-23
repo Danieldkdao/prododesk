@@ -18,18 +18,10 @@ import {
 import { TextShimmer } from "@/components/ui/text-shimmer";
 import { UserAvatar } from "@/components/user-avatar";
 import { useAuthSession } from "@/hooks/use-auth-session";
-import { getModelInfo } from "@/services/ai/models";
-import { ModelId } from "@/services/ai/model-ids";
+import Image from "next/image";
 
-export const PendingChatMessagesView = ({
-  prompt,
-  selectedModel,
-}: {
-  prompt: string;
-  selectedModel: ModelId | null;
-}) => {
+export const PendingChatMessagesView = ({ prompt }: { prompt: string }) => {
   const { data: session } = useAuthSession();
-  const modelInfo = getModelInfo(selectedModel);
 
   return (
     <MessageScrollerProvider autoScroll>
@@ -57,16 +49,14 @@ export const PendingChatMessagesView = ({
               <Message align="start">
                 <MessageAvatar>
                   <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
-                    {modelInfo ? (
-                      <modelInfo.logo
-                        color={modelInfo.logoColor}
-                        className="size-5"
+                    <div className="relative size-7 rounded-full shrink-0">
+                      <Image
+                        src="/logo.png"
+                        alt="AI"
+                        fill
+                        className="object-contain"
                       />
-                    ) : (
-                      <span className="text-base font-medium text-muted-foreground">
-                        AI
-                      </span>
-                    )}
+                    </div>
                   </div>
                 </MessageAvatar>
 

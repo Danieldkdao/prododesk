@@ -12,7 +12,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardTask } from "@/features/tasks/components/dashboard-task";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
-import { addHours } from "date-fns";
 import { ListCheckIcon, PlusIcon } from "lucide-react";
 import { Suspense } from "react";
 import { readDateTasksAction } from "../actions/actions";
@@ -83,7 +82,7 @@ const TodayTasksSectionSuspense = async () => {
           View all
         </LinkButton>
       </CardHeader>
-      <CardContent className="px-0 min-w-0 overflow-y-auto">
+      <CardContent className="px-0 min-w-0 overflow-y-auto h-full">
         {tasks.length ? (
           tasks.map((task) => <DashboardTask key={task.id} task={task} />)
         ) : (
@@ -102,14 +101,16 @@ const TodayTasksSectionSuspense = async () => {
           </OverviewSuspenseEmptyData>
         )}
       </CardContent>
-      <CardFooter className="border-t-2 p-0!">
-        <TaskDialog defaultValues={{ day: new Date() }}>
-          <Button variant="ghost" className="w-full">
-            <PlusIcon />
-            New Task
-          </Button>
-        </TaskDialog>
-      </CardFooter>
+      {tasks.length ? (
+        <CardFooter className="border-t-2 p-0!">
+          <TaskDialog defaultValues={{ day: new Date() }}>
+            <Button variant="ghost" className="w-full">
+              <PlusIcon />
+              New Task
+            </Button>
+          </TaskDialog>
+        </CardFooter>
+      ) : null}
     </Card>
   );
 };

@@ -163,8 +163,11 @@ export function useMenuNavigation<T>({
 
     let targetElement: HTMLElement | null = null
 
-    if (editor) {
-      targetElement = editor.view.dom
+    if (editor && !editor.isDestroyed) {
+      const view = editor.view
+      if (!view.isDestroyed && view.dom.isConnected) {
+        targetElement = view.dom
+      }
     } else if (containerRef?.current) {
       targetElement = containerRef.current
     }

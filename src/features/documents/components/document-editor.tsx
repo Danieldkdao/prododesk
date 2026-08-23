@@ -2,8 +2,7 @@
 
 import { SimpleEditor } from "@/components/tiptap/tiptap-templates/simple/simple-editor";
 import { Input } from "@/components/ui/input";
-import { useSaveStatus } from "@/hooks/use-save-status";
-import { useDebouncedValue } from "@tanstack/react-pacer";
+import { useAsyncDebouncer } from "@tanstack/react-pacer";
 import { format } from "date-fns";
 import {
   CheckIcon,
@@ -14,6 +13,7 @@ import {
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ReadDocumentActionReturnType,
@@ -24,39 +24,112 @@ import { DeleteDocumentButton } from "./delete-document-button";
 const getDocumentSignature = (values: { name: string; content: string }) =>
   JSON.stringify(values);
 
+type DocumentValues = {
+  name: string;
+  content: string;
+};
+
 export const DocumentEditor = ({
   document,
 }: {
   document: ReadDocumentActionReturnType;
 }) => {
-  const [documentValues, setDocumentValues] = useState<{
-    name: string;
-    content: string;
-  }>({ name: document.name, content: document.content });
-  const debouncedDocument = useDebouncedValue(documentValues, { wait: 1000 });
-  const debouncedDocumentValues = debouncedDocument["0"];
-  const { savePending, startSave, setSaveStatus, saveStatus } = useSaveStatus();
-  const lastSubmittedRef = useRef(
+  const router = useRouter();
+  const [documentValues, setDocumentValues] = useState<DocumentValues>({
+    name: document.name,
+    content: document.content,
+  });
+  const [savePending, setSavePending] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"saved" | "error" | null>(null);
+  const isUnmountingRef = useRef(false);
+  const pendingSaveCountRef = useRef(0);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const lastSavedRef = useRef(
     getDocumentSignature({
       name: document.name,
       content: document.content,
     }),
   );
 
+  const saveDebouncer = useAsyncDebouncer(
+    async (values: DocumentValues) => {
+      const documentSignature = getDocumentSignature(values);
+      if (documentSignature === lastSavedRef.current) return;
+
+      pendingSaveCountRef.current += 1;
+      if (!isUnmountingRef.current) {
+        setSavePending(true);
+        setSaveStatus(null);
+      }
+
+      const save = async () => {
+        const response = await updateDocumentAction(document.id, values);
+
+        if (response.error) {
+          if (!isUnmountingRef.current) setSaveStatus("error");
+          return;
+        }
+
+        lastSavedRef.current = documentSignature;
+        if (!isUnmountingRef.current) {
+          setSaveStatus("saved");
+        } else {
+          router.refresh();
+        }
+      };
+
+      const queuedSave = saveQueueRef.current.then(save, save);
+      saveQueueRef.current = queuedSave;
+
+      try {
+        await queuedSave;
+      } finally {
+        pendingSaveCountRef.current -= 1;
+        if (!isUnmountingRef.current) {
+          setSavePending(pendingSaveCountRef.current > 0);
+        }
+      }
+    },
+    {
+      wait: 500,
+      throwOnError: false,
+      onError: () => {
+        if (!isUnmountingRef.current) {
+          setSaveStatus("error");
+          setSavePending(false);
+        }
+      },
+      onUnmount: (debouncer) => {
+        isUnmountingRef.current = true;
+        void debouncer.flush();
+      },
+    },
+  );
+
   useEffect(() => {
-    const documentSignature = getDocumentSignature(debouncedDocumentValues);
-    if (documentSignature === lastSubmittedRef.current) return;
+    const documentSignature = getDocumentSignature(documentValues);
+    if (documentSignature === lastSavedRef.current) return;
 
-    lastSubmittedRef.current = documentSignature;
+    void saveDebouncer.maybeExecute(documentValues);
+  }, [documentValues, saveDebouncer]);
 
-    startSave(async () => {
-      const response = await updateDocumentAction(
-        document.id,
-        debouncedDocumentValues,
-      );
-      setSaveStatus(response.error ? "error" : "saved");
+  useEffect(() => {
+    const serverValues = {
+      name: document.name,
+      content: document.content,
+    };
+    const serverSignature = getDocumentSignature(serverValues);
+
+    setDocumentValues((currentValues) => {
+      const currentSignature = getDocumentSignature(currentValues);
+      if (currentSignature !== lastSavedRef.current) return currentValues;
+
+      lastSavedRef.current = serverSignature;
+      return serverSignature === currentSignature
+        ? currentValues
+        : serverValues;
     });
-  }, [debouncedDocumentValues, document.id, startSave, setSaveStatus]);
+  }, [document.content, document.name]);
 
   return (
     <div className="border bg-card shadow-sm w-full">

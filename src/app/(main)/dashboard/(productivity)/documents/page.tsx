@@ -15,7 +15,7 @@ const DocumentsPage = (props: SearchParamsType) => {
     <div className="w-full h-full flex flex-col gap-4">
       <div className="flex items-center gap-2 flex-wrap justify-between">
         <h1 className="text-3xl font-semibold">My Documents</h1>
-        <CreateDocumentButton projectId="1aab756f-ec90-407e-ae21-bbe0be7e0303">
+        <CreateDocumentButton>
           <PlusIcon />
           Create
         </CreateDocumentButton>
