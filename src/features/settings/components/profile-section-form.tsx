@@ -23,9 +23,6 @@ import {
   updateUserProfileAction,
 } from "../actions/actions";
 import { profileSchema, ProfileSchemaType } from "../actions/schemas";
-import { format } from "date-fns";
-import { DotIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export const ProfileSectionForm = ({
   userProfile,
@@ -61,7 +58,7 @@ export const ProfileSectionForm = ({
           className="flex flex-col gap-4"
         >
           <div className="flex flex-col gap-2">
-            <Label>Profile Picture</Label>
+            <Label className="text-lg">Profile Picture</Label>
             <UserAvatar
               name={userProfile.name}
               image={userProfile.image}
@@ -73,18 +70,24 @@ export const ProfileSectionForm = ({
             name="name"
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
-                <FieldLabel htmlFor={fieldState.error && "invalid-name-input"}>
+                <FieldLabel
+                  className="text-base"
+                  htmlFor={fieldState.error && "invalid-name-input"}
+                >
                   Name
                 </FieldLabel>
                 <FieldContent>
                   <Input
+                    className="text-lg md:text-lg"
                     id={fieldState.error && "invalid-name-input"}
                     aria-invalid={!!fieldState.error}
                     placeholder="Enter your name"
                     {...field}
                   />
                 </FieldContent>
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+                {fieldState.error && (
+                  <FieldError className="text-lg" errors={[fieldState.error]} />
+                )}
               </Field>
             )}
           />
@@ -93,11 +96,15 @@ export const ProfileSectionForm = ({
             name="email"
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
-                <FieldLabel htmlFor={fieldState.error && "invalid-email-input"}>
+                <FieldLabel
+                  className="text-base"
+                  htmlFor={fieldState.error && "invalid-email-input"}
+                >
                   Email
                 </FieldLabel>
                 <FieldContent>
                   <Input
+                    className="text-lg md:text-lg"
                     id={fieldState.error && "invalid-email-input"}
                     aria-invalid={!!fieldState.error}
                     placeholder="Enter your email"
@@ -105,7 +112,9 @@ export const ProfileSectionForm = ({
                     {...field}
                   />
                 </FieldContent>
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+                {fieldState.error && (
+                  <FieldError className="text-lg" errors={[fieldState.error]} />
+                )}
               </Field>
             )}
           />
@@ -115,30 +124,34 @@ export const ProfileSectionForm = ({
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
                 <FieldLabel
+                  className="text-base"
                   htmlFor={fieldState.error && "invalid-description-input"}
                 >
                   Description
                 </FieldLabel>
                 <FieldContent>
                   <Textarea
+                    className="text-lg md:text-lg"
                     id={fieldState.error && "invalid-description-input"}
                     aria-invalid={!!fieldState.error}
                     placeholder="Enter a short description about yourself"
                     {...field}
                   />
                 </FieldContent>
-                <FieldDescription>
+                <FieldDescription className="text-lg">
                   This description will help our AI understand you better so it
                   can produce better output. You can include preferences, things
                   to avoid, or some general context it should know about you.
                 </FieldDescription>
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+                {fieldState.error && (
+                  <FieldError className="text-lg" errors={[fieldState.error]} />
+                )}
               </Field>
             )}
           />
           <Button
             type="submit"
-            className="w-full"
+            className="w-full text-base! h-12"
             disabled={form.formState.isSubmitting || !form.formState.isDirty}
           >
             <LoadingSwap isLoading={form.formState.isSubmitting}>

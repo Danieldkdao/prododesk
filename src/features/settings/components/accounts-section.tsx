@@ -97,17 +97,17 @@ const AccountsSectionSuspense = () => {
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-2 min-w-0 w-full">
           <div className="flex items-center gap-2 flex-1">
-            <KeyRoundIcon className="size-10" />
+            <KeyRoundIcon className="size-13" />
             <div className="flex flex-col gap-2">
-              <span className="text-base font-semibold leading-none">
+              <span className="text-lg font-semibold leading-none">
                 Email & Password
               </span>
               {passwordAccount ? (
-                <span className="text-sm font-medium text-emerald-600 leading-none">
+                <span className="text-base font-medium text-emerald-600 leading-none">
                   Connected on {format(passwordAccount.createdAt, "PP 'at' p")}
                 </span>
               ) : (
-                <span className="text-muted-foreground text-sm font-medium leading-none">
+                <span className="text-muted-foreground text-base font-medium leading-none">
                   Not connected
                 </span>
               )}
@@ -152,20 +152,20 @@ const AccountsSectionSuspense = () => {
                 <div className="flex items-center gap-2 flex-1">
                   <Icon
                     color={color}
-                    size={40}
+                    size={52}
                     className={cn(!survivesDarkMode && "text-foreground!")}
                   />
                   <div className="flex flex-col gap-2">
-                    <span className="text-base font-semibold leading-none">
+                    <span className="text-lg font-semibold leading-none">
                       {label}
                     </span>
                     {connectedAccount ? (
-                      <span className="text-sm font-medium text-emerald-600 leading-none">
+                      <span className="text-base font-medium text-emerald-600 leading-none">
                         Connected on{" "}
                         {format(connectedAccount.createdAt, "PP 'at' p")}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground text-sm font-medium leading-none">
+                      <span className="text-muted-foreground text-base font-medium leading-none">
                         Not connected
                       </span>
                     )}
