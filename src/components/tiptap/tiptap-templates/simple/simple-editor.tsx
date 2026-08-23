@@ -39,6 +39,8 @@ import "@/components/tiptap/tiptap-node/image-node/image-node.scss";
 import { ImageUploadNode } from "@/components/tiptap/tiptap-node/image-upload-node/image-upload-node-extension";
 import "@/components/tiptap/tiptap-node/list-node/list-node.scss";
 import "@/components/tiptap/tiptap-node/paragraph-node/paragraph-node.scss";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { common, createLowlight } from "lowlight";
 
 // --- Tiptap UI ---
 import { BlockquoteButton } from "@/components/tiptap/tiptap-ui/blockquote-button";
@@ -88,6 +90,8 @@ import { cn } from "@/lib/utils";
 // --- Extensions ---
 import { Markdown } from "@tiptap/markdown";
 import { Plugin } from "@tiptap/pm/state";
+
+const lowlight = createLowlight(common);
 
 const SEARCH_AND_REPLACE_SCROLL_OPTIONS: ScrollIntoViewOptions = {
   block: "center",
@@ -283,11 +287,15 @@ export function SimpleEditor({
     },
     extensions: [
       StarterKit.configure({
+        codeBlock: false,
         horizontalRule: false,
         link: {
           openOnClick: false,
           enableClickSelection: true,
         },
+      }),
+      CodeBlockLowlight.configure({
+        lowlight,
       }),
       Markdown,
       PasteMarkdown,

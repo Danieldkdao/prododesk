@@ -6,6 +6,8 @@
     position: relative;
     color: inherit;
     font-style: inherit;
+    line-height: 1.2;
+    margin-bottom: 0.35em;
   }
 
   > h1:first-child,
@@ -22,24 +24,24 @@
   h1 {
     font-size: 1.5em;
     font-weight: 700;
-    margin-top: 3em;
+    margin-top: 1.5em;
   }
 
   h2 {
     font-size: 1.25em;
     font-weight: 700;
-    margin-top: 2.5em;
+    margin-top: 1.25em;
   }
 
   h3 {
     font-size: 1.125em;
     font-weight: 600;
-    margin-top: 2em;
+    margin-top: 1em;
   }
 
   h4 {
     font-size: 1em;
     font-weight: 600;
-    margin-top: 2em;
+    margin-top: 1em;
   }
 }

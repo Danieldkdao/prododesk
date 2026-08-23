@@ -2,17 +2,43 @@
   --tt-inline-code-bg-color: var(--tt-gray-light-a-100);
   --tt-inline-code-text-color: var(--tt-gray-light-a-700);
   --tt-inline-code-border-color: var(--tt-gray-light-a-200);
-  --tt-codeblock-bg: var(--tt-gray-light-a-50);
-  --tt-codeblock-text: var(--tt-gray-light-a-800);
-  --tt-codeblock-border: var(--tt-gray-light-a-200);
+  --tt-codeblock-bg: #ffffff;
+  --tt-codeblock-text: #24292e;
+  --tt-codeblock-border: #d0d7de;
+  --tt-codeblock-keyword: #d73a49;
+  --tt-codeblock-title: #6f42c1;
+  --tt-codeblock-constant: #005cc5;
+  --tt-codeblock-string: #032f62;
+  --tt-codeblock-variable: #e36209;
+  --tt-codeblock-comment: #6a737d;
+  --tt-codeblock-tag: #22863a;
+  --tt-codeblock-section: #005cc5;
+  --tt-codeblock-bullet: #735c0f;
+  --tt-codeblock-addition: #22863a;
+  --tt-codeblock-addition-bg: #f0fff4;
+  --tt-codeblock-deletion: #b31d28;
+  --tt-codeblock-deletion-bg: #ffeef0;
 
   .dark & {
     --tt-inline-code-bg-color: var(--tt-gray-dark-a-100);
     --tt-inline-code-text-color: var(--tt-gray-dark-a-700);
     --tt-inline-code-border-color: var(--tt-gray-dark-a-200);
-    --tt-codeblock-bg: var(--tt-gray-dark-a-50);
-    --tt-codeblock-text: var(--tt-gray-dark-a-800);
-    --tt-codeblock-border: var(--tt-gray-dark-a-200);
+    --tt-codeblock-bg: #0d1117;
+    --tt-codeblock-text: #c9d1d9;
+    --tt-codeblock-border: #30363d;
+    --tt-codeblock-keyword: #ff7b72;
+    --tt-codeblock-title: #d2a8ff;
+    --tt-codeblock-constant: #79c0ff;
+    --tt-codeblock-string: #a5d6ff;
+    --tt-codeblock-variable: #ffa657;
+    --tt-codeblock-comment: #8b949e;
+    --tt-codeblock-tag: #7ee787;
+    --tt-codeblock-section: #1f6feb;
+    --tt-codeblock-bullet: #f2cc60;
+    --tt-codeblock-addition: #aff5b4;
+    --tt-codeblock-addition-bg: #033a16;
+    --tt-codeblock-deletion: #ffdcd7;
+    --tt-codeblock-deletion-bg: #67060c;
   }
 }
 
@@ -34,21 +60,119 @@
 
   // Code blocks
   pre {
+    overflow-x: auto;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    border: 1px solid var(--tt-codeblock-border);
+    border-radius: 0.5rem;
     background-color: var(--tt-codeblock-bg);
     color: var(--tt-codeblock-text);
-    border: 1px solid var(--tt-codeblock-border);
-    margin-top: 1.5em;
-    margin-bottom: 1.5em;
-    padding: 1em;
-    font-size: 1rem;
-    border-radius: 6px/0.375rem;
+    font-family: "JetBrains Mono NL", monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    tab-size: 2;
 
     code {
       background-color: transparent;
       border: none;
       border-radius: 0;
-      -webkit-text-fill-color: inherit;
       color: inherit;
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      padding: 0;
     }
+
+    // GitHub Light syntax theme, with GitHub Dark variables in dark mode
+    .hljs-doctag,
+    .hljs-keyword,
+    .hljs-meta .hljs-keyword,
+    .hljs-template-tag,
+    .hljs-template-variable,
+    .hljs-type,
+    .hljs-variable.language_ {
+      color: var(--tt-codeblock-keyword);
+    }
+
+    .hljs-title,
+    .hljs-title.class_,
+    .hljs-title.class_.inherited__,
+    .hljs-title.function_ {
+      color: var(--tt-codeblock-title);
+    }
+
+    .hljs-attr,
+    .hljs-attribute,
+    .hljs-literal,
+    .hljs-meta,
+    .hljs-number,
+    .hljs-operator,
+    .hljs-variable,
+    .hljs-selector-attr,
+    .hljs-selector-class,
+    .hljs-selector-id {
+      color: var(--tt-codeblock-constant);
+    }
+
+    .hljs-regexp,
+    .hljs-string,
+    .hljs-meta .hljs-string {
+      color: var(--tt-codeblock-string);
+    }
+
+    .hljs-built_in,
+    .hljs-symbol {
+      color: var(--tt-codeblock-variable);
+    }
+
+    .hljs-comment,
+    .hljs-code,
+    .hljs-formula {
+      color: var(--tt-codeblock-comment);
+    }
+
+    .hljs-name,
+    .hljs-quote,
+    .hljs-selector-tag,
+    .hljs-selector-pseudo {
+      color: var(--tt-codeblock-tag);
+    }
+
+    .hljs-subst {
+      color: var(--tt-codeblock-text);
+    }
+
+    .hljs-section {
+      color: var(--tt-codeblock-section);
+      font-weight: 700;
+    }
+
+    .hljs-bullet {
+      color: var(--tt-codeblock-bullet);
+    }
+
+    .hljs-emphasis {
+      color: var(--tt-codeblock-text);
+      font-style: italic;
+    }
+
+    .hljs-strong {
+      color: var(--tt-codeblock-text);
+      font-weight: 700;
+    }
+
+    .hljs-addition {
+      color: var(--tt-codeblock-addition);
+      background-color: var(--tt-codeblock-addition-bg);
+    }
+
+    .hljs-deletion {
+      color: var(--tt-codeblock-deletion);
+      background-color: var(--tt-codeblock-deletion-bg);
+    }
+  }
+
+  > pre:first-child {
+    margin-top: 0;
   }
 }

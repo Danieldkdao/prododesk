@@ -160,7 +160,7 @@ export const DocumentEditor = ({
             <Trash2Icon className="size-4" />
           </DeleteDocumentButton>
         </div>
-        <div className="flex items-center gap-6 flex-wrap">
+        <div className="flex items-center gap-x-6 gap-y-2 flex-wrap">
           <div className="flex items-center gap-2">
             <ClockIcon className="size-4 text-muted-foreground" />
             <span className="text-muted-foreground">
