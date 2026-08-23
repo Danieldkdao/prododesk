@@ -158,14 +158,14 @@ const SignInPage = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
-                <FieldLabel htmlFor={fieldState.error && "email-input-invalid"}>
+                <FieldLabel htmlFor="sign-in-email-input">
                   Email
                 </FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}
                     placeholder="Enter your email here..."
-                    id={fieldState.error && "email-input-invalid"}
+                    id="sign-in-email-input"
                     aria-invalid={!!fieldState.error}
                   />
                 </FieldContent>
@@ -178,16 +178,14 @@ const SignInPage = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
-                <FieldLabel
-                  htmlFor={fieldState.error && "password-input-invalid"}
-                >
+                <FieldLabel htmlFor="sign-in-password-input">
                   Password
                 </FieldLabel>
                 <FieldContent>
                   <PasswordInput
                     {...field}
                     placeholder="••••••••••••"
-                    id={fieldState.error && "password-input-invalid"}
+                    id="sign-in-password-input"
                     aria-invalid={!!fieldState.error}
                   />
                 </FieldContent>

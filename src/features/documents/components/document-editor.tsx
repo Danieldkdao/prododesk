@@ -99,10 +99,6 @@ export const DocumentEditor = ({
           setSavePending(false);
         }
       },
-      onUnmount: (debouncer) => {
-        isUnmountingRef.current = true;
-        void debouncer.flush();
-      },
     },
   );
 
@@ -114,22 +110,29 @@ export const DocumentEditor = ({
   }, [documentValues, saveDebouncer]);
 
   useEffect(() => {
+    isUnmountingRef.current = false;
+
+    return () => {
+      isUnmountingRef.current = true;
+      void saveDebouncer.flush();
+    };
+  }, [saveDebouncer]);
+
+  useEffect(() => {
     const serverValues = {
       name: document.name,
       content: document.content,
     };
     const serverSignature = getDocumentSignature(serverValues);
 
-    setDocumentValues((currentValues) => {
-      const currentSignature = getDocumentSignature(currentValues);
-      if (currentSignature !== lastSavedRef.current) return currentValues;
+    const currentSignature = getDocumentSignature(documentValues);
+    if (currentSignature !== lastSavedRef.current) return;
 
-      lastSavedRef.current = serverSignature;
-      return serverSignature === currentSignature
-        ? currentValues
-        : serverValues;
-    });
-  }, [document.content, document.name]);
+    lastSavedRef.current = serverSignature;
+    if (serverSignature !== currentSignature) {
+      setDocumentValues(serverValues);
+    }
+  }, [document.content, document.name, documentValues]);
 
   return (
     <div className="border bg-card shadow-sm w-full">

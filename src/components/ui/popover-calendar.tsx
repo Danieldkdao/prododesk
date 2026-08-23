@@ -26,13 +26,13 @@ type PopoverCalendarProps =
     };
 
 export const PopoverCalendar = ({
+  id,
   fieldError,
-  errorStateId,
   className,
   ...props
 }: {
+  id?: string;
   fieldError?: boolean;
-  errorStateId?: string;
   withTime?: boolean;
 } & Omit<
   ComponentProps<typeof Calendar>,
@@ -155,7 +155,7 @@ export const PopoverCalendar = ({
   return (
     <Popover>
       <PopoverTrigger
-        id={fieldError ? errorStateId : undefined}
+        id={id}
         aria-invalid={!!fieldError}
         className="flex items-start gap-2 cursor-pointer border-b py-2"
       >

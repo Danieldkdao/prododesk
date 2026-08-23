@@ -31,15 +31,15 @@ export const EmailChangeOtpDialog = ({
   const [timeToNextResend, setTimeToNextResend] = useState(30);
 
   useEffect(() => {
-    if (timeToNextResend <= 0) return;
+    if (timeToNextResend <= 0 || !open) return;
 
     const interval = setInterval(() => {
-      if (timeToNextResend <= 0) return;
+      if (timeToNextResend <= 0 || !open) return;
       setTimeToNextResend((prev) => prev - 1);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timeToNextResend]);
+  }, [timeToNextResend, open]);
 
   const handleResendOtp = () => {
     if (timeToNextResend > 0 || isResendPending) return;
@@ -50,6 +50,7 @@ export const EmailChangeOtpDialog = ({
         fetchOptions: {
           onSuccess: () => {
             toast.success("OTP resent successfully!");
+            setTimeToNextResend(30);
           },
           onError: (error) => {
             toast.error(
@@ -88,6 +89,7 @@ export const EmailChangeOtpDialog = ({
     <Dialog
       open={open}
       onOpenChange={(value) => {
+        setTimeToNextResend(30);
         if (!value) {
           setEmailChangeOtp("");
         }

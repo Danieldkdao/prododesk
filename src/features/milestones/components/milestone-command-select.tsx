@@ -25,11 +25,15 @@ import { readProjectMilestonesAction } from "../actions/actions";
 import { formatMilestoneStatus } from "../lib/formatters";
 
 export const MilestoneCommandSelect = ({
+  id,
+  fieldError,
   initialValue,
   value,
   onValueChange,
   projectId,
 }: {
+  id?: string;
+  fieldError?: boolean;
   initialValue: { name: string; status: MilestoneStatus } | null | undefined;
   value?: string | null | undefined;
   onValueChange: (value: unknown) => void;
@@ -102,6 +106,8 @@ export const MilestoneCommandSelect = ({
   return (
     <Popover open={commandOpen} onOpenChange={setCommandOpen}>
       <PopoverTrigger
+        id={id}
+        aria-invalid={!!fieldError}
         disabled={!projectId}
         className="border-b cursor-pointer h-11 flex items-center gap-2 w-full min-w-0"
       >

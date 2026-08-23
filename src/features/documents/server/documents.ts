@@ -206,6 +206,12 @@ export const insertDocumentDb = async (
 ) => {
   const { source = "user", tx, chatRunId } = options ?? {};
   try {
+    const existingProject = document.projectId
+      ? await confirmUserProjectOwnership(document.projectId, undefined, tx)
+      : null;
+    if (document.projectId && !existingProject)
+      throw new Error("No existing project found.");
+
     const insertDocument = async (pgtx: DbTransaction) => {
       const [insertedDocument] = await pgtx
         .insert(DocumentTable)
@@ -241,6 +247,7 @@ export const insertDocumentDb = async (
         insertedDocument.userId,
         insertedDocument.id,
         insertedDocument.projectId,
+        existingProject?.areaId,
       );
     });
 

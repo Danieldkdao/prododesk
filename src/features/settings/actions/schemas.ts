@@ -1,10 +1,35 @@
 import z from "zod";
 
-export const profileSchema = z.object({
-  name: z.string().trim().min(1, { error: "Please enter your name." }),
+const baseSettingsSchema = z.object({
   description: z.string().trim().optional(),
-  email: z.email({ error: "Please enter a valid email address." }),
 });
+
+const handleSettingsRefinements = (
+  data: z.infer<typeof baseSettingsSchema>,
+  ctx: z.RefinementCtx,
+) => {
+  if (data.description && data.description.length > 500) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["description"],
+      message: "Description must be less than 500 characters.",
+    });
+  }
+};
+
+export const settingsSchema = baseSettingsSchema.superRefine(
+  handleSettingsRefinements,
+);
+export type SettingsSchemaType = z.infer<typeof settingsSchema>;
+
+export const profileSchema = z
+  .object({
+    name: z.string().trim().min(1, { error: "Please enter your name." }),
+    email: z.email({ error: "Please enter a valid email address." }),
+  })
+  .extend(baseSettingsSchema.shape)
+  .superRefine(handleSettingsRefinements);
+
 export type ProfileSchemaType = z.infer<typeof profileSchema>;
 
 export const getPasswordSchema = (hasPasswordAccount: boolean) =>
@@ -18,15 +43,39 @@ export const getPasswordSchema = (hasPasswordAccount: boolean) =>
           error: "Please enter a new password with at least 8 characters.",
         })
         .max(128, { error: "Password must be less than 128 characters." })
-        .transform((val) => (val === "" ? undefined : val))
         .optional(),
     })
-    .superRefine((data, context) => {
+    .superRefine((data, ctx) => {
       if (hasPasswordAccount && !data.currentPassword) {
-        context.addIssue({
+        ctx.addIssue({
           code: "custom",
           path: ["currentPassword"],
           message: "Please enter your current password.",
+        });
+      }
+      if (hasPasswordAccount && !data.newPassword) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["newPassword"],
+          message: "Please enter a new password.",
+        });
+      }
+      if (
+        hasPasswordAccount &&
+        data.newPassword &&
+        (data.newPassword.length < 8 || data.newPassword.length > 128)
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["newPassword"],
+          message: "New password must be between 8 and 128 characters long.",
+        });
+      }
+      if (hasPasswordAccount && data.newPassword === data.currentPassword) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["newPassword"],
+          message: "New password must be different from the current password.",
         });
       }
     });

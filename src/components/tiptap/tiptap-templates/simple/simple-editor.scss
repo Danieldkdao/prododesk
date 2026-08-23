@@ -114,3 +114,13 @@ body,
 .simple-editor pre {
   font-family: var(--font-space-mono);
 }
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor {
+  p:not(:first-child):not(td p):not(th p) {
+    margin-top: 8px;
+  }
+
+  p:not(td p):not(th p) {
+    line-height: 1.45;
+  }
+}

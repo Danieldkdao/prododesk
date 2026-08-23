@@ -68,6 +68,7 @@ export const PasswordForm = ({
         toast.error(
           response.message || "Failed to set password. Please try again.",
         );
+        return;
       } else {
         toast.success(response.message || "Password set successfully.");
       }
@@ -88,14 +89,12 @@ export const PasswordForm = ({
           name="currentPassword"
           render={({ field, fieldState }) => (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel
-                htmlFor={fieldState.error && "invalid-current-password-input"}
-              >
+              <FieldLabel htmlFor="current-password-input">
                 Current Password
               </FieldLabel>
               <FieldContent>
                 <PasswordInput
-                  id={fieldState.error && "invalid-current-password-input"}
+                  id="current-password-input"
                   aria-invalid={!!fieldState.error}
                   placeholder="Enter your current password"
                   {...field}
@@ -111,14 +110,12 @@ export const PasswordForm = ({
         name="newPassword"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel
-              htmlFor={fieldState.error && "invalid-new-password-input"}
-            >
+            <FieldLabel htmlFor="new-password-input">
               New Password
             </FieldLabel>
             <FieldContent>
               <PasswordInput
-                id={fieldState.error && "invalid-new-password-input"}
+                id="new-password-input"
                 aria-invalid={!!fieldState.error}
                 placeholder="Enter your new password"
                 {...field}

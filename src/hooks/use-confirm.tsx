@@ -49,6 +49,9 @@ export const useConfirm = (
     <Dialog
       open={promise !== null}
       onOpenChange={(open) => {
+        if (open) {
+          setConfirmInputValue("");
+        }
         if (!open) {
           handleCancel();
         }

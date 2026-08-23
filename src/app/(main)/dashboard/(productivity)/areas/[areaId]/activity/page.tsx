@@ -1,7 +1,7 @@
 import { ErrorState } from "@/components/error-state";
 import { readActivityAction } from "@/features/activity/actions/actions";
 import { ActivityFilters } from "@/features/activity/components/activity-filters";
-import { ActivityListTable } from "@/features/activity/components/activity-list-view";
+import { ActivityListView } from "@/features/activity/components/activity-list-view";
 import { ActivityListSkeleton } from "@/features/activity/components/activity-list-skeleton";
 import { loadActivitySearchParams } from "@/features/activity/lib/activity-params";
 import { ParamsId, SearchParamsType } from "@/lib/types";
@@ -43,7 +43,7 @@ const AreaIdActivitySuspense = async ({
   return (
     <div className="flex flex-col gap-4">
       <ActivityFilters />
-      <ActivityListTable
+      <ActivityListView
         key={metadata.clientKey}
         response={response}
         areaIds={[areaId]}

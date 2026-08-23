@@ -48,6 +48,7 @@ export const ProfileSectionForm = ({
   const handleSubmission = async (data: ProfileSchemaType) => {
     const { name, email, description } = data;
     let errorOccurred = false;
+    let otherFieldsChanged = false;
     const hasEmailChanged = email.trim() !== userProfile.email.trim();
 
     const promises = [];
@@ -57,6 +58,9 @@ export const ProfileSectionForm = ({
         authClient.updateUser({
           name,
           fetchOptions: {
+            onSuccess: () => {
+              otherFieldsChanged = true;
+            },
             onError: () => {
               errorOccurred = true;
             },
@@ -83,9 +87,11 @@ export const ProfileSectionForm = ({
 
     if (description !== userProfile.settings?.description) {
       promises.push(
-        updateUserSettingsAction(description).then((response) => {
+        updateUserSettingsAction({ description }).then((response) => {
           if (response.error) {
             errorOccurred = true;
+          } else {
+            otherFieldsChanged = true;
           }
         }),
       );
@@ -96,10 +102,10 @@ export const ProfileSectionForm = ({
     if (errorOccurred) {
       toast.error("Some changes could not be saved. Please try again.");
     } else {
-      if (!hasEmailChanged) {
+      if (otherFieldsChanged) {
         toast.success("Profile updated successfully!");
         router.refresh();
-        form.reset();
+        form.reset({ name, email, description });
       }
     }
   };
@@ -125,16 +131,13 @@ export const ProfileSectionForm = ({
               name="name"
               render={({ field, fieldState }) => (
                 <Field data-invalid={!!fieldState.error}>
-                  <FieldLabel
-                    className="text-base"
-                    htmlFor={fieldState.error && "invalid-name-input"}
-                  >
+                  <FieldLabel className="text-base" htmlFor="profile-name-input">
                     Name
                   </FieldLabel>
                   <FieldContent>
                     <Input
                       className="text-lg md:text-lg"
-                      id={fieldState.error && "invalid-name-input"}
+                      id="profile-name-input"
                       aria-invalid={!!fieldState.error}
                       placeholder="Enter your name"
                       {...field}
@@ -156,14 +159,14 @@ export const ProfileSectionForm = ({
                 <Field data-invalid={!!fieldState.error}>
                   <FieldLabel
                     className="text-base"
-                    htmlFor={fieldState.error && "invalid-email-input"}
+                    htmlFor="profile-email-input"
                   >
                     Email
                   </FieldLabel>
                   <FieldContent>
                     <Input
                       className="text-lg md:text-lg"
-                      id={fieldState.error && "invalid-email-input"}
+                      id="profile-email-input"
                       aria-invalid={!!fieldState.error}
                       placeholder="Enter your email"
                       type="email"
@@ -186,14 +189,14 @@ export const ProfileSectionForm = ({
                 <Field data-invalid={!!fieldState.error}>
                   <FieldLabel
                     className="text-base"
-                    htmlFor={fieldState.error && "invalid-description-input"}
+                    htmlFor="profile-description-input"
                   >
                     Description
                   </FieldLabel>
                   <FieldContent>
                     <Textarea
                       className="text-lg md:text-lg"
-                      id={fieldState.error && "invalid-description-input"}
+                      id="profile-description-input"
                       aria-invalid={!!fieldState.error}
                       placeholder="Enter a short description about yourself"
                       {...field}
@@ -203,7 +206,8 @@ export const ProfileSectionForm = ({
                     This description will help our AI understand you better so
                     it can produce better output. You can include preferences,
                     things to avoid, or some general context it should know
-                    about you.
+                    about you. Cannot exceed 500 characters. This is optional
+                    and can be left blank.
                   </FieldDescription>
                   {fieldState.error && (
                     <FieldError

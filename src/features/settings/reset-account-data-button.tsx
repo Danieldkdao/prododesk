@@ -14,8 +14,8 @@ export const ResetAccountDataButton = ({
   ...props
 }: Omit<ComponentProps<typeof Button>, "onClick">) => {
   const [ConfirmationDialog, confirm] = useConfirm(
-    "Delete Account",
-    "Are you sure you want to delete your account? This action cannot be undone.",
+    "Reset Account Data",
+    "Are you sure you want reset your account data? This action cannot be undone.",
     "RESET ACCOUNT DATA",
   );
   const router = useRouter();

@@ -133,14 +133,14 @@ const SignUpPage = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
-                <FieldLabel htmlFor={fieldState.error && "name-input-invalid"}>
+                <FieldLabel htmlFor="sign-up-name-input">
                   Name
                 </FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}
                     placeholder="Enter your name here..."
-                    id={fieldState.error && "name-input-invalid"}
+                    id="sign-up-name-input"
                     aria-invalid={!!fieldState.error}
                   />
                 </FieldContent>
@@ -153,14 +153,14 @@ const SignUpPage = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
-                <FieldLabel htmlFor={fieldState.error && "email-input-invalid"}>
+                <FieldLabel htmlFor="sign-up-email-input">
                   Email
                 </FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}
                     placeholder="Enter your email here..."
-                    id={fieldState.error && "email-input-invalid"}
+                    id="sign-up-email-input"
                     aria-invalid={!!fieldState.error}
                   />
                 </FieldContent>
@@ -173,16 +173,14 @@ const SignUpPage = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
-                <FieldLabel
-                  htmlFor={fieldState.error && "password-input-invalid"}
-                >
+                <FieldLabel htmlFor="sign-up-password-input">
                   Password
                 </FieldLabel>
                 <FieldContent>
                   <PasswordInput
                     {...field}
                     placeholder="••••••••••••"
-                    id={fieldState.error && "password-input-invalid"}
+                    id="sign-up-password-input"
                     aria-invalid={!!fieldState.error}
                   >
                     <PasswordInputStrengthChecker />

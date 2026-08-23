@@ -53,44 +53,36 @@ export const resetAccountDataDb = async () => {
         .delete(ChatTable)
         .where(eq(ChatTable.userId, userId))
         .returning();
-      if (!deletedChats) throw new Error("Failed to delete chat data.");
 
       const deletedActivity = await tx
         .delete(ActivityTable)
         .where(eq(ActivityTable.userId, userId))
         .returning();
-      if (!deletedActivity) throw new Error("Failed to delete activity data.");
 
       const deletedTasks = await tx
         .delete(TaskTable)
         .where(eq(TaskTable.userId, userId))
         .returning();
-      if (!deletedTasks) throw new Error("Failed to delete task data.");
 
       const deletedDocuments = await tx
         .delete(DocumentTable)
         .where(eq(DocumentTable.userId, userId))
         .returning();
-      if (!deletedDocuments) throw new Error("Failed to delete document data.");
 
       const deletedMilestones = await tx
         .delete(MilestoneTable)
         .where(eq(MilestoneTable.userId, userId))
         .returning();
-      if (!deletedMilestones)
-        throw new Error("Failed to delete milestone data.");
 
       const deletedProjects = await tx
         .delete(ProjectTable)
         .where(eq(ProjectTable.userId, userId))
         .returning();
-      if (!deletedProjects) throw new Error("Failed to delete project data.");
 
       const deletedAreas = await tx
         .delete(AreaTable)
         .where(eq(AreaTable.userId, userId))
         .returning();
-      if (!deletedAreas) throw new Error("Failed to delete area data.");
 
       const updatedSettings = await tx
         .insert(SettingsTable)
@@ -105,8 +97,6 @@ export const resetAccountDataDb = async () => {
           },
         })
         .returning();
-      if (!updatedSettings.length)
-        throw new Error("Failed to reset settings data.");
 
       return {
         deletedChats,

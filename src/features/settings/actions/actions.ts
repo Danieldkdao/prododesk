@@ -2,6 +2,7 @@
 
 import { db } from "@/db/db";
 import { SettingsTable, user } from "@/db/schema";
+import { auth } from "@/lib/auth/auth";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -10,10 +11,9 @@ import {
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
 import { eq } from "drizzle-orm";
-import { profileSchema, ProfileSchemaType } from "./schemas";
-import { auth } from "@/lib/auth/auth";
 import { headers } from "next/headers";
 import { resetAccountDataDb } from "../server/settings";
+import { settingsSchema, SettingsSchemaType } from "./schemas";
 
 export const readUserProfileAction = async () => {
   const { userId } = await getCurrentUser();
@@ -32,7 +32,9 @@ export type ReadUserProfileActionReturnType = UnwrapAsync<
   typeof readUserProfileAction
 >;
 
-export const updateUserSettingsAction = async (description?: string | null) => {
+export const updateUserSettingsAction = async (
+  unsafeData: SettingsSchemaType,
+) => {
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) {
     return {
@@ -41,17 +43,25 @@ export const updateUserSettingsAction = async (description?: string | null) => {
     };
   }
 
+  const { data, success } = settingsSchema.safeParse(unsafeData);
+  if (!success) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
   try {
     const updatedSettings = await db
       .insert(SettingsTable)
       .values({
+        ...data,
         userId,
-        description,
       })
       .onConflictDoUpdate({
         target: SettingsTable.userId,
         set: {
-          description,
+          ...data,
         },
       });
     if (!updatedSettings) throw new Error("Failed to update user settings.");

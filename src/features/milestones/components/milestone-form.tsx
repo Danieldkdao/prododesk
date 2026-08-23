@@ -84,14 +84,12 @@ export const MilestoneForm = ({
         name="name"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel
-              htmlFor={fieldState.error && "invalid-milestone-name-input"}
-            >
+            <FieldLabel htmlFor="milestone-name-input">
               Name
             </FieldLabel>
             <FieldContent>
               <Input
-                id={fieldState.error && "invalid-milestone-name-input"}
+                id="milestone-name-input"
                 aria-invalid={!!fieldState.error}
                 placeholder="Enter milestone name"
                 {...field}
@@ -106,16 +104,12 @@ export const MilestoneForm = ({
         name="description"
         render={({ field: { value, ...props }, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel
-              htmlFor={
-                fieldState.error && "invalid-milestone-description-input"
-              }
-            >
+            <FieldLabel htmlFor="milestone-description-input">
               Description
             </FieldLabel>
             <FieldContent>
               <Textarea
-                id={fieldState.error && "invalid-milestone-description-input"}
+                id="milestone-description-input"
                 aria-invalid={!!fieldState.error}
                 placeholder="Optional description explaining expected milestone results and outcome"
                 value={value || ""}
@@ -134,15 +128,13 @@ export const MilestoneForm = ({
 
           return (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel
-                htmlFor={fieldState.error && "invalid-milestone-status-input"}
-              >
+              <FieldLabel htmlFor="milestone-status-input">
                 Status
               </FieldLabel>
               <FieldContent>
                 <Select value={value} onValueChange={onChange} {...props}>
                   <SelectTrigger
-                    id={fieldState.error && "invalid-milestone-status-input"}
+                    id="milestone-status-input"
                     aria-invalid={!!fieldState.error}
                     className="w-full"
                   >
@@ -179,9 +171,11 @@ export const MilestoneForm = ({
         name="dueAt"
         render={({ field: { value, onChange, ...props }, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel>Due At</FieldLabel>
+            <FieldLabel htmlFor="milestone-due-at-input">Due At</FieldLabel>
             <FieldContent>
               <PopoverCalendar
+                id="milestone-due-at-input"
+                fieldError={!!fieldState.error}
                 mode="single"
                 value={value}
                 onValueChange={onChange}

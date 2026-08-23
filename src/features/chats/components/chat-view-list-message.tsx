@@ -52,7 +52,6 @@ import {
 } from "@/features/activity/lib/formatters";
 import { formatActivityLink } from "@/features/activity/lib/formatters";
 import Image from "next/image";
-import { ReadUserProfileToolOutput } from "./read-user-profile-tool-output";
 
 export const ChatViewListMessage = ({
   msg,
@@ -430,13 +429,9 @@ export const ChatViewListMessage = ({
                                                 </span>
                                               )
                                             ) : part.output ? (
-                                              toolName === "readUserProfile" ? (
-                                                <ReadUserProfileToolOutput
-                                                  output={part.output}
-                                                />
-                                              ) : (
-                                                JSON.stringify(part.output)
-                                              )
+                                              <p className="text-muted-foreground">
+                                                {JSON.stringify(part.output)}
+                                              </p>
                                             ) : (
                                               "No output"
                                             )}

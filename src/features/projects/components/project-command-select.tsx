@@ -25,10 +25,14 @@ import { useCallback, useState, useTransition } from "react";
 import { readProjectsAction } from "../actions/actions";
 
 export const ProjectCommandSelect = ({
+  id,
+  fieldError,
   initialProject,
   value: value,
   onValueChange,
 }: {
+  id?: string;
+  fieldError?: boolean;
   initialProject?: { name: string; icon?: string | null } | null;
   value?: string | null | undefined;
   onValueChange: (value: unknown) => void;
@@ -101,7 +105,11 @@ export const ProjectCommandSelect = ({
 
   return (
     <Popover open={commandOpen} onOpenChange={setCommandOpen}>
-      <PopoverTrigger className="border-b cursor-pointer h-11 flex items-center gap-2 w-full min-w-0">
+      <PopoverTrigger
+        id={id}
+        aria-invalid={!!fieldError}
+        className="border-b cursor-pointer h-11 flex items-center gap-2 w-full min-w-0"
+      >
         <div className="min-w-0 flex-1 flex items-center">
           {selectedProject ? (
             <div className="flex min-w-0 items-center gap-2">
