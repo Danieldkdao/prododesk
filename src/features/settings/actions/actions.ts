@@ -32,50 +32,29 @@ export type ReadUserProfileActionReturnType = UnwrapAsync<
   typeof readUserProfileAction
 >;
 
-export const updateUserProfileAction = async (
-  unsafeData: ProfileSchemaType,
-) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) {
+export const updateUserSettingsAction = async (description?: string | null) => {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) {
     return {
       error: true,
       message: UNAUTHED_ERROR_MESSAGE,
     };
   }
 
-  const { data, success } = profileSchema.safeParse(unsafeData);
-  if (!success) {
-    return {
-      error: true,
-      message: INVALID_DATA_ERROR_MESSAGE,
-    };
-  }
-
   try {
-    await db.transaction(async (tx) => {
-      const updatedUser = await tx
-        .update(user)
-        .set({
-          name: data.name,
-          email: data.email,
-        })
-        .where(eq(user.id, userId));
-      if (!updatedUser) throw new Error("Failed to update user profile.");
-
-      const updatedSettings = await tx
-        .insert(SettingsTable)
-        .values({
-          userId,
-          description: data.description,
-        })
-        .onConflictDoUpdate({
-          target: [SettingsTable.userId],
-          set: {
-            description: data.description,
-          },
-        });
-      if (!updatedSettings) throw new Error("Failed to update user settings.");
-    });
+    const updatedSettings = await db
+      .insert(SettingsTable)
+      .values({
+        userId,
+        description,
+      })
+      .onConflictDoUpdate({
+        target: SettingsTable.userId,
+        set: {
+          description,
+        },
+      });
+    if (!updatedSettings) throw new Error("Failed to update user settings.");
 
     return {
       error: false,

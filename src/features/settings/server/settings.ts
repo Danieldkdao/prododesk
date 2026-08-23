@@ -98,9 +98,15 @@ export const resetAccountDataDb = async () => {
           userId,
           description: null,
         })
-        .onConflictDoNothing()
+        .onConflictDoUpdate({
+          target: SettingsTable.userId,
+          set: {
+            description: null,
+          },
+        })
         .returning();
-      if (!updatedSettings) throw new Error("Failed to reset settings data.");
+      if (!updatedSettings.length)
+        throw new Error("Failed to reset settings data.");
 
       return {
         deletedChats,

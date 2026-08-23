@@ -15,6 +15,9 @@ export const auth = betterAuth({
         input: true,
       },
     },
+    changeEmail: {
+      enabled: true,
+    },
     deleteUser: {
       enabled: true,
       deleteTokenExpiresIn: 15 * 60,
@@ -44,6 +47,9 @@ export const auth = betterAuth({
   plugins: [
     emailOTP({
       overrideDefaultEmailVerification: true,
+      changeEmail: {
+        enabled: true,
+      },
       async sendVerificationOTP(data) {
         await sendVerificationOtp(data);
       },
