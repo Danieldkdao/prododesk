@@ -89,7 +89,7 @@ export const TaskForm = ({
         name="name"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel htmlFor={fieldState.error && "name-input-invalid"}>
+            <FieldLabel htmlFor="task-name-input">
               Name
             </FieldLabel>
             <FieldContent>
@@ -121,7 +121,7 @@ export const TaskForm = ({
                 />
                 <Input
                   placeholder="Task name goes here"
-                  id={fieldState.error && "name-input-invalid"}
+                  id="task-name-input"
                   aria-invalid={!!fieldState.error}
                   {...field}
                 />
@@ -139,15 +139,13 @@ export const TaskForm = ({
 
           return (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel
-                htmlFor={fieldState.error && "task-priority-input-invalid"}
-              >
+              <FieldLabel htmlFor="task-priority-input">
                 Priority
               </FieldLabel>
               <FieldContent>
                 <Select value={value} onValueChange={onChange} {...props}>
                   <SelectTrigger
-                    id={fieldState.error && "task-priority-input-invalid"}
+                    id="task-priority-input"
                     aria-invalid={!!fieldState.error}
                     className="w-full"
                   >
@@ -185,15 +183,13 @@ export const TaskForm = ({
         name="description"
         render={({ field: { value, ...props }, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel
-              htmlFor={fieldState.error && "description-input-invalid"}
-            >
+            <FieldLabel htmlFor="task-description-input">
               Description
             </FieldLabel>
             <FieldContent>
               <Textarea
                 placeholder="Task details and description goes here"
-                id={fieldState.error && "description-input-invalid"}
+                id="task-description-input"
                 aria-invalid={!!fieldState.error}
                 value={value ?? ""}
                 {...props}
@@ -211,10 +207,11 @@ export const TaskForm = ({
 
           return (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel>Status</FieldLabel>
+              <FieldLabel htmlFor="task-status-input">Status</FieldLabel>
               <FieldContent>
                 <Select value={value} onValueChange={onChange} {...props}>
                   <SelectTrigger
+                    id="task-status-input"
                     aria-invalid={!!fieldState.error}
                     className="w-full"
                   >
@@ -250,9 +247,11 @@ export const TaskForm = ({
         name="projectId"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel>Project</FieldLabel>
+            <FieldLabel htmlFor="task-project-input">Project</FieldLabel>
             <FieldContent>
               <ProjectCommandSelect
+                id="task-project-input"
+                fieldError={!!fieldState.error}
                 initialProject={defaultValues?.project}
                 value={field.value}
                 onValueChange={field.onChange}
@@ -270,9 +269,11 @@ export const TaskForm = ({
 
           return (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel>Milestone</FieldLabel>
+              <FieldLabel htmlFor="task-milestone-input">Milestone</FieldLabel>
               <FieldContent>
                 <MilestoneCommandSelect
+                  id="task-milestone-input"
+                  fieldError={!!fieldState.error}
                   initialValue={defaultValues?.milestone}
                   value={field.value}
                   onValueChange={field.onChange}
@@ -293,9 +294,13 @@ export const TaskForm = ({
           name="scheduledAt"
           render={({ field: { value, onChange, ...props }, fieldState }) => (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel>Scheduled at</FieldLabel>
+              <FieldLabel htmlFor="task-scheduled-at-input">
+                Scheduled at
+              </FieldLabel>
               <FieldContent>
                 <PopoverCalendar
+                  id="task-scheduled-at-input"
+                  fieldError={!!fieldState.error}
                   mode="single"
                   value={value}
                   onValueChange={onChange}
@@ -316,9 +321,11 @@ export const TaskForm = ({
           name="dueAt"
           render={({ field: { value, onChange, ...props }, fieldState }) => (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel>Due at</FieldLabel>
+              <FieldLabel htmlFor="task-due-at-input">Due at</FieldLabel>
               <FieldContent>
                 <PopoverCalendar
+                  id="task-due-at-input"
+                  fieldError={!!fieldState.error}
                   mode="single"
                   value={value}
                   onValueChange={onChange}

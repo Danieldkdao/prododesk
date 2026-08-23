@@ -100,14 +100,8 @@ export const readDocumentsDb = async (
 
   const sortByMap: Record<DocumentsSortByOption, SQL<unknown>[]> = {
     oldest: [asc(DocumentTable.createdAt), asc(DocumentTable.id)],
-    recently_created: [
-      desc(DocumentTable.createdAt),
-      desc(DocumentTable.id),
-    ],
-    recently_updated: [
-      desc(DocumentTable.updatedAt),
-      desc(DocumentTable.id),
-    ],
+    recently_created: [desc(DocumentTable.createdAt), desc(DocumentTable.id)],
+    recently_updated: [desc(DocumentTable.updatedAt), desc(DocumentTable.id)],
   };
 
   const normalizedSearch = search?.trim();
@@ -270,6 +264,12 @@ export const updateDocumentDb = async (
   options?: ActivityMutationOptions,
 ) => {
   const { source = "user", tx, chatRunId } = options ?? {};
+  const existingProject = document.projectId
+    ? await confirmUserProjectOwnership(document.projectId, undefined, tx)
+    : null;
+  if (document.projectId && !existingProject)
+    throw new Error("No existing project found.");
+
   const existingDocument = await confirmUserDocumentOwnership(
     documentId,
     undefined,

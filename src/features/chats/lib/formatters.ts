@@ -31,6 +31,7 @@ import {
   ShapesIcon,
   SlidersHorizontalIcon,
   Trash2Icon,
+  UserRoundSearchIcon,
 } from "lucide-react";
 
 export const formatToolNameForChat = (toolName: ToolName) => {
@@ -258,6 +259,13 @@ export const formatToolNameForChat = (toolName: ToolName) => {
         finished: "reading activity",
         error: "Read activity",
         icon: ActivityIcon,
+      };
+    case "readUserProfile":
+      return {
+        preparing: "read user profile",
+        finished: "reading user profile",
+        error: "Read user profile",
+        icon: UserRoundSearchIcon,
       };
     default:
       throw new Error(`Unknown tool name: ${toolName satisfies never}`);

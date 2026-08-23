@@ -23,6 +23,7 @@ import { GENERAL_ERROR_MESSAGE } from "@/lib/constants";
 import Link from "next/link";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { VerifyAccount } from "@/components/auth/verify-account";
+import { SocialProvider } from "@/features/settings/lib/constants";
 
 const formSchema = z.object({
   email: z.email({ error: "Please enter a valid email." }),
@@ -83,7 +84,7 @@ const SignInPage = () => {
     });
   };
 
-  const handleSocialSignIn = async (provider: "google" | "github") => {
+  const handleSocialSignIn = async (provider: SocialProvider) => {
     setIsSocialSignIn(true);
     await authClient.signIn.social({
       provider,
@@ -157,14 +158,14 @@ const SignInPage = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
-                <FieldLabel htmlFor={fieldState.error && "email-input-invalid"}>
+                <FieldLabel htmlFor="sign-in-email-input">
                   Email
                 </FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}
                     placeholder="Enter your email here..."
-                    id={fieldState.error && "email-input-invalid"}
+                    id="sign-in-email-input"
                     aria-invalid={!!fieldState.error}
                   />
                 </FieldContent>
@@ -177,16 +178,14 @@ const SignInPage = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
-                <FieldLabel
-                  htmlFor={fieldState.error && "password-input-invalid"}
-                >
+                <FieldLabel htmlFor="sign-in-password-input">
                   Password
                 </FieldLabel>
                 <FieldContent>
                   <PasswordInput
                     {...field}
                     placeholder="••••••••••••"
-                    id={fieldState.error && "password-input-invalid"}
+                    id="sign-in-password-input"
                     aria-invalid={!!fieldState.error}
                   />
                 </FieldContent>

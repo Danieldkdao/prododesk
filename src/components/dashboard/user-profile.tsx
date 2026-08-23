@@ -27,6 +27,7 @@ import {
 } from "../ui/dropdown-menu";
 import { Separator } from "../ui/separator";
 import { UserAvatar } from "../user-avatar";
+import Link from "next/link";
 
 const themes = [
   { label: "Light", theme: "light", icon: SunIcon },
@@ -85,10 +86,17 @@ export const UserProfile = () => {
         </div>
         <Separator />
         <div className="w-full">
-          <DropdownMenuItem>
-            <SettingsIcon />
-            Settings
-          </DropdownMenuItem>
+          <DropdownMenuItem
+            render={
+              <Link
+                href="/dashboard/settings"
+                className="flex items-center gap-2"
+              >
+                <SettingsIcon />
+                Settings
+              </Link>
+            }
+          ></DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <selectedTheme.icon />

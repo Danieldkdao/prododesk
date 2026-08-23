@@ -11,17 +11,19 @@ import { cn } from "@/lib/utils";
 import { formatColor } from "@/lib/formatters";
 
 export const ColorPicker = ({
+  id,
   fieldError,
   value,
   onValueChange,
   ...props
 }: {
+  id?: string;
   fieldError: boolean;
   value?: Color | null | undefined;
 } & Omit<ComponentProps<typeof Select>, "value">) => {
   return (
     <Select value={value} onValueChange={onValueChange} {...props}>
-      <SelectTrigger aria-invalid={fieldError} className="w-full">
+      <SelectTrigger id={id} aria-invalid={fieldError} className="w-full">
         <SelectValue>
           {value ? (
             <div className="flex items-center gap-2">

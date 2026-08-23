@@ -1,12 +1,13 @@
 import { relations } from "drizzle-orm";
 import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { ActivityTable } from "./activity";
 import { AreaTable } from "./area";
 import { ChatTable } from "./chat";
 import { DocumentTable } from "./document";
 import { MilestoneTable } from "./milestone";
 import { ProjectTable } from "./project";
+import { SettingsTable } from "./settings";
 import { TaskTable } from "./task";
-import { ActivityTable } from "./activity";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -81,7 +82,7 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-export const userRelations = relations(user, ({ many }) => ({
+export const userRelations = relations(user, ({ one, many }) => ({
   sessions: many(session),
   accounts: many(account),
   tasks: many(TaskTable),
@@ -91,6 +92,7 @@ export const userRelations = relations(user, ({ many }) => ({
   documents: many(DocumentTable),
   milestones: many(MilestoneTable),
   activity: many(ActivityTable),
+  settings: one(SettingsTable),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

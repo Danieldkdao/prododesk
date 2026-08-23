@@ -71,6 +71,7 @@ import { LinkIcon } from "@/components/tiptap/tiptap-icons/link-icon";
 
 // --- Hooks ---
 import { useCursorVisibility } from "@/hooks/use-cursor-visibility";
+import { useRefRect } from "@/hooks/use-element-rect";
 import { useIsBreakpoint } from "@/hooks/use-is-breakpoint";
 import { useWindowSize } from "@/hooks/use-window-size";
 
@@ -319,9 +320,13 @@ export function SimpleEditor({
     },
   });
 
+  const toolbarRect = useRefRect(toolbarRef, {
+    throttleMs: 100,
+    useResizeObserver: true,
+  });
   const rect = useCursorVisibility({
     editor,
-    overlayHeight: toolbarRef.current?.getBoundingClientRect().height ?? 0,
+    overlayHeight: toolbarRect.height,
   });
 
   useEffect(() => {
@@ -331,7 +336,7 @@ export function SimpleEditor({
   }, [isMobile, mobileView]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
 
     const currentValue = editor.getMarkdown();
 

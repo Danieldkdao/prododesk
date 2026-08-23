@@ -10,7 +10,7 @@ export interface ElementRectOptions {
    * The element to track. Can be an Element, ref, or selector string.
    * Defaults to document.body if not provided.
    */
-  element?: Element | React.RefObject<Element> | string | null
+  element?: Element | React.RefObject<Element | null> | string | null
   /**
    * Whether to enable rect tracking
    */
@@ -159,7 +159,7 @@ export function useBodyRect(
  * Convenience hook for tracking a ref element's rect
  */
 export function useRefRect<T extends Element>(
-  ref: React.RefObject<T>,
+  ref: React.RefObject<T | null>,
   options: Omit<ElementRectOptions, "element"> = {}
 ): RectState {
   return useElementRect({ ...options, element: ref })

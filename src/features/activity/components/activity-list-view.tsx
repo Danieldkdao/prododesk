@@ -10,7 +10,7 @@ import {
 import { useActivityParams } from "../hooks/use-activity-params";
 import { ActivityListViews } from "./activity-list-views";
 
-export const ActivityListTable = ({
+export const ActivityListView = ({
   response,
   areaIds,
   projectIds,
@@ -84,7 +84,11 @@ export const ActivityListTable = ({
     <div>
       <div className="flex flex-col w-full">
         {activity.length ? (
-          <ActivityListViews activity={activity} showProject={showProject} />
+          <ActivityListViews
+            activity={activity}
+            showProject={showProject}
+            isPending={isPending}
+          />
         ) : (
           <NotFound
             title="No activity found"

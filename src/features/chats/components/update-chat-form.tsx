@@ -53,12 +53,12 @@ export const UpdateChatForm = ({
         name="name"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel htmlFor={fieldState.error && "invalid-name-input"}>
+            <FieldLabel htmlFor="update-chat-name-input">
               Name
             </FieldLabel>
             <FieldContent>
               <Input
-                id={fieldState.error && "invalid-name-input"}
+                id="update-chat-name-input"
                 aria-invalid={!!fieldState.error}
                 placeholder="Enter chat name"
                 {...field}

@@ -72,7 +72,7 @@ export const AreaForm = ({
         name="name"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel htmlFor={fieldState.error && "invalid-area-name-input"}>
+            <FieldLabel htmlFor="area-name-input">
               Name
             </FieldLabel>
             <FieldContent>
@@ -103,7 +103,7 @@ export const AreaForm = ({
                   )}
                 />
                 <Input
-                  id={fieldState.error && "invalid-area-name-input"}
+                  id="area-name-input"
                   placeholder="Enter a name"
                   aria-invalid={!!fieldState.error}
                   className="flex-1 w-full"
@@ -120,14 +120,12 @@ export const AreaForm = ({
         name="description"
         render={({ field: { value, ...props }, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel
-              htmlFor={fieldState.error && "invalid-area-description-input"}
-            >
+            <FieldLabel htmlFor="area-description-input">
               Description
             </FieldLabel>
             <FieldContent>
               <Textarea
-                id={fieldState.error && "invalid-area-description-input"}
+                id="area-description-input"
                 placeholder="Enter a description"
                 aria-invalid={!!fieldState.error}
                 value={value ?? ""}
@@ -142,9 +140,10 @@ export const AreaForm = ({
         name="color"
         render={({ field: { value, onChange }, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel>Color</FieldLabel>
+            <FieldLabel htmlFor="area-color-input">Color</FieldLabel>
             <FieldContent>
               <ColorPicker
+                id="area-color-input"
                 value={value}
                 onValueChange={onChange}
                 fieldError={!!fieldState.error}

@@ -99,11 +99,7 @@ export const ProjectForm = ({
         name="name"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel
-              htmlFor={fieldState.error && "project-name-input-invalid"}
-            >
-              Name
-            </FieldLabel>
+            <FieldLabel htmlFor="project-name-input">Name</FieldLabel>
             <FieldContent>
               <div className="w-full flex items-center gap-2">
                 <Controller
@@ -130,7 +126,7 @@ export const ProjectForm = ({
                   )}
                 />
                 <Input
-                  id={fieldState.error && "project-name-input-invalid"}
+                  id="project-name-input"
                   placeholder="Enter the project name here"
                   aria-invalid={!!fieldState.error}
                   className="flex-1"
@@ -147,14 +143,10 @@ export const ProjectForm = ({
         name="outcome"
         render={({ field: { value, ...props }, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel
-              htmlFor={fieldState.error && "project-outcome-input-invalid"}
-            >
-              Outcome
-            </FieldLabel>
+            <FieldLabel htmlFor="project-outcome-input">Outcome</FieldLabel>
             <FieldContent>
               <Textarea
-                id={fieldState.error && "project-outcome-input-invalid"}
+                id="project-outcome-input"
                 placeholder="Enter the project outcome here"
                 aria-invalid={!!fieldState.error}
                 value={value ?? ""}
@@ -174,10 +166,11 @@ export const ProjectForm = ({
         name="status"
         render={({ field: { value, onChange, ...props }, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel>Status</FieldLabel>
+            <FieldLabel htmlFor="project-status-input">Status</FieldLabel>
             <FieldContent>
               <Select value={value} onValueChange={onChange} {...props}>
                 <SelectTrigger
+                  id="project-status-input"
                   aria-invalid={!!fieldState.error}
                   className="w-full"
                 >
@@ -225,9 +218,10 @@ export const ProjectForm = ({
         name="color"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel>Color</FieldLabel>
+            <FieldLabel htmlFor="project-color-input">Color</FieldLabel>
             <FieldContent>
               <ColorPicker
+                id="project-color-input"
                 value={field.value}
                 onValueChange={field.onChange}
                 fieldError={!!fieldState.error}
@@ -242,9 +236,11 @@ export const ProjectForm = ({
         name="areaId"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel>Area</FieldLabel>
+            <FieldLabel htmlFor="project-area-input">Area</FieldLabel>
             <FieldContent>
               <AreaCommandSelect
+                id="project-area-input"
+                fieldError={!!fieldState.error}
                 initialValue={defaultValues?.area}
                 value={field.value}
                 onValueChange={field.onChange}
@@ -263,17 +259,13 @@ export const ProjectForm = ({
           name="startAt"
           render={({ field, fieldState }) => (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel
-                htmlFor={fieldState.error && "invalid-project-start-at-input"}
-              >
-                Start at
-              </FieldLabel>
+              <FieldLabel htmlFor="project-start-at-input">Start at</FieldLabel>
               <FieldContent>
                 <PopoverCalendar
+                  id="project-start-at-input"
                   mode="single"
                   value={field.value}
                   fieldError={!!fieldState.error}
-                  errorStateId="invalid-project-start-at-input"
                   onValueChange={(date) => field.onChange(date)}
                   disabled={{
                     before: dateToUse,
@@ -290,17 +282,13 @@ export const ProjectForm = ({
           name="endAt"
           render={({ field, fieldState }) => (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel
-                htmlFor={fieldState.error && "invalid-project-end-at-input"}
-              >
-                End at
-              </FieldLabel>
+              <FieldLabel htmlFor="project-end-at-input">End at</FieldLabel>
               <FieldContent>
                 <PopoverCalendar
+                  id="project-end-at-input"
                   mode="single"
                   value={field.value}
                   fieldError={!!fieldState.error}
-                  errorStateId="invalid-project-end-at-input"
                   onValueChange={(date) => field.onChange(date)}
                   disabled={{
                     before: startAtValue ? addDays(startAtValue, 1) : dateToUse,
@@ -322,12 +310,7 @@ export const ProjectForm = ({
               className="flex flex-col gap-2 p-4 border cursor-pointer"
             >
               <div className="flex items-center justify-between gap-2 flex-wrap w-full">
-                <FieldLabel
-                  htmlFor={
-                    fieldState.error && "project-is-archived-input-invalid"
-                  }
-                  onClick={() => onChange(!value)}
-                >
+                <FieldLabel onClick={() => onChange(!value)}>
                   Archived
                 </FieldLabel>
                 <Checkbox

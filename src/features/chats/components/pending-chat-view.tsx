@@ -1,12 +1,12 @@
 "use client";
 
 import { AIChatInput } from "@/components/ai-chat-input";
+import { useChatProvider } from "@/hooks/use-chat-provider";
 import { ModelId } from "@/services/ai/model-ids";
 import { getModelInfo } from "@/services/ai/models";
+import { useState } from "react";
 import { ChatHeader } from "../chat-header";
 import { PendingChatMessagesView } from "./pending-chat-messages-view";
-import { useChatProvider } from "@/hooks/use-chat-provider";
-import { useState } from "react";
 
 export const PendingChatView = ({
   prompt,
@@ -24,10 +24,7 @@ export const PendingChatView = ({
         <ChatHeader />
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        <PendingChatMessagesView
-          prompt={prompt}
-          selectedModel={selectedModel}
-        />
+        <PendingChatMessagesView prompt={prompt} />
       </div>
 
       <div className="shrink-0">

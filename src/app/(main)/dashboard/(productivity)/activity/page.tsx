@@ -2,7 +2,7 @@ import { ErrorState } from "@/components/error-state";
 import { readActivityAction } from "@/features/activity/actions/actions";
 import { ActivityFilters } from "@/features/activity/components/activity-filters";
 import { ActivityListSkeleton } from "@/features/activity/components/activity-list-skeleton";
-import { ActivityListTable } from "@/features/activity/components/activity-list-view";
+import { ActivityListView } from "@/features/activity/components/activity-list-view";
 import { loadActivitySearchParams } from "@/features/activity/lib/activity-params";
 import { SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
@@ -36,7 +36,7 @@ const ActivitySuspense = async ({ searchParams }: SearchParamsType) => {
   return (
     <div className="flex flex-col gap-4">
       <ActivityFilters />
-      <ActivityListTable
+      <ActivityListView
         key={metadata.clientKey}
         response={response}
         showProject

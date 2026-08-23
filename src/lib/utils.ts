@@ -102,8 +102,8 @@ export const formatTimeInput = (time: Date) => {
   return format(time, "HH:mm:ss");
 };
 
-export const nullifyZodSchema = <T extends z.ZodObject>(shape: T) => {
-  const entries = Object.entries(shape).map(([key, value]) => [
+export const nullifyZodSchema = <T extends z.ZodObject>(schema: T) => {
+  const entries = Object.entries(schema.shape).map(([key, value]) => [
     key,
     value.nullish(),
   ]);

@@ -70,10 +70,7 @@ export const ChatViewListMessage = ({
     .filter((part) => part.type === "text")
     .map((part) => part.text)
     .join(" ");
-  const latestUserMsg = messages.findLast((msg) => msg.role === "user");
-  const modelInfo = getModelInfo(
-    msg.metadata?.modelId ?? latestUserMsg?.metadata?.modelId,
-  );
+  const latestUserMsg = messages.findLast((message) => message.role === "user");
   const isLatestMsg = messages.at(-1)?.id === msg.id;
   const latestPart = msg.parts.at(-1);
 
@@ -432,7 +429,9 @@ export const ChatViewListMessage = ({
                                                 </span>
                                               )
                                             ) : part.output ? (
-                                              JSON.stringify(part.output)
+                                              <p className="text-muted-foreground">
+                                                {JSON.stringify(part.output)}
+                                              </p>
                                             ) : (
                                               "No output"
                                             )}

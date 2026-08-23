@@ -91,10 +91,7 @@ export const InitialAIInputClient = () => {
       {isPending && selectedModel ? (
         <>
           <ChatHeader />
-          <PendingChatMessagesView
-            prompt={pendingPrompt ?? ""}
-            selectedModel={selectedModel.id}
-          />
+          <PendingChatMessagesView prompt={pendingPrompt ?? ""} />
         </>
       ) : (
         <div className="w-full flex flex-col items-center justify-center gap-8">
