@@ -30,12 +30,16 @@ export const ProjectCommandSelect = ({
   initialProject,
   value: value,
   onValueChange,
+  className,
+  disabled = false,
 }: {
   id?: string;
   fieldError?: boolean;
   initialProject?: { name: string; icon?: string | null } | null;
   value?: string | null | undefined;
-  onValueChange: (value: unknown) => void;
+  onValueChange: (value: string | null) => void;
+  className?: string;
+  disabled?: boolean;
 }) => {
   const [commandOpen, setCommandOpen] = useState(false);
   const [isSearchPending, startSearchTransition] = useTransition();
@@ -108,7 +112,11 @@ export const ProjectCommandSelect = ({
       <PopoverTrigger
         id={id}
         aria-invalid={!!fieldError}
-        className="border-b cursor-pointer h-11 flex items-center gap-2 w-full min-w-0"
+        className={cn(
+          "border-b cursor-pointer h-11 flex items-center gap-2 w-full min-w-0",
+          className,
+        )}
+        disabled={disabled}
       >
         <div className="min-w-0 flex-1 flex items-center">
           {selectedProject ? (

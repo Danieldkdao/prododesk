@@ -35,7 +35,7 @@ export const SearchInput = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5 w-full border pl-1.5 has-focus-visible:border-primary transition-all duration-300 h-10",
+        "flex items-center gap-1.5 w-full border pl-1.5 has-focus-visible:border-primary transition-all duration-300 h-10 bg-card",
         parentClassName,
       )}
     >

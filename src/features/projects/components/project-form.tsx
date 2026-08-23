@@ -99,9 +99,7 @@ export const ProjectForm = ({
         name="name"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel htmlFor="project-name-input">
-              Name
-            </FieldLabel>
+            <FieldLabel htmlFor="project-name-input">Name</FieldLabel>
             <FieldContent>
               <div className="w-full flex items-center gap-2">
                 <Controller
@@ -145,9 +143,7 @@ export const ProjectForm = ({
         name="outcome"
         render={({ field: { value, ...props }, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel htmlFor="project-outcome-input">
-              Outcome
-            </FieldLabel>
+            <FieldLabel htmlFor="project-outcome-input">Outcome</FieldLabel>
             <FieldContent>
               <Textarea
                 id="project-outcome-input"
@@ -263,9 +259,7 @@ export const ProjectForm = ({
           name="startAt"
           render={({ field, fieldState }) => (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel htmlFor="project-start-at-input">
-                Start at
-              </FieldLabel>
+              <FieldLabel htmlFor="project-start-at-input">Start at</FieldLabel>
               <FieldContent>
                 <PopoverCalendar
                   id="project-start-at-input"
@@ -288,9 +282,7 @@ export const ProjectForm = ({
           name="endAt"
           render={({ field, fieldState }) => (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel htmlFor="project-end-at-input">
-                End at
-              </FieldLabel>
+              <FieldLabel htmlFor="project-end-at-input">End at</FieldLabel>
               <FieldContent>
                 <PopoverCalendar
                   id="project-end-at-input"
@@ -313,17 +305,16 @@ export const ProjectForm = ({
         name="isArchived"
         render={({ field: { value, onChange, ...props }, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <div
+            <label
+              id="project-is-archived-input-invalid"
               className="flex flex-col gap-2 p-4 border cursor-pointer"
             >
               <div className="flex items-center justify-between gap-2 flex-wrap w-full">
-                <FieldLabel
-                  htmlFor="project-is-archived-input"
-                >
+                <FieldLabel onClick={() => onChange(!value)}>
                   Archived
                 </FieldLabel>
                 <Checkbox
-                  id="project-is-archived-input"
+                  id="project-is-archived-input-invalid"
                   aria-invalid={!!fieldState.error}
                   checked={value}
                   onCheckedChange={(checked) => onChange(checked)}
@@ -337,7 +328,7 @@ export const ProjectForm = ({
                   {value ? "" : "not "}archived.
                 </span>
               </FieldDescription>
-            </div>
+            </label>
           </Field>
         )}
       />

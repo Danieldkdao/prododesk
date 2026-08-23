@@ -20,14 +20,16 @@ import {
   updateDocumentAction,
 } from "../actions/actions";
 import { DeleteDocumentButton } from "./delete-document-button";
-
-const getDocumentSignature = (values: { name: string; content: string }) =>
-  JSON.stringify(values);
+import { ProjectCommandSelect } from "@/features/projects/components/project-command-select";
+import { cn } from "@/lib/utils";
 
 type DocumentValues = {
   name: string;
   content: string;
+  projectId: string | null;
 };
+
+const getDocumentSignature = (values: DocumentValues) => JSON.stringify(values);
 
 export const DocumentEditor = ({
   document,
@@ -38,6 +40,7 @@ export const DocumentEditor = ({
   const [documentValues, setDocumentValues] = useState<DocumentValues>({
     name: document.name,
     content: document.content,
+    projectId: document.projectId ?? null,
   });
   const [savePending, setSavePending] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "error" | null>(null);
@@ -48,6 +51,7 @@ export const DocumentEditor = ({
     getDocumentSignature({
       name: document.name,
       content: document.content,
+      projectId: document.projectId ?? null,
     }),
   );
 
@@ -122,6 +126,7 @@ export const DocumentEditor = ({
     const serverValues = {
       name: document.name,
       content: document.content,
+      projectId: document.projectId ?? null,
     };
     const serverSignature = getDocumentSignature(serverValues);
 
@@ -132,7 +137,7 @@ export const DocumentEditor = ({
     if (serverSignature !== currentSignature) {
       setDocumentValues(serverValues);
     }
-  }, [document.content, document.name, documentValues]);
+  }, [document.content, document.name, documentValues, document.projectId]);
 
   return (
     <div className="border bg-card shadow-sm w-full">
@@ -162,18 +167,18 @@ export const DocumentEditor = ({
               Created on {format(document.createdAt, "PPP")}
             </span>
           </div>
-          {document.project && (
-            <Link href={`/dashboard/projects/${document.project.id}`}>
-              <div className="flex items-center gap-2 rounded-xl">
-                {document.project.icon ? (
-                  <span>{document.project.icon}</span>
-                ) : (
-                  <FolderKanbanIcon className="size-5" />
-                )}
-                <span>{document.project.name}</span>
-              </div>
-            </Link>
-          )}
+          <ProjectCommandSelect
+            initialProject={document.project}
+            value={documentValues.projectId}
+            onValueChange={(projectId) =>
+              setDocumentValues((prev) => ({ ...prev, projectId: projectId }))
+            }
+            disabled={savePending}
+            className={cn(
+              "w-fit! border-none h-auto!",
+              !document.project && "italic",
+            )}
+          />
           <div className="flex items-center gap-2">
             {savePending ? (
               <>
