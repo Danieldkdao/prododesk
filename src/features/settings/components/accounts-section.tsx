@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth/auth-client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -20,9 +21,37 @@ import { cn } from "@/lib/utils";
 
 export const AccountsSection = () => {
   return (
-    <Suspense>
+    <Suspense fallback={<AccountsSectionSkeleton />}>
       <AccountsSectionSuspense />
     </Suspense>
+  );
+};
+
+const AccountsSectionSkeleton = () => {
+  const accountRows = socialProviders.length + 1;
+
+  return (
+    <Card className="border">
+      <CardContent className="flex flex-col gap-4" aria-hidden="true">
+        {Array.from({ length: accountRows }).map((_, index) => (
+          <Fragment key={index}>
+            <div className="flex min-w-0 w-full flex-col gap-4 md:flex-row md:items-center md:gap-2">
+              <div className="flex flex-1 items-center gap-2">
+                <Skeleton className="size-13 shrink-0 rounded-lg" />
+                <div className="flex flex-col gap-2">
+                  <Skeleton
+                    className={index === 0 ? "h-5 w-40" : "h-5 w-24"}
+                  />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              </div>
+              <Skeleton className="h-9 w-full md:w-20" />
+            </div>
+            {index < accountRows - 1 && <Separator />}
+          </Fragment>
+        ))}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -35,7 +64,7 @@ const AccountsSectionSuspense = () => {
   const [isLinkPending, startLinkTransition] = useTransition();
   const searchParams = useSearchParams();
 
-  if (isPending) return <div>loading</div>;
+  if (isPending) return <AccountsSectionSkeleton />;
 
   if (!data || error || data?.error || !data.data)
     return (

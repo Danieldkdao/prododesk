@@ -1,6 +1,4 @@
-import { Tool, tool } from "ai";
-import { format } from "date-fns";
-import z from "zod";
+import { Tool } from "ai";
 
 import { activityTools } from "@/features/activity/ai/tools";
 import { areaTools } from "@/features/areas/ai/tools";
@@ -10,17 +8,11 @@ import { projectTools } from "@/features/projects/ai/tools";
 import { taskTools } from "@/features/tasks/ai/tools";
 import { webSearchTools } from "@/features/web-search/ai/tools";
 import { ToolName } from "../tool-contracts";
-
-const getCurrentTimeTool = tool({
-  description: "Allows you to get the current system time.",
-  inputSchema: z.object({}),
-  execute: async () => {
-    const date = new Date();
-    return format(date, "PPPPpppp");
-  },
-});
+import { systemTools } from "./system";
+import { settingsTools } from "@/features/settings/ai/tools";
 
 export const tools = {
+  ...systemTools,
   ...webSearchTools,
   ...taskTools,
   ...areaTools,
@@ -28,5 +20,5 @@ export const tools = {
   ...documentTools,
   ...milestoneTools,
   ...activityTools,
-  getCurrentTime: getCurrentTimeTool,
+  ...settingsTools,
 } satisfies Record<ToolName, Tool>;

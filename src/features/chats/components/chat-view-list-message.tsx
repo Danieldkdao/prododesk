@@ -52,6 +52,7 @@ import {
 } from "@/features/activity/lib/formatters";
 import { formatActivityLink } from "@/features/activity/lib/formatters";
 import Image from "next/image";
+import { ReadUserProfileToolOutput } from "./read-user-profile-tool-output";
 
 export const ChatViewListMessage = ({
   msg,
@@ -70,10 +71,7 @@ export const ChatViewListMessage = ({
     .filter((part) => part.type === "text")
     .map((part) => part.text)
     .join(" ");
-  const latestUserMsg = messages.findLast((msg) => msg.role === "user");
-  const modelInfo = getModelInfo(
-    msg.metadata?.modelId ?? latestUserMsg?.metadata?.modelId,
-  );
+  const latestUserMsg = messages.findLast((message) => message.role === "user");
   const isLatestMsg = messages.at(-1)?.id === msg.id;
   const latestPart = msg.parts.at(-1);
 
@@ -432,7 +430,13 @@ export const ChatViewListMessage = ({
                                                 </span>
                                               )
                                             ) : part.output ? (
-                                              JSON.stringify(part.output)
+                                              toolName === "readUserProfile" ? (
+                                                <ReadUserProfileToolOutput
+                                                  output={part.output}
+                                                />
+                                              ) : (
+                                                JSON.stringify(part.output)
+                                              )
                                             ) : (
                                               "No output"
                                             )}

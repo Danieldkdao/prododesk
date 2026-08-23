@@ -31,6 +31,7 @@ export const toolNames = [
   "moveMilestone",
   "deleteMilestone",
   "readActivity",
+  "readUserProfile",
 ] as const;
 export type ToolName = (typeof toolNames)[number];
 
@@ -67,4 +68,5 @@ export const toolApprovalMap: Record<ToolName, boolean> = {
   moveMilestone: true,
   deleteMilestone: true,
   readActivity: false,
+  readUserProfile: false,
 };
