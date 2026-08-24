@@ -9,8 +9,9 @@ import {
 } from "@/services/ai/models";
 import { PlusIcon, SendIcon, SquareIcon } from "lucide-react";
 import { motion } from "motion/react";
-import Image from "next/image";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { FileDisplay } from "./file-display";
 import { TooltipWrapper } from "./tooltip-wrapper";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -55,10 +56,12 @@ export const AIChatInput = ({
   const [inputLinesChanged, setInputLinesChanged] = useState(false);
   const initialInputHeightRef = useRef<number | null>(null);
 
-  const { inputRef, handleInputChange, previewUrls } = useFileUploads({
-    keyPrefix: "ai-chat",
-    maxFileLimit: 10,
-  });
+  const { inputRef, handleInputChange, previewUrls, error, handleRemoveFile } =
+    useFileUploads({
+      keyPrefix: "ai-chat",
+      accept: "image/jpeg, image/png, application/pdf, .jpg, .jpeg",
+      maxFileLimit: 10,
+    });
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -78,6 +81,12 @@ export const AIChatInput = ({
     );
   }, [value]);
 
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
+
   const submittedPrompt = value.trim();
   const canSubmit =
     !isPending && submittedPrompt.length > 0 && selectedModel !== null;
@@ -87,22 +96,14 @@ export const AIChatInput = ({
       {previewUrls.size ? (
         <div className="flex w-full flex-col gap-2">
           <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-2">
-            {Array.from(previewUrls).map(
-              ([key, value], index) =>
-                value && (
-                  <div
-                    key={`ai-chat-img-${key}-${index}`}
-                    className="relative aspect-square w-full overflow-hidden rounded-md"
-                  >
-                    <Image
-                      src={value}
-                      alt={`Image ${key}`}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                ),
-            )}
+            {Array.from(previewUrls).map(([key, value], index) => (
+              <FileDisplay
+                key={`ai-chat-img-${key}-${index}`}
+                fileKey={key}
+                {...value}
+                handleRemoveFile={handleRemoveFile}
+              />
+            ))}
           </div>
         </div>
       ) : null}
@@ -173,6 +174,7 @@ export const AIChatInput = ({
             className="hidden"
             type="file"
             accept=".jpg, .png, image/jpeg, application/pdf"
+            multiple
             onChange={handleInputChange}
           />
         </motion.div>

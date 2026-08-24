@@ -1,14 +1,27 @@
-export const createFileKey = (
-  file: File,
-  keyPrefix: string,
-  userId: string,
-) => {
+import { ApiResponse } from "@/lib/types";
+
+export const createFileKey = async (file: File, keyPrefix: string) => {
   const safeFileName = file.name
     .trim()
     .replace(/[^a-zA-Z0-9._-]/g, "-")
     .replace(/-+/g, "-");
 
-  return `${userId}-${keyPrefix.replace(/\/+$/, "")}/${crypto.randomUUID()}-${safeFileName}`;
+  const response = await fetch("/api/s3/generate-key", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fileName: safeFileName,
+      keyPrefix,
+    }),
+  });
+  if (!response.ok) return null;
+
+  const data = (await response.json()) as ApiResponse<{ key: string }>;
+  if (data.error) return null;
+
+  return data.data.key;
 };
 
 export const uploadFileWithProgress = (
