@@ -5,6 +5,7 @@ import { chatRoleEnum, modelIdEnum } from "../shared";
 import { ChatTable } from "./chat";
 import { ChatRunTable } from "./chat-run";
 import { MessagePartTable } from "./message-part";
+import { ChatAttachmentTable } from "./chat-attachment";
 
 export const ChatMessageTable = pgTable(
   "chat_messages",
@@ -42,5 +43,6 @@ export const chatMessageRelations = relations(
     }),
     parts: many(MessagePartTable),
     chatRun: one(ChatRunTable),
+    attachments: many(ChatAttachmentTable),
   }),
 );
