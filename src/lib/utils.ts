@@ -12,6 +12,7 @@ import {
 import { twMerge } from "tailwind-merge";
 import z from "zod";
 import { timeSchema } from "./schemas";
+import { envClient } from "@/data/env/client";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -112,4 +113,8 @@ export const nullifyZodSchema = <T extends z.ZodObject>(schema: T) => {
 
 export const isValidDate = (date: unknown): date is Date => {
   return date instanceof Date && !isNaN(date.getTime());
+};
+
+export const generateFileUrl = (key: string) => {
+  return `https://${envClient.NEXT_PUBLIC_TIGRIS_STORAGE_BUCKET}.t3.tigrisfiles.io/${key}`;
 };
