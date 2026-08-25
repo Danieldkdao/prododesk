@@ -1,9 +1,10 @@
 import { db, DbMutationOptions, DbTransaction } from "@/db/db";
-import { ChatTable, ChatInsertType } from "@/db/schema";
-import { revalidateChatCache } from "./cache/chats";
-import { and, desc, eq, ilike, or, SQL } from "drizzle-orm";
+import { ChatInsertType, ChatTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
+import { deleteFilesFromStorage } from "@/services/tigris/delete-files";
+import { and, desc, eq, ilike, or, SQL } from "drizzle-orm";
+import { revalidateChatCache } from "./cache/chats";
 
 export const readChatsDb = async (filterOptions: {
   userId?: string;
@@ -102,11 +103,35 @@ export const deleteChatDb = async (
   chatId: string,
   options?: DbMutationOptions,
 ) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
   const { tx } = options ?? {};
+  const existingChat = await (tx ?? db).query.ChatTable.findFirst({
+    where: and(eq(ChatTable.id, chatId), eq(ChatTable.userId, userId)),
+    with: {
+      messages: {
+        with: {
+          attachments: true,
+        },
+      },
+    },
+  });
+  if (!existingChat) return null;
+
+  const attachmentKeys = existingChat.messages
+    .flatMap((message) => message.attachments)
+    .map((attachment) => attachment.storageKey);
+  if (attachmentKeys.length > 0) {
+    const deleteSuccess = await deleteFilesFromStorage(attachmentKeys);
+    if (!deleteSuccess) throw new Error("Failed to delete chat attachments.");
+  }
+
   const [deletedChat] = await (tx ?? db)
     .delete(ChatTable)
     .where(eq(ChatTable.id, chatId))
     .returning();
+  if (!deletedChat) throw new Error("Failed to delete chat.");
 
   revalidateChatCache(deletedChat.userId, deletedChat.id);
 

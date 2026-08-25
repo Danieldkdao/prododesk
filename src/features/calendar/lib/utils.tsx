@@ -1,7 +1,4 @@
-import { TooltipWrapper } from "@/components/tooltip-wrapper";
-import { CircularProgressIndicator } from "@/components/ui/circular-progress-indicator";
 import { TaskSelectType } from "@/db/schema";
-import { cn } from "@/lib/utils";
 import {
   addDays,
   isSameDay as checkIsSameDay,
@@ -16,19 +13,6 @@ import {
   startOfDay,
   subDays,
 } from "date-fns";
-import { CheckCircle2Icon } from "lucide-react";
-import { ReactElement } from "react";
-
-type CalendarDayTasksStatus =
-  | "no_tasks_today"
-  | "no_tasks_other_day"
-  | "all_tasks_complete"
-  | "incomplete_tasks"
-  | "day_not_in_month";
-type CalendarDayTasksStatusData = {
-  dayContent: ReactElement | null;
-  bgColor: string | null;
-};
 
 export const calculateCalendarValues = (dateToUse: Date) => {
   const startOfMonth = getStartOfMonth(dateToUse);
@@ -81,25 +65,4 @@ export const calculateCalendarDayTasksValues = (
     incompleteTaskCount,
     taskCount,
   };
-};
-
-const getCalendarDayTasksStatus = (
-  dateToUse: Date,
-  date: Date,
-  tasks: TaskSelectType[],
-) => {
-  const { isToday, isSameMonth, hasNoTasks, allTasksCompleted } =
-    calculateCalendarDayTasksValues(dateToUse, date, tasks);
-
-  const status: CalendarDayTasksStatus = isSameMonth
-    ? hasNoTasks
-      ? isToday
-        ? "no_tasks_today"
-        : "no_tasks_other_day"
-      : allTasksCompleted
-        ? "all_tasks_complete"
-        : "incomplete_tasks"
-    : "day_not_in_month";
-
-  return status;
 };

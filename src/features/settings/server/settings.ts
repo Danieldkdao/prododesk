@@ -2,6 +2,7 @@ import { db } from "@/db/db";
 import {
   ActivityTable,
   AreaTable,
+  ChatAttachmentTable,
   ChatTable,
   DocumentTable,
   MilestoneTable,
@@ -40,6 +41,7 @@ import {
   getUserTaskTag,
 } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { deleteFilesFromStorage } from "@/services/tigris/delete-files";
 import { eq } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 
@@ -49,6 +51,18 @@ export const resetAccountDataDb = async () => {
 
   try {
     const deletedData = await db.transaction(async (tx) => {
+      const attachmentKeys = (
+        await tx.query.ChatAttachmentTable.findMany({
+          where: eq(ChatAttachmentTable.userId, userId),
+        })
+      ).map((attachment) => attachment.storageKey);
+      if (attachmentKeys.length > 0) {
+        const deleteSuccess = await deleteFilesFromStorage(attachmentKeys);
+        if (!deleteSuccess) {
+          throw new Error("Failed to delete chat attachments from storage.");
+        }
+      }
+
       const deletedChats = await tx
         .delete(ChatTable)
         .where(eq(ChatTable.userId, userId))

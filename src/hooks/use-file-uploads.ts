@@ -4,6 +4,7 @@ import {
   createFileKey,
   uploadFileWithProgress,
 } from "@/services/tigris/helpers";
+import { deleteFilesFromStorage } from "@/services/tigris/delete-files";
 import {
   ChangeEvent,
   DragEvent,
@@ -26,7 +27,6 @@ export const useFileUploads = (props: {
   accept?: string;
   keyPrefix: string;
   uploadMessage?: string;
-  deleteMessage?: string;
   maxFileLimit?: number;
   maxFileSizeBytes?: number;
   defaultFiles?: Map<string, { name: string; type: string }>;
@@ -34,7 +34,6 @@ export const useFileUploads = (props: {
   const {
     accept = "*",
     keyPrefix,
-    deleteMessage,
     maxFileLimit = 1,
     defaultFiles,
     maxFileSizeBytes = 10 * 1024 * 1024,
