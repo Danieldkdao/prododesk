@@ -80,7 +80,7 @@ export const updateChatDb = async (
   return updatedChat;
 };
 
-export const confirmChatOwnership = async (
+export const confirmUserChatOwnership = async (
   chatId: string,
   otherQueries?: SQL<unknown> | undefined,
   tx?: DbTransaction,

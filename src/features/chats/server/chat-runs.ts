@@ -9,7 +9,7 @@ import {
 } from "@/db/schema";
 import { SQLMap } from "@/lib/types";
 import { and, eq, getTableColumns, inArray } from "drizzle-orm";
-import { confirmChatOwnership } from "./chats";
+import { confirmUserChatOwnership } from "./chats";
 import { revalidateChatCache } from "./cache/chats";
 import { getCurrentUser } from "@/lib/auth/helpers";
 
@@ -45,7 +45,7 @@ export const insertChatRunDb = async (
   options?: DbMutationOptions,
 ) => {
   const { tx } = options ?? {};
-  const existingChat = await confirmChatOwnership(
+  const existingChat = await confirmUserChatOwnership(
     chatRun.chatId,
     undefined,
     tx,
@@ -68,7 +68,7 @@ export const upsertChatRunDb = async (
   options?: DbMutationOptions,
 ) => {
   const { tx } = options ?? {};
-  const existingChat = await confirmChatOwnership(
+  const existingChat = await confirmUserChatOwnership(
     chatRun.chatId,
     undefined,
     tx,
@@ -109,7 +109,7 @@ export const updateChatRunDb = async (
   const existingChatRun = await findChatRunDb({ id: runId }, tx);
   if (!existingChatRun) return null;
 
-  const existingChat = await confirmChatOwnership(
+  const existingChat = await confirmUserChatOwnership(
     existingChatRun.chatId,
     undefined,
     tx,

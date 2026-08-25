@@ -1,6 +1,6 @@
 import { db } from "@/db/db";
 import { ChatMessageTable, MessagePartTable } from "@/db/schema";
-import { confirmChatOwnership } from "@/features/chats/server/chats";
+import { confirmUserChatOwnership } from "@/features/chats/server/chats";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   NO_PERMISSION_DATA_MESSAGE,
@@ -32,7 +32,7 @@ export const GET = async (
       { status: 401 },
     );
 
-  const existingChat = await confirmChatOwnership(chatId);
+  const existingChat = await confirmUserChatOwnership(chatId);
   if (!existingChat)
     return NextResponse.json(
       { error: NO_PERMISSION_DATA_MESSAGE },
@@ -46,6 +46,7 @@ export const GET = async (
       parts: {
         orderBy: [asc(MessagePartTable.order), asc(MessagePartTable.id)],
       },
+      attachments: true,
     },
   });
 
@@ -56,6 +57,9 @@ export const GET = async (
     metadata: {
       createdAt: msg.createdAt,
       modelId: msg.modelId,
+      chatId: msg.chatId,
+      responseToClientId: msg.responseToClientId,
+      attachments: msg.attachments,
     },
   })) as unknown as CustomUIMessage[];
 

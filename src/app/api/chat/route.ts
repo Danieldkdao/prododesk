@@ -1,6 +1,7 @@
 import { db } from "@/db/db";
 import { ChatMessageTable, MessagePartTable } from "@/db/schema";
 import { ArtifactActivityType } from "@/features/activity/lib/types";
+import { insertChatAttachmentDb } from "@/features/chat-attachments/server/chat-attachments";
 import {
   findChatMessageDb,
   insertChatMessageDb,
@@ -13,7 +14,7 @@ import {
   updateChatRunDb,
   upsertChatRunDb,
 } from "@/features/chats/server/chat-runs";
-import { confirmChatOwnership } from "@/features/chats/server/chats";
+import { confirmUserChatOwnership } from "@/features/chats/server/chats";
 import { insertMessagePartDb } from "@/features/chats/server/message-parts";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -30,7 +31,7 @@ import { openrouter } from "@/services/ai/models/openrouter";
 import { CHAT_INSTRUCTIONS } from "@/services/ai/prompts";
 import { toolApprovalMap, ToolName } from "@/services/ai/tool-contracts";
 import { tools } from "@/services/ai/tools";
-import { CustomUIMessage } from "@/services/ai/types";
+import { CustomUIMessage, FileAttachment } from "@/services/ai/types";
 import {
   consumeStream,
   createAgentUIStreamResponse,
@@ -76,7 +77,7 @@ export const POST = async (req: Request) => {
     return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 404 });
   }
 
-  const confirmation = await confirmChatOwnership(chatId);
+  const confirmation = await confirmUserChatOwnership(chatId);
   if (!confirmation) {
     return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 404 });
   }
@@ -130,6 +131,40 @@ export const POST = async (req: Request) => {
         );
 
         if (!insertedPart) throw new APIError("Failed to insert message part.");
+
+        const userFileParts = latestUserMessage.parts.filter(
+          (part) => part.type === "file",
+        );
+
+        const filteredFileParts = userFileParts.filter(
+          (part): part is FileAttachment =>
+            part.providerMetadata?.prododesk.storageKey !== undefined,
+        );
+
+        if (filteredFileParts.length) {
+          const filePartsInsertions = await Promise.all(
+            filteredFileParts.map((part) =>
+              insertChatAttachmentDb(
+                {
+                  userId,
+                  storageKey: part.providerMetadata.prododesk.storageKey,
+                  messageId: insertedMessage.id,
+                  fileName: part.filename,
+                  fileType: part.mediaType,
+                },
+                tx,
+              ),
+            ),
+          );
+          if (
+            filePartsInsertions.filter(Boolean).length !==
+            filteredFileParts.length
+          ) {
+            throw new APIError(
+              "Failed to insert one or more file attachments.",
+            );
+          }
+        }
       });
     } else {
       const existingChatRun = await findChatRunDb({

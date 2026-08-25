@@ -15,7 +15,12 @@ import {
 } from "react";
 import { toast } from "sonner";
 
-type CustomFile = { url: string | null; name: string; type: string };
+export type CustomFile = {
+  url: string | null;
+  name: string;
+  type: string;
+  key?: string;
+};
 
 export const useFileUploads = (props: {
   accept?: string;
@@ -23,6 +28,7 @@ export const useFileUploads = (props: {
   uploadMessage?: string;
   deleteMessage?: string;
   maxFileLimit?: number;
+  maxFileSizeBytes?: number;
   defaultFiles?: Map<string, { name: string; type: string }>;
 }) => {
   const {
@@ -31,10 +37,11 @@ export const useFileUploads = (props: {
     deleteMessage,
     maxFileLimit = 1,
     defaultFiles,
+    maxFileSizeBytes = 10 * 1024 * 1024,
   } = props;
 
   const [files, setFiles] = useState<
-    Map<string, { name: string; type?: string }>
+    Map<string, { name: string; type?: string; key: string }>
   >(defaultFiles ?? new Map());
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -51,25 +58,29 @@ export const useFileUploads = (props: {
     return new Map(
       Array.from(
         new Set([
-          ...Array.from(files).map(([key]) => key),
-          Array.from(localPreviewUrls).map(([key]) => key),
+          ...Array.from(files).map(([id]) => id),
+          ...Array.from(localPreviewUrls).map(([id]) => id),
         ]),
       )
-        .map((key) => {
-          if (typeof key !== "string") return null;
+        .map((id) => {
+          if (typeof id !== "string") return null;
 
-          const localPreviewUrl = localPreviewUrls.get(key);
-          const file = files.get(key);
+          const localPreviewUrl = localPreviewUrls.get(id);
+          const file = files.get(id);
           if (!localPreviewUrl && !file) return null;
           const previewUrl = localPreviewUrl
             ? localPreviewUrl
-            : {
-                url: generateFileUrl(key),
-                name: file?.name ?? "Unknown file",
-                type: file?.type,
-              };
+            : file
+              ? {
+                  url: generateFileUrl(file.key),
+                  name: file?.name ?? "Unknown file",
+                  type: file?.type,
+                  key: file.key,
+                }
+              : null;
+          if (!previewUrl) return null;
 
-          return [key, previewUrl];
+          return [id, previewUrl];
         })
         .filter((pair): pair is [string, CustomFile] => Boolean(pair)),
     );
@@ -86,19 +97,17 @@ export const useFileUploads = (props: {
       localPreviewUrls.forEach(({ url }) => url && URL.revokeObjectURL(url));
   }, [localPreviewUrls]);
 
-  useEffect(() => {
-    if (!files.size) return;
-
-    console.log("FILES:", files);
-    console.log("PREVIEW URLS:", previewUrls);
-
-    setLocalPreviewUrls(new Map());
-  }, [files]);
-
   const validateFiles = useCallback(
     (incomingFiles: File[]) => {
       if (files.size + incomingFiles.length > maxFileLimit) {
         setError(`Max file limit reached: ${maxFileLimit}`);
+        return false;
+      }
+
+      if (incomingFiles.some((file) => file.size > maxFileSizeBytes)) {
+        setError(
+          `File size exceeds the limit of ${maxFileSizeBytes / (1024 * 1024)} MB`,
+        );
         return false;
       }
 
@@ -124,7 +133,7 @@ export const useFileUploads = (props: {
       setError("");
       return true;
     },
-    [accept, maxFileLimit, files.size],
+    [accept, maxFileLimit, maxFileSizeBytes, files.size],
   );
 
   const handleFiles = useCallback(
@@ -134,28 +143,24 @@ export const useFileUploads = (props: {
       if (!validateFiles(fileArray))
         return toast.error("Failed to validate files.");
 
-      const resolvedFileKeyMap = (
-        await Promise.all(
-          fileArray.map((file) =>
-            createFileKey(file, keyPrefix).then((key) => [key, file]),
-          ),
-        )
-      ).filter((pair): pair is [string, File] => Boolean(pair[0]));
-      if (resolvedFileKeyMap.length !== fileArray.length)
-        return toast.error("Failed to upload images.");
+      const resolvedFileIdMap = fileArray.map((file) => {
+        const fileId = crypto.randomUUID();
 
-      const fileKeyMap = new Map(resolvedFileKeyMap);
-      const fileKeys = Array.from(fileKeyMap).map(([key]) => key);
+        return [fileId, file] as const;
+      });
+
+      const fileIdMap = new Map(resolvedFileIdMap);
+      const fileIds = Array.from(fileIdMap).map(([id]) => id);
 
       const filesToUpload = new Map(
-        fileKeys.map((key) => {
-          const file = fileKeyMap.get(key);
+        fileIds.map((id) => {
+          const file = fileIdMap.get(id);
 
           const fileName = file?.name ?? "Unknown file";
           const fileType = file?.type;
 
           return [
-            key,
+            id,
             {
               url: file ? URL.createObjectURL(file) : null,
               name: fileName,
@@ -171,22 +176,35 @@ export const useFileUploads = (props: {
       setLocalPreviewUrls((prev) => new Map([...prev, ...filesToUpload]));
       setIsUploading(true);
       setUploadProgresses(
-        (prev) =>
-          new Map([...prev, ...new Map(fileKeys.map((key) => [key, 0]))]),
+        (prev) => new Map([...prev, ...new Map(fileIds.map((id) => [id, 0]))]),
       );
 
       try {
+        const fileIdKeys = (
+          await Promise.all(
+            Array.from(fileIdMap).map(([id, file]) =>
+              createFileKey(file, keyPrefix).then((key) => ({ id, file, key })),
+            ),
+          )
+        )
+          .filter((item): item is { id: string; file: File; key: string } =>
+            Boolean(item.key),
+          )
+          .map(({ id, file, key }) => [id, { file, key }] as const);
+        if (fileIdKeys.length !== fileIdMap.size)
+          throw new Error("Failed to generate file keys.");
+
         const presignedPayloads = (await Promise.all(
-          fileKeys.map((key) =>
+          fileIdKeys.map(([id, { key }]) =>
             fetch("/api/s3/upload", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ key }),
             })
               .then((res) => res.json())
-              .then((data) => ({ ...data, key })),
+              .then((data) => ({ ...data, key, id })),
           ),
-        )) as (ApiResponse<{ url: string }> & { key: string })[];
+        )) as (ApiResponse<{ url: string }> & { key: string; id: string })[];
 
         const presignedUrls = presignedPayloads
           .map((res) =>
@@ -195,22 +213,28 @@ export const useFileUploads = (props: {
               : {
                   url: res.data.url,
                   key: res.key,
-                  file: fileKeyMap.get(res.key),
+                  file: fileIdMap.get(res.id),
+                  id: res.id,
                 },
           )
           .filter(
             (
               presignedUrl,
-            ): presignedUrl is { url: string; key: string; file: File } =>
+            ): presignedUrl is {
+              url: string;
+              key: string;
+              file: File;
+              id: string;
+            } =>
               Boolean(presignedUrl) &&
               Boolean(presignedUrl?.url) &&
               Boolean(presignedUrl?.file),
           );
 
         if (
-          fileKeys.length !== presignedPayloads.length ||
+          fileIds.length !== presignedPayloads.length ||
           presignedPayloads.some((payload) => payload.error) ||
-          fileKeys.length !== presignedUrls.length
+          fileIds.length !== presignedUrls.length
         )
           throw new Error(
             presignedPayloads.find((payload) => payload.error)?.message ||
@@ -218,30 +242,41 @@ export const useFileUploads = (props: {
           );
 
         await Promise.all(
-          presignedUrls.map(({ url, key, file }) =>
+          presignedUrls.map(({ url, file, id }) =>
             uploadFileWithProgress(url, file, (value) =>
               setUploadProgresses((prev) => {
                 const next = new Map(prev);
-                next.set(key, value);
+                next.set(id, value);
                 return next;
               }),
             ),
           ),
         );
 
-        setFiles(
-          (prev) =>
-            new Map([
-              ...Array.from(prev),
-              ...presignedUrls.map(
-                ({ key, file }) =>
-                  [
-                    key,
-                    { name: file?.name ?? "Unknown file", type: file?.type },
-                  ] as const,
-              ),
-            ]),
-        );
+        setFiles((prev) => {
+          const next = new Map(prev);
+
+          for (const { id, key, file } of presignedUrls) {
+            next.set(id, { name: file.name, type: file.type, key });
+          }
+
+          return next;
+        });
+
+        setLocalPreviewUrls((prev) => {
+          const next = new Map(prev);
+
+          for (const { id } of presignedUrls) {
+            const preview = next.get(id);
+            if (preview?.url) {
+              URL.revokeObjectURL(preview.url);
+            }
+
+            next.delete(id);
+          }
+
+          return next;
+        });
       } catch (error) {
         console.error(error);
         const message = Error.isError(error)
@@ -290,37 +325,40 @@ export const useFileUploads = (props: {
     }
   };
 
-  const removeFileFromState = (key: string) => {
+  const removeFileFromState = (id: string) => {
     setLocalPreviewUrls((prev) => {
       const next = new Map(prev);
-      next.delete(key);
+      next.delete(id);
       return next;
     });
     setFiles((prev) => {
       const next = new Map(prev);
-      next.delete(key);
+      next.delete(id);
       return next;
     });
     setUploadProgresses((prev) => {
       const next = new Map(prev);
-      next.delete(key);
+      next.delete(id);
       return next;
     });
   };
 
-  const handleRemoveFile = async (key: string) => {
-    if (!files.get(key)) {
-      removeFileFromState(key);
+  const handleRemoveFile = async (id: string) => {
+    if (!files.get(id)) {
+      removeFileFromState(id);
       return;
     }
 
     setIsDeleting(false);
 
+    const file = files.get(id);
+    if (!file) return toast.error("File not found.");
+
     try {
       const presignedResponse = await fetch("/api/s3/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key }),
+        body: JSON.stringify({ key: file.key }),
       });
 
       const presignedPayload = (await presignedResponse.json()) as ApiResponse<{
@@ -339,8 +377,7 @@ export const useFileUploads = (props: {
       if (!deleteResponse.ok)
         throw new Error("Failed to delete file from storage.");
 
-      removeFileFromState(key);
-      toast.success(deleteMessage || "File removed successfully!");
+      removeFileFromState(id);
     } catch (error) {
       console.error(error);
       const message = Error.isError(error)
@@ -351,6 +388,11 @@ export const useFileUploads = (props: {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const clearFiles = () => {
+    setFiles(new Map());
+    setLocalPreviewUrls(new Map());
   };
 
   return {
@@ -378,5 +420,8 @@ export const useFileUploads = (props: {
     handleDrop,
     handleInputChange,
     handleRemoveFile,
+    clearFiles,
   };
 };
+
+export type UseFileUploadsReturnType = ReturnType<typeof useFileUploads>;

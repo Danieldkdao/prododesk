@@ -1,8 +1,9 @@
+import { relations } from "drizzle-orm";
 import { pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { createdAt, id } from "../helpers";
 import { ChatMessageTable } from "./chat-message";
 import { user } from "./user";
-import { relations } from "drizzle-orm";
+import { createSelectSchema } from "drizzle-zod";
 
 export const ChatAttachmentTable = pgTable("chat_attachments", {
   id,
@@ -17,6 +18,9 @@ export const ChatAttachmentTable = pgTable("chat_attachments", {
   fileType: text("file_type"),
   createdAt,
 });
+
+export const chatAttachmentSelectSchema =
+  createSelectSchema(ChatAttachmentTable);
 
 export type ChatAttachmentInsertType = typeof ChatAttachmentTable.$inferInsert;
 export type ChatAttachmentSelectType = typeof ChatAttachmentTable.$inferSelect;

@@ -1,16 +1,20 @@
 import { db, DbMutationOptions, DbTransaction } from "@/db/db";
 import { ChatMessageInsertType, ChatMessageTable } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidateChatCache } from "./cache/chats";
-import { confirmChatOwnership } from "./chats";
+import { confirmUserChatOwnership } from "./chats";
+import { getCurrentUser } from "@/lib/auth/helpers";
 
 export const findChatMessageDb = async (
   messageId: string,
   tx?: DbTransaction,
 ) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
   return (
     (await (tx ?? db).query.ChatMessageTable.findFirst({
-      where: eq(ChatMessageTable.id, messageId),
+      where: and(eq(ChatMessageTable.id, messageId)),
     })) ?? null
   );
 };
@@ -20,7 +24,7 @@ export const insertChatMessageDb = async (
   options?: DbMutationOptions,
 ) => {
   const { tx } = options ?? {};
-  const existingChat = await confirmChatOwnership(
+  const existingChat = await confirmUserChatOwnership(
     chatMessage.chatId,
     undefined,
     tx,
@@ -45,7 +49,7 @@ export const upsertChatMessageDb = async (
   options?: DbMutationOptions,
 ) => {
   const { tx } = options ?? {};
-  const existingChat = await confirmChatOwnership(
+  const existingChat = await confirmUserChatOwnership(
     chatMessage.chatId,
     undefined,
     tx,

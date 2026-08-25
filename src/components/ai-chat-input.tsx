@@ -1,6 +1,6 @@
 "use client";
 
-import { useFileUploads } from "@/hooks/use-file-uploads";
+import { UseFileUploadsReturnType } from "@/hooks/use-file-uploads";
 import { cn } from "@/lib/utils";
 import {
   fastCostEfficientModels,
@@ -42,6 +42,7 @@ export const AIChatInput = ({
   onStop,
   isPending = false,
   className,
+  attachmentOptions,
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -51,17 +52,27 @@ export const AIChatInput = ({
   onStop: () => void;
   isPending?: boolean;
   className?: string;
+} & {
+  attachmentOptions?: Pick<
+    UseFileUploadsReturnType,
+    | "inputRef"
+    | "handleInputChange"
+    | "previewUrls"
+    | "error"
+    | "uploadProgresses"
+    | "handleRemoveFile"
+  >;
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputLinesChanged, setInputLinesChanged] = useState(false);
   const initialInputHeightRef = useRef<number | null>(null);
 
-  const { inputRef, handleInputChange, previewUrls, error, handleRemoveFile } =
-    useFileUploads({
-      keyPrefix: "ai-chat",
-      accept: "image/jpeg, image/png, application/pdf, .jpg, .jpeg",
-      maxFileLimit: 10,
-    });
+  const inputRef = attachmentOptions?.inputRef;
+  const handleInputChange = attachmentOptions?.handleInputChange ?? (() => {});
+  const previewUrls = attachmentOptions?.previewUrls;
+  const error = attachmentOptions?.error ?? null;
+  const handleRemoveFile = attachmentOptions?.handleRemoveFile ?? (() => {});
+  const uploadProgresses = attachmentOptions?.uploadProgresses;
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -90,29 +101,49 @@ export const AIChatInput = ({
   const submittedPrompt = value.trim();
   const canSubmit =
     !isPending && submittedPrompt.length > 0 && selectedModel !== null;
+  const onlyImages =
+    previewUrls?.size &&
+    Array.from(previewUrls).every(([, { type }]) => type.startsWith("image/"));
 
   return (
-    <div className="@container p-2 border w-full flex flex-col gap-2 max-w-6xl">
-      {previewUrls.size ? (
-        <div className="flex w-full flex-col gap-2">
-          <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-2">
-            {Array.from(previewUrls).map(([key, value], index) => (
-              <FileDisplay
-                key={`ai-chat-img-${key}-${index}`}
-                fileKey={key}
-                {...value}
-                handleRemoveFile={handleRemoveFile}
-              />
-            ))}
-          </div>
+    <div
+      className={cn(
+        "@container flex w-full shrink-0 flex-col gap-2 border p-2",
+        className,
+      )}
+    >
+      {!isPending && previewUrls?.size ? (
+        <div className="flex w-full items-stretch gap-2 overflow-x-auto p-1">
+          {Array.from(previewUrls).map(([id, { name, url, type }]) => {
+            const isImage = type.startsWith("image/");
+
+            return (
+              <div
+                key={id}
+                className={cn(
+                  "shrink-0",
+                  isImage
+                    ? onlyImages
+                      ? "size-40"
+                      : "min-h-20 self-stretch aspect-square"
+                    : "min-h-20 w-64 self-stretch",
+                )}
+              >
+                <FileDisplay
+                  name={name}
+                  url={url}
+                  type={type}
+                  handleRemoveFile={() => handleRemoveFile(id)}
+                  uploadProgress={uploadProgresses?.get(id)}
+                />
+              </div>
+            );
+          })}
         </div>
       ) : null}
       <motion.div
         layout="position"
-        className={cn(
-          "flex min-w-0 w-full flex-wrap items-center gap-1",
-          className,
-        )}
+        className="flex min-w-0 w-full flex-wrap items-center gap-1"
         transition={{ layout: layoutTransition }}
       >
         <motion.div
@@ -160,7 +191,7 @@ export const AIChatInput = ({
               size="icon-sm"
               disabled={isPending}
               onClick={() => {
-                if (!inputRef.current) return;
+                if (!inputRef?.current) return;
 
                 inputRef.current.value = "";
                 inputRef.current.click();
@@ -210,9 +241,16 @@ export const AIChatInput = ({
                     key={model.id}
                     value={model}
                     className="max-w-84 w-full items-start whitespace-normal"
+                    disabled
                   >
                     <div className="flex items-center gap-2">
-                      <model.logo color={model.logoColor} className="size-5" />
+                      <model.logo
+                        color={model.logoColor}
+                        className={cn(
+                          "size-5",
+                          !model.survivesDarkMode && "dark:text-white",
+                        )}
+                      />
                       <span className="whitespace-normal font-medium text-base">
                         {model.name}
                       </span>

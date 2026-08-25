@@ -1,9 +1,13 @@
-import { InferUITools, UIMessage } from "ai";
+import {
+  activitySelectSchema,
+  artifactSelectSchema,
+  chatAttachmentSelectSchema,
+} from "@/db/schema";
+import { chatRunStatuses } from "@/db/shared";
+import { FileUIPart, InferUITools, UIMessage } from "ai";
 import z from "zod";
 import { modelIds } from "./model-ids";
 import { tools } from "./tools";
-import { chatRunStatuses } from "@/db/shared";
-import { activitySelectSchema, artifactSelectSchema } from "@/db/schema";
 
 const metadataSchema = z.object({
   createdAt: z.date().nullish(),
@@ -18,6 +22,7 @@ const metadataSchema = z.object({
       artifactSelectSchema.merge(z.object({ activity: activitySelectSchema })),
     )
     .nullish(),
+  attachments: z.array(chatAttachmentSelectSchema).nullish(),
 });
 
 type Metadata = z.infer<typeof metadataSchema>;
@@ -30,3 +35,12 @@ export type ChatDataParts = {
 
 export type CustomUIMessage = UIMessage<Metadata, ChatDataParts, ChatTools>;
 export type MessagePart = CustomUIMessage["parts"][number];
+
+export type FileAttachment = Omit<FileUIPart, "filename"> & {
+  filename: string;
+  providerMetadata: {
+    prododesk: {
+      storageKey: string;
+    };
+  };
+};

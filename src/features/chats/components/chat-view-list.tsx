@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/message-scroller";
 import { TextShimmer } from "@/components/ui/text-shimmer";
 import { useChatProvider } from "@/hooks/use-chat-provider";
+import { useFileUploads } from "@/hooks/use-file-uploads";
+import { generateFileUrl } from "@/lib/utils";
 import { getModelInfo, LLMModel } from "@/services/ai/models";
 import { CustomUIMessage } from "@/services/ai/types";
 import { useState } from "react";
@@ -49,16 +51,47 @@ export const ChatViewList = ({
     currentModelInfo ?? null,
   );
 
+  const attachmentOptions = useFileUploads({
+    keyPrefix: "ai-chat",
+    accept: "image/jpeg, image/png, application/pdf, .jpg, .jpeg",
+    maxFileLimit: 10,
+  });
+
   const handleSendMessage = () => {
+    if (attachmentOptions.isUploading || attachmentOptions.isDeleting) return;
     if (!prompt.trim() || !selectedModel)
       return toast.error("Please enter a prompt and select a model.");
     clearError();
+
+    const uploadedFiles = Array.from(attachmentOptions.files, ([id, file]) => ({
+      id,
+      name: file.name,
+      type: file.type ?? "application/octet-stream",
+      storageKey: file.key,
+      url: generateFileUrl(file.key),
+    }));
+
     sendChatMessage({
       prompt,
       selectedModel: selectedModel.id,
       chatId: chat.id,
+      additionalParts: uploadedFiles.map((file) => ({
+        type: "file",
+        mediaType: file.type,
+        url: file.url,
+        filename: file.name,
+        providerMetadata: {
+          prododesk: {
+            storageKey: file.storageKey,
+          },
+        },
+      })),
+      metadata: {
+        createdAt: new Date(),
+      },
     });
     setPrompt("");
+    attachmentOptions.clearFiles();
   };
 
   return (
@@ -85,21 +118,6 @@ export const ChatViewList = ({
               {status === "submitted" && (
                 <MessageScrollerItem>
                   <Message align="start">
-                    <MessageAvatar>
-                      <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
-                        {currentModelInfo ? (
-                          <currentModelInfo.logo
-                            color={currentModelInfo.logoColor}
-                            className="size-5"
-                          />
-                        ) : (
-                          <span className="text-base font-medium text-muted-foreground">
-                            AI
-                          </span>
-                        )}
-                      </div>
-                    </MessageAvatar>
-
                     <MessageContent className="flex flex-col gap-0.5 h-15">
                       <TextShimmer
                         as="span"
@@ -126,6 +144,7 @@ export const ChatViewList = ({
         onSubmit={handleSendMessage}
         onStop={stop}
         isPending={status === "submitted" || status === "streaming"}
+        attachmentOptions={attachmentOptions}
       />
     </div>
   );

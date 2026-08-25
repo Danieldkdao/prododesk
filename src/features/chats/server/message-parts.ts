@@ -4,7 +4,7 @@ import {
   MessagePartTable,
 } from "@/db/schemas/message-part";
 import { findChatMessageDb } from "./chat-messages";
-import { confirmChatOwnership } from "./chats";
+import { confirmUserChatOwnership } from "./chats";
 import { revalidateChatCache } from "./cache/chats";
 
 export const insertMessagePartDb = async (
@@ -15,7 +15,7 @@ export const insertMessagePartDb = async (
   const existingMessage = await findChatMessageDb(messagePart.messageId, tx);
   if (!existingMessage) return null;
 
-  const existingChat = await confirmChatOwnership(
+  const existingChat = await confirmUserChatOwnership(
     existingMessage.chatId,
     undefined,
     tx,
