@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { type Editor } from "@tiptap/react";
+import { useCallback, useEffect, useState } from "react";
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor";
 
 // --- Lib ---
-import { isNodeTypeSelected } from "@/components/tiptap/lib/tiptap-utils";
 
 // --- Icons ---
 import { Redo2Icon } from "@/components/tiptap/tiptap-icons/redo2-icon";
@@ -63,8 +62,6 @@ export function canExecuteUndoRedoAction(
   if (!editor || editor.isDestroyed || !editor.isEditable) return false;
 
   try {
-    if (isNodeTypeSelected(editor, ["image"])) return false;
-
     const commands = editor.can();
     const command = action === "undo" ? commands.undo : commands.redo;
 
@@ -163,7 +160,28 @@ export function useUndoRedo(config: UseUndoRedoConfig) {
 
   const { editor } = useTiptapEditor(providedEditor);
   const [isVisible, setIsVisible] = useState<boolean>(true);
-  const canExecute = canExecuteUndoRedoAction(editor, action);
+  const [canExecute, setCanExecute] = useState<boolean>(
+    canExecuteUndoRedoAction(editor, action),
+  );
+
+  useEffect(() => {
+    if (!editor) {
+      setCanExecute(false);
+      return;
+    }
+
+    const refresh = () => {
+      setCanExecute(canExecuteUndoRedoAction(editor, action));
+      setIsVisible(shouldShowButton({ editor, hideWhenUnavailable, action }));
+    };
+
+    refresh();
+    editor.on("transaction", refresh);
+
+    return () => {
+      editor.off("transaction", refresh);
+    };
+  }, [editor, action, hideWhenUnavailable]);
 
   useEffect(() => {
     if (!editor) return;

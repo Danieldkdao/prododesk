@@ -9,6 +9,7 @@ import { ProjectTable } from "./project";
 import { SettingsTable } from "./settings";
 import { TaskTable } from "./task";
 import { ChatAttachmentTable } from "./chat-attachment";
+import { DocumentAssetTable } from "./document-asset";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -96,6 +97,7 @@ export const userRelations = relations(user, ({ one, many }) => ({
   activity: many(ActivityTable),
   settings: one(SettingsTable),
   chatAttachments: many(ChatAttachmentTable),
+  documentAssets: many(DocumentAssetTable),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

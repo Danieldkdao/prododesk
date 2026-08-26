@@ -1,6 +1,8 @@
 import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
   AreaSelectType,
+  DocumentAssetInsertType,
+  DocumentAssetTable,
   DocumentInsertType,
   DocumentSelectType,
   DocumentTable,
@@ -31,6 +33,7 @@ import {
   DocumentsSortByOption,
 } from "../lib/documents-params";
 import { revalidateDocumentCache } from "./cache/documents";
+import { deleteFilesFromStorage } from "@/services/tigris/delete-files";
 
 export const confirmUserDocumentOwnership = async (
   documentId: string,
@@ -383,6 +386,28 @@ export const deleteDocumentDb = async (
     if (existingDocument.projectId && !existingProject)
       throw new Error("No existing project found.");
 
+    const existingDocumentAssets = await (tx ?? db)
+      .select()
+      .from(DocumentAssetTable)
+      .where(eq(DocumentAssetTable.documentId, existingDocument.id));
+
+    if (existingDocumentAssets.length > 0) {
+      const deletedAssets = await (tx ?? db)
+        .delete(DocumentAssetTable)
+        .where(eq(DocumentAssetTable.documentId, existingDocument.id))
+        .returning();
+      if (deletedAssets.length !== existingDocumentAssets.length)
+        throw new Error("Failed to delete document assets.");
+
+      const deletedKeys = deletedAssets.map((asset) => asset.storageKey);
+      if (deletedKeys.length) {
+        const deleteSuccess = await deleteFilesFromStorage(deletedKeys);
+        if (!deleteSuccess) {
+          throw new Error("Failed to delete document assets from storage.");
+        }
+      }
+    }
+
     const deleteDocument = async (pgtx: DbTransaction) => {
       const [deletedDocument] = await pgtx
         .delete(DocumentTable)
@@ -430,4 +455,19 @@ export const deleteDocumentDb = async (
     console.error(error);
     return null;
   }
+};
+
+export const insertDocumentAssetDb = async (asset: DocumentAssetInsertType) => {
+  const { userId } = await getCurrentUser();
+  if (!userId || userId !== asset.userId) return null;
+
+  const existingDocument = await confirmUserDocumentOwnership(asset.documentId);
+  if (!existingDocument) return null;
+
+  const [insertedDocumentAsset] = await db
+    .insert(DocumentAssetTable)
+    .values(asset)
+    .returning();
+
+  return insertedDocumentAsset || null;
 };

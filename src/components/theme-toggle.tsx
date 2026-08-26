@@ -1,16 +1,16 @@
 "use client";
 
 import { useIsMounted } from "@/hooks/use-is-mounted";
+import { LaptopIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
+import { ComponentProps } from "react";
+import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Button } from "./ui/button";
-import { LaptopIcon, MoonIcon, SunIcon } from "lucide-react";
-import { ComponentProps } from "react";
 
 export const ThemeToggle = (props: ComponentProps<typeof Button>) => {
   const isMounted = useIsMounted();

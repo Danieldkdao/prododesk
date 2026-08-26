@@ -4,6 +4,7 @@ import {
   AreaTable,
   ChatAttachmentTable,
   ChatTable,
+  DocumentAssetTable,
   DocumentTable,
   MilestoneTable,
   ProjectTable,
@@ -56,8 +57,16 @@ export const resetAccountDataDb = async () => {
           where: eq(ChatAttachmentTable.userId, userId),
         })
       ).map((attachment) => attachment.storageKey);
-      if (attachmentKeys.length > 0) {
-        const deleteSuccess = await deleteFilesFromStorage(attachmentKeys);
+      const documentAssetKeys = (
+        await tx.query.DocumentAssetTable.findMany({
+          where: eq(DocumentAssetTable.userId, userId),
+        })
+      ).map((asset) => asset.storageKey);
+
+      const fileKeysToDelete = [...attachmentKeys, ...documentAssetKeys];
+
+      if (fileKeysToDelete.length > 0) {
+        const deleteSuccess = await deleteFilesFromStorage(fileKeysToDelete);
         if (!deleteSuccess) {
           throw new Error("Failed to delete chat attachments from storage.");
         }

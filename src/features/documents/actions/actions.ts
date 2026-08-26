@@ -22,6 +22,7 @@ import {
 import {
   confirmUserDocumentOwnership,
   deleteDocumentDb,
+  insertDocumentAssetDb,
   insertDocumentDb,
   readDocumentsDb,
   updateDocumentDb,
@@ -255,6 +256,51 @@ export const deleteDocumentAction = async (
     return {
       error: false,
       message: "Document deleted successfully!",
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true,
+      message: GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
+
+export const registerDocumentAssetAction = async ({
+  documentId,
+  storageKey,
+}: {
+  documentId: string;
+  storageKey: string;
+}) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const existingDocument = await confirmUserDocumentOwnership(documentId);
+  if (!existingDocument) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  try {
+    const documentAsset = await insertDocumentAssetDb({
+      userId,
+      documentId: existingDocument.id,
+      storageKey,
+    });
+    if (!documentAsset) throw new Error("Failed to register document asset.");
+
+    return {
+      error: false,
+      message: "Document asset registered successfully!",
+      documentAssetId: documentAsset.id,
     };
   } catch (error) {
     console.error(error);
