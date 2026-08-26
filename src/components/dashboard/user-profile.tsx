@@ -59,6 +59,7 @@ export const UserProfile = () => {
             <UserAvatar
               name={session.user.name}
               image={session.user.image}
+              profileImageKey={session.user.profileImageKey}
               className="size-8"
             />
           </Button>
@@ -73,6 +74,7 @@ export const UserProfile = () => {
           <UserAvatar
             name={session.user.name}
             image={session.user.image}
+            profileImageKey={session.user.profileImageKey}
             className="size-12"
           />
           <div className="flex flex-col items-start">

@@ -14,6 +14,11 @@ export const auth = betterAuth({
         required: true,
         input: true,
       },
+      profileImageKey: {
+        type: "string",
+        required: false,
+        input: true,
+      },
     },
     changeEmail: {
       enabled: true,

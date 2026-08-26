@@ -1,10 +1,11 @@
-import { ApiResponse } from "@/lib/types";
 import { generateFileUrl } from "@/lib/utils";
 import {
   createFileKey,
+  deleteFileClient,
+  fetchUploadPresignedUrl,
   uploadFileWithProgress,
+  validateFile,
 } from "@/services/tigris/helpers";
-import { deleteFilesFromStorage } from "@/services/tigris/delete-files";
 import {
   ChangeEvent,
   DragEvent,
@@ -103,32 +104,17 @@ export const useFileUploads = (props: {
         return false;
       }
 
-      if (incomingFiles.some((file) => file.size > maxFileSizeBytes)) {
-        setError(
-          `File size exceeds the limit of ${maxFileSizeBytes / (1024 * 1024)} MB`,
-        );
-        return false;
-      }
-
-      if (accept !== "*") {
-        const allowedTypes = accept
-          .split(",")
-          .map((type) => type.trim())
-          .filter(Boolean);
-        const allValid = Array.from(incomingFiles).every((file) =>
-          allowedTypes.some(
-            (type) =>
-              file.type === type ||
-              (type.endsWith("/*") &&
-                file.type.startsWith(type.replace("/*", "/"))) ||
-              file.name.toLowerCase().endsWith(type.toLowerCase()),
-          ),
-        );
-        if (!allValid) {
-          setError(`Invalid file type. Allowed: ${allowedTypes.join(", ")}`);
+      for (const file of incomingFiles) {
+        const { isValid, reason } = validateFile(file, {
+          accept,
+          maxFileSizeBytes,
+        });
+        if (!isValid) {
+          setError(reason);
           return false;
         }
       }
+
       setError("");
       return true;
     },
@@ -193,28 +179,22 @@ export const useFileUploads = (props: {
         if (fileIdKeys.length !== fileIdMap.size)
           throw new Error("Failed to generate file keys.");
 
-        const presignedPayloads = (await Promise.all(
+        const presignedPayloads = await Promise.all(
           fileIdKeys.map(([id, { key }]) =>
-            fetch("/api/s3/upload", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ key }),
-            })
-              .then((res) => res.json())
-              .then((data) => ({ ...data, key, id })),
+            fetchUploadPresignedUrl(key).then((url) =>
+              url ? { url, key, id } : null,
+            ),
           ),
-        )) as (ApiResponse<{ url: string }> & { key: string; id: string })[];
+        );
 
         const presignedUrls = presignedPayloads
-          .map((res) =>
-            res.error
-              ? null
-              : {
-                  url: res.data.url,
-                  key: res.key,
-                  file: fileIdMap.get(res.id),
-                  id: res.id,
-                },
+          .map((data) =>
+            data
+              ? {
+                  ...data,
+                  file: fileIdMap.get(data.id),
+                }
+              : null,
           )
           .filter(
             (
@@ -232,13 +212,9 @@ export const useFileUploads = (props: {
 
         if (
           fileIds.length !== presignedPayloads.length ||
-          presignedPayloads.some((payload) => payload.error) ||
           fileIds.length !== presignedUrls.length
         )
-          throw new Error(
-            presignedPayloads.find((payload) => payload.error)?.message ||
-              "Failed to get upload URL.",
-          );
+          throw new Error("Failed to get upload URL.");
 
         await Promise.all(
           presignedUrls.map(({ url, file, id }) =>
@@ -354,27 +330,8 @@ export const useFileUploads = (props: {
     if (!file) return toast.error("File not found.");
 
     try {
-      const presignedResponse = await fetch("/api/s3/delete", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: file.key }),
-      });
-
-      const presignedPayload = (await presignedResponse.json()) as ApiResponse<{
-        url: string;
-      }>;
-
-      if (!presignedResponse.ok || presignedPayload.error)
-        throw new Error(
-          presignedPayload.message || "Failed to get delete URL.",
-        );
-
-      const presignedUrl = presignedPayload.data.url;
-      if (!presignedUrl) throw new Error("Delete URL is missing.");
-
-      const deleteResponse = await fetch(presignedUrl, { method: "DELETE" });
-      if (!deleteResponse.ok)
-        throw new Error("Failed to delete file from storage.");
+      const response = await deleteFileClient(file.key);
+      if (response.error) throw new Error(response.message);
 
       removeFileFromState(id);
     } catch (error) {

@@ -22,6 +22,7 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   timeZone: text("time_zone").notNull(),
+  profileImageKey: text("profile_image_key"),
 });
 
 export const session = pgTable(

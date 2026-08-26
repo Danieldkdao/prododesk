@@ -16,7 +16,7 @@ export const POST = async (req: NextRequest) => {
       { status: 401 },
     );
 
-  const key = `${userId}-${keyPrefix.replace(/\/+$/, "")}/${crypto.randomUUID()}-${fileName}`;
+  const key = `${userId}/${keyPrefix.replace(/\/+$/, "")}/${crypto.randomUUID()}-${fileName}`;
 
   return NextResponse.json({
     error: false,
