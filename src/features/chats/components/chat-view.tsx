@@ -1,6 +1,7 @@
 "use client";
 
 import { useChatProvider } from "@/hooks/use-chat-provider";
+import { convertPersistedMessage } from "@/services/ai/helpers";
 import { CustomUIMessage } from "@/services/ai/types";
 import { useEffect, useMemo } from "react";
 import { ReadChatActionReturnType } from "../actions/actions";
@@ -10,22 +11,9 @@ export const ChatView = ({ chat }: { chat: ReadChatActionReturnType }) => {
   const { id: activeChatId, messages, setMessages, status } = useChatProvider();
 
   const persistedMessages: CustomUIMessage[] = useMemo(() => {
-    return chat.messages.map((msg) => ({
-      id: msg.clientMessageId,
-      role: msg.role,
-      parts: msg.parts.map(({ part }) => part),
-      metadata: {
-        createdAt: msg.createdAt,
-        modelId: msg.modelId,
-        chatId: msg.chatId,
-        runError: msg.chatRun?.error,
-        responseTimeMs: msg.chatRun?.responseTimeMs,
-        runStatus: msg.chatRun?.status,
-        responseToClientId: msg.responseToClientId,
-        artifacts: msg.chatRun?.artifacts,
-        attachments: msg.attachments ?? [],
-      },
-    })) as unknown as CustomUIMessage[];
+    return chat.messages.map((msg) =>
+      convertPersistedMessage(msg),
+    ) as unknown as CustomUIMessage[];
   }, [chat.messages]);
 
   const isActiveChat = activeChatId === chat.id;

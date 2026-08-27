@@ -8,7 +8,7 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { areValidIds } from "@/lib/utils";
-import { CustomUIMessage } from "@/services/ai/types";
+import { convertPersistedMessage } from "@/services/ai/helpers";
 import { asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -46,22 +46,18 @@ export const GET = async (
       parts: {
         orderBy: [asc(MessagePartTable.order), asc(MessagePartTable.id)],
       },
+      chatRun: {
+        with: {
+          artifacts: true,
+        },
+      },
       attachments: true,
     },
   });
 
-  const convertedMessages = chatMessages.map((msg) => ({
-    id: msg.id,
-    role: msg.role,
-    parts: msg.parts.map(({ part }) => part),
-    metadata: {
-      createdAt: msg.createdAt,
-      modelId: msg.modelId,
-      chatId: msg.chatId,
-      responseToClientId: msg.responseToClientId,
-      attachments: msg.attachments,
-    },
-  })) as unknown as CustomUIMessage[];
+  const convertedMessages = chatMessages.map((msg) =>
+    convertPersistedMessage(msg),
+  );
 
   return NextResponse.json({ data: convertedMessages });
 };
