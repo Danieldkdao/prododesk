@@ -86,7 +86,7 @@ export const ChatViewListMessage = ({
             url: generateFileUrl(attachment.storageKey),
             providerMetadata: {
               prododesk: {
-                storageKey: attachment.storageKey,
+                uploadId: attachment.id,
               },
             },
           }))

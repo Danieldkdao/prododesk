@@ -106,3 +106,24 @@ export type ActivityAction = (typeof activityActions)[number];
 export const activityActionEnum = pgEnum("activity_actions", activityActions);
 
 export const toolNameEnum = pgEnum("tool_names", toolNames);
+
+export const uploadIntentPurposes = [
+  "chat_attachment",
+  "profile_image",
+] as const;
+export type UploadIntentPurposeType = (typeof uploadIntentPurposes)[number];
+export const uploadIntentPurposeEnum = pgEnum(
+  "upload_intent_purposes",
+  uploadIntentPurposes,
+);
+
+export const uploadIntentStatuses = [
+  "pending",
+  "attached",
+  "orphaned",
+] as const;
+export type UploadIntentStatusType = (typeof uploadIntentStatuses)[number];
+export const uploadIntentStatusEnum = pgEnum(
+  "upload_intent_statuses",
+  uploadIntentStatuses,
+);

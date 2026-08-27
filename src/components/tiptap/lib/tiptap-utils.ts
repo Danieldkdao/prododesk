@@ -4,7 +4,7 @@ import {
   createFileKey,
   fetchUploadPresignedUrl,
   uploadFileWithProgress,
-} from "@/services/tigris/helpers";
+} from "@/features/uploads/lib/helpers";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
 import {
@@ -403,27 +403,19 @@ export const handleImageUpload = async (
     );
   }
 
-  const key = await createFileKey(file, "documents");
-  if (!key) throw new Error("Failed to create file key.");
-
-  abortSignal?.throwIfAborted();
-
-  const result = await registerDocumentAssetAction({
+  const uploadResponse = await fetchUploadPresignedUrl(file, {
+    purpose: "document-image",
     documentId,
-    storageKey: key,
   });
-  if (result.error) throw new Error("Failed to insert document asset.");
-
-  const uploadUrl = await fetchUploadPresignedUrl(key);
-  if (!uploadUrl) throw new Error("Failed to fetch upload URL.");
+  if (!uploadResponse) throw new Error("Failed to fetch upload URL.");
 
   abortSignal?.throwIfAborted();
 
-  await uploadFileWithProgress(uploadUrl, file, (progress) =>
+  await uploadFileWithProgress(uploadResponse.uploadUrl, file, (progress) =>
     onProgress?.({ progress }),
   );
 
-  return generateFileUrl(key);
+  return uploadResponse.publicUrl;
 };
 
 type ProtocolOptions = {

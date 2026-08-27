@@ -1,19 +1,15 @@
-import { generateFileUrl } from "@/lib/utils";
 import {
-  createFileKey,
   fetchUploadPresignedUrl,
   uploadFileWithProgress,
   validateFile as validateFileHelper,
-} from "@/services/tigris/helpers";
+} from "@/features/uploads/lib/helpers";
 import { ChangeEvent, useCallback, useRef, useState } from "react";
 
 export const useProfileImageUpload = ({
   accept = "*",
-  keyPrefix,
   maxFileSizeBytes = 5 * 1024 * 1024,
 }: {
   accept?: string;
-  keyPrefix: string;
   maxFileSizeBytes?: number;
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,27 +58,27 @@ export const useProfileImageUpload = ({
     if (!validateFile(file)) return null;
 
     try {
-      const key = await createFileKey(file, keyPrefix);
-      if (!key) throw new Error("Failed to create file key.");
+      const data = await fetchUploadPresignedUrl(file, {
+        purpose: "profile-image",
+      });
+      if (!data || !data.uploadUrl || !data.uploadId)
+        throw new Error("Failed to fetch upload URL.");
 
-      const url = await fetchUploadPresignedUrl(key);
-      if (!url) throw new Error("Failed to fetch upload URL.");
-
-      await uploadFileWithProgress(url, file, setUploadProgress);
+      await uploadFileWithProgress(data.uploadUrl, file, setUploadProgress);
 
       setError(null);
 
-      return key;
+      return data.uploadId;
     } catch (error) {
       console.error(error);
       const errorMessage = Error.isError(error)
         ? error.message
-        : "Failed to uplaod file. Please try again.";
+        : "Failed to upload file. Please try again.";
       setError(errorMessage);
 
       return null;
     }
-  }, [currentFile, validateFile, keyPrefix]);
+  }, [currentFile, validateFile]);
 
   const reset = useCallback(() => {
     setCurrentFile(null);

@@ -164,11 +164,8 @@ export const AIChatInput = ({
               onValueChange(e.currentTarget.value);
             }}
             onKeyDown={(e) => {
-              if (e.key !== "Enter") return;
-
-              if (e.nativeEvent.isComposing) return;
-
-              if (e.shiftKey) return;
+              if (e.key !== "Enter" || e.nativeEvent.isComposing || e.shiftKey)
+                return;
 
               e.preventDefault();
 

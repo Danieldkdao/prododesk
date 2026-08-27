@@ -16,11 +16,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import { UserAvatar } from "@/components/user-avatar";
-import { useProfileImageUpload } from "@/features/use-profile-image-upload";
+import { completeProfileImageUpload } from "@/features/uploads/actions/actions";
+import { UPLOAD_LIMITS } from "@/features/uploads/lib/constants";
 import { useConfirm } from "@/hooks/use-confirm";
+import { useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { authClient } from "@/lib/auth/auth-client";
 import { generateFileUrl } from "@/lib/utils";
-import { deleteFileClient } from "@/services/tigris/helpers";
 import { CheckIcon, EditIcon, RefreshCcwIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -43,13 +44,9 @@ export const ProfilePictureUpload = ({
   const [confirmImageDialogOpen, setConfirmImageDialogOpen] = useState(false);
   const { inputRef, currentFile, reset, handleFileUpload, handleFilePreview } =
     useProfileImageUpload({
-      keyPrefix: `user-profile`,
-      accept: "image/*",
-      maxFileSizeBytes: 5 * 1024 * 1024,
+      accept: UPLOAD_LIMITS["profile-image"].accept,
+      maxFileSizeBytes: UPLOAD_LIMITS["profile-image"].maxSize,
     });
-  const [prevProfileImageKey, setPrevProfileImageKey] = useState<string | null>(
-    profileImageKey ?? null,
-  );
   const [ResetConfirmationDialog, confirmReset] = useConfirm(
     "Confirm Reset",
     "Are you sure you want to reset your profile image? It will go back to the social provider default image or no image, whichever applies.",
@@ -57,7 +54,7 @@ export const ProfilePictureUpload = ({
 
   const userProfileImage =
     currentFile?.previewUrl ??
-    (prevProfileImageKey ? generateFileUrl(prevProfileImageKey) : image);
+    (profileImageKey ? generateFileUrl(profileImageKey) : image);
 
   const handleCancel = () => {
     reset();
@@ -66,31 +63,22 @@ export const ProfilePictureUpload = ({
 
   const handleConfirmImageChange = () => {
     startImageChangeTransition(async () => {
-      const newProfileImageKey = await handleFileUpload();
+      const uploadId = await handleFileUpload();
 
-      if (!newProfileImageKey) {
+      if (!uploadId) {
         toast.error("Failed to upload image. Please try again.");
         return;
       }
 
-      const response = await authClient.updateUser({
-        profileImageKey: newProfileImageKey,
-      });
+      const response = await completeProfileImageUpload({ uploadId });
       if (response.error) {
-        toast.error(
-          response.error.message ||
-            "Failed to update profile image. Please try again.",
-        );
+        toast.error(response.message);
         return;
-      }
-      if (prevProfileImageKey) {
-        await deleteFileClient(prevProfileImageKey);
       }
 
       toast.success("Profile image updated successfully.");
       router.refresh();
       setConfirmImageDialogOpen(false);
-      setPrevProfileImageKey(newProfileImageKey);
       reset();
     });
   };
@@ -115,13 +103,8 @@ export const ProfilePictureUpload = ({
         );
         return;
       }
-      if (prevProfileImageKey) {
-        await deleteFileClient(prevProfileImageKey);
-      }
-
       toast.success("Profile image reset successfully.", { id: toastId });
       router.refresh();
-      setPrevProfileImageKey(null);
     });
   };
 
@@ -211,7 +194,7 @@ export const ProfilePictureUpload = ({
 
             <DropdownMenuItem
               variant="destructive"
-              disabled={isDropdownItemDisabled || !prevProfileImageKey}
+              disabled={isDropdownItemDisabled}
               onClick={handleResetProfileImage}
             >
               <RefreshCcwIcon />

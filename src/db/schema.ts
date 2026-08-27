@@ -15,3 +15,4 @@ export * from "./schemas/artifact";
 export * from "./schemas/settings";
 export * from "./schemas/chat-attachment";
 export * from "./schemas/document-asset";
+export * from "./schemas/upload-intent";

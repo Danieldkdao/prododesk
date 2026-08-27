@@ -42,7 +42,7 @@ import {
   getUserTaskTag,
 } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
-import { deleteFilesFromStorage } from "@/services/tigris/delete-files";
+import { deleteFilesFromStorage } from "@/features/uploads/lib/delete-files";
 import { eq } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 

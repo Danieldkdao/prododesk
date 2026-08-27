@@ -4,7 +4,8 @@ export const modelIds = [
   "google/gemini-3.1-pro-preview",
   "x-ai/grok-4.5",
   "deepseek/deepseek-v4-flash-0731",
-  "qwen/qwen3.7-plus",
+  "qwen/qwen3.8-flash",
+  "z-ai/glm-5.3-flash",
   "minimax/minimax-m3",
   "google/gemini-3.1-flash-lite",
 ] as const;

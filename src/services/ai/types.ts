@@ -19,7 +19,9 @@ const metadataSchema = z.object({
   chatId: z.uuid().nullish(),
   artifacts: z
     .array(
-      artifactSelectSchema.merge(z.object({ activity: activitySelectSchema })),
+      artifactSelectSchema.extend(
+        z.object({ activity: activitySelectSchema }).shape,
+      ),
     )
     .nullish(),
   attachments: z.array(chatAttachmentSelectSchema).nullish(),
@@ -40,7 +42,7 @@ export type FileAttachment = Omit<FileUIPart, "filename"> & {
   filename: string;
   providerMetadata: {
     prododesk: {
-      storageKey: string;
+      uploadId: string;
     };
   };
 };

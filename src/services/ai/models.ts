@@ -7,6 +7,7 @@ import {
   Minimax,
   OpenAI,
   Qwen,
+  ZAI,
 } from "@lobehub/icons";
 import { ModelId } from "./model-ids";
 
@@ -61,8 +62,15 @@ const models = [
     survivesDarkMode: true,
   },
   {
-    name: "Qwen 3.7 Plus",
-    id: "qwen/qwen3.7-plus" as const,
+    name: "GLM-5.3 Flash",
+    id: "z-ai/glm-5.3-flash" as const,
+    logo: ZAI,
+    kind: "fast-cost-efficient",
+    survivesDarkMode: false,
+  },
+  {
+    name: "Qwen 3.8 Flash",
+    id: "qwen/qwen3.8-flash" as const,
     logo: Qwen.Color,
     kind: "fast-cost-efficient",
     survivesDarkMode: true,

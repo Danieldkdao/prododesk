@@ -1,42 +1,54 @@
+import { getCurrentUser } from "@/lib/auth/helpers";
 import { GENERAL_ERROR_MESSAGE } from "@/lib/constants";
 import { ApiResponse } from "@/lib/types";
+import {
+  DeleteUploadRequestFor,
+  DeleteUploadRequestPurposeType,
+  UploadContextFor,
+  UploadContextSchemaType,
+} from "../actions/schemas";
+import { CreateUploadResponse } from "./types";
+import { UploadPayloadPurposeType } from "../actions/schemas";
 
 export const createFileKey = async (file: File, keyPrefix: string) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
   const safeFileName = file.name
     .trim()
     .replace(/[^a-zA-Z0-9._-]/g, "-")
     .replace(/-+/g, "-");
+  if (!userId) return null;
 
-  const response = await fetch("/api/s3/generate-key", {
+  const key = `${userId}/${keyPrefix.replace(/\/+$/, "")}/${crypto.randomUUID()}-${safeFileName}`;
+
+  return key;
+};
+
+export const fetchUploadPresignedUrl = async <
+  P extends UploadPayloadPurposeType,
+>(
+  file: File | { name: string; type: string; size: number },
+  context: UploadContextFor<P>,
+) => {
+  const response = await fetch("/api/s3/upload", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      fileName: safeFileName,
-      keyPrefix,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      ...context,
     }),
   });
   if (!response.ok) return null;
 
-  const data = (await response.json()) as ApiResponse<{ key: string }>;
+  const data = (await response.json()) as ApiResponse<
+    Extract<CreateUploadResponse, { purpose: P }>
+  >;
   if (data.error) return null;
 
-  return data.data.key;
-};
-
-export const fetchUploadPresignedUrl = async (key: string) => {
-  const response = await fetch("/api/s3/upload", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key }),
-  });
-  if (!response.ok) return null;
-
-  const data = (await response.json()) as ApiResponse<{ url: string }>;
-  if (data.error) return null;
-
-  return data.data.url;
+  return data.data;
 };
 
 export const uploadFileWithProgress = (
@@ -78,7 +90,7 @@ export const uploadFileWithProgress = (
 };
 
 export const validateFile = (
-  file: File,
+  file: File | { size: number; type: string; name: string },
   config: { accept: string; maxFileSizeBytes: number },
 ): { isValid: true; reason: null } | { isValid: false; reason: string } => {
   const { accept, maxFileSizeBytes } = config;
@@ -116,12 +128,16 @@ export const validateFile = (
   };
 };
 
-export const deleteFileClient = async (key: string) => {
+export const deleteFileClient = async <
+  P extends DeleteUploadRequestPurposeType,
+>(
+  request: DeleteUploadRequestFor<P>,
+) => {
   try {
     const presignedResponse = await fetch("/api/s3/delete", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key }),
+      body: JSON.stringify(request),
     });
 
     const presignedPayload = (await presignedResponse.json()) as ApiResponse<{

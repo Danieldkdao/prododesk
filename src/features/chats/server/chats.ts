@@ -2,7 +2,7 @@ import { db, DbMutationOptions, DbTransaction } from "@/db/db";
 import { ChatInsertType, ChatTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
-import { deleteFilesFromStorage } from "@/services/tigris/delete-files";
+import { deleteFilesFromStorage } from "@/features/uploads/lib/delete-files";
 import { and, desc, eq, ilike, or, SQL } from "drizzle-orm";
 import { revalidateChatCache } from "./cache/chats";
 

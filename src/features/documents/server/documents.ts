@@ -33,7 +33,7 @@ import {
   DocumentsSortByOption,
 } from "../lib/documents-params";
 import { revalidateDocumentCache } from "./cache/documents";
-import { deleteFilesFromStorage } from "@/services/tigris/delete-files";
+import { deleteFilesFromStorage } from "@/features/uploads/lib/delete-files";
 
 export const confirmUserDocumentOwnership = async (
   documentId: string,

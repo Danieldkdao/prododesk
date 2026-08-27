@@ -8,10 +8,10 @@ import {
   MarqueeItem,
 } from "@/components/kibo-ui/marquee";
 import { Button } from "@/components/ui/button";
+import { UPLOAD_LIMITS } from "@/features/uploads/lib/constants";
 import { useAbortableAction } from "@/hooks/use-abortable-action";
 import { useChatProvider } from "@/hooks/use-chat-provider";
 import { useFileUploads } from "@/hooks/use-file-uploads";
-import { generateFileUrl } from "@/lib/utils";
 import { LLMModel } from "@/services/ai/models";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -35,8 +35,8 @@ export const InitialAIInputClient = () => {
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   const attachmentOptions = useFileUploads({
-    keyPrefix: "ai-chat",
-    accept: "image/jpeg, image/png, application/pdf, .jpg, .jpeg",
+    accept: UPLOAD_LIMITS["chat-attachment"].accept,
+    maxFileSizeBytes: UPLOAD_LIMITS["chat-attachment"].maxSize,
     maxFileLimit: 10,
   });
 
@@ -50,13 +50,7 @@ export const InitialAIInputClient = () => {
 
   const abortableCreateChatAction = useAbortableAction(createChatAction);
 
-  const uploadedFiles = Array.from(attachmentOptions.files, ([id, file]) => ({
-    id,
-    name: file.name,
-    type: file.type ?? "application/octet-stream",
-    storageKey: file.key,
-    url: generateFileUrl(file.key),
-  }));
+  const uploadedFiles = attachmentOptions.uploadedFiles;
 
   const handleSubmit = async () => {
     const submittedPrompt = prompt.trim();
@@ -91,17 +85,7 @@ export const InitialAIInputClient = () => {
         prompt: submittedPrompt,
         selectedModel: selectedModel.id,
         chatId: response.chat.id,
-        additionalParts: uploadedFiles.map((file) => ({
-          type: "file",
-          mediaType: file.type,
-          url: file.url,
-          filename: file.name,
-          providerMetadata: {
-            prododesk: {
-              storageKey: file.storageKey,
-            },
-          },
-        })),
+        additionalParts: uploadedFiles,
       });
       const url = `/dashboard/ai/chat/${response.chat.id}`;
 
@@ -126,17 +110,7 @@ export const InitialAIInputClient = () => {
           <ChatHeader />
           <PendingChatMessagesView
             prompt={pendingPrompt ?? ""}
-            attachments={uploadedFiles.map((file) => ({
-              type: "file",
-              filename: file.name,
-              mediaType: file.type,
-              url: generateFileUrl(file.storageKey),
-              providerMetadata: {
-                prododesk: {
-                  storageKey: file.storageKey,
-                },
-              },
-            }))}
+            attachments={uploadedFiles}
           />
         </>
       ) : (

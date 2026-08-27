@@ -19,7 +19,7 @@ export const ChatMessageAttachments = ({
         return (
           <div
             key={
-              attachment.providerMetadata?.prododesk?.storageKey ??
+              attachment.providerMetadata?.prododesk?.uploadId ??
               `${attachment.url}-${index}`
             }
             className={cn(

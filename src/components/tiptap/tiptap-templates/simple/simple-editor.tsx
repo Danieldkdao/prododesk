@@ -94,6 +94,7 @@ import { cn } from "@/lib/utils";
 import { Markdown } from "@tiptap/markdown";
 import { Plugin } from "@tiptap/pm/state";
 import { toast } from "sonner";
+import { UPLOAD_LIMITS } from "@/features/uploads/lib/constants";
 
 const lowlight = createLowlight(common);
 
@@ -458,8 +459,8 @@ export function SimpleEditor({
         injectCSS: false,
       }),
       ImageUploadNode.configure({
-        accept: "image/*",
-        maxSize: MAX_FILE_SIZE,
+        accept: UPLOAD_LIMITS["document-image"].accept,
+        maxSize: UPLOAD_LIMITS["document-image"].maxSize,
         limit: 3,
         upload: (file, onProgress, abortSignal) => {
           return handleImageUpload(file, onProgress, abortSignal, {

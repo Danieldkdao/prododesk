@@ -1,11 +1,10 @@
-import { generateFileUrl } from "@/lib/utils";
 import {
-  createFileKey,
   deleteFileClient,
   fetchUploadPresignedUrl,
   uploadFileWithProgress,
   validateFile,
-} from "@/services/tigris/helpers";
+} from "@/features/uploads/lib/helpers";
+import { FileAttachment } from "@/services/ai/types";
 import {
   ChangeEvent,
   DragEvent,
@@ -17,31 +16,33 @@ import {
 } from "react";
 import { toast } from "sonner";
 
-export type CustomFile = {
-  url: string | null;
+type CustomFile = {
+  url: string;
   name: string;
   type: string;
-  key?: string;
 };
 
 export const useFileUploads = (props: {
   accept?: string;
-  keyPrefix: string;
   uploadMessage?: string;
   maxFileLimit?: number;
   maxFileSizeBytes?: number;
-  defaultFiles?: Map<string, { name: string; type: string }>;
+  defaultFiles?: Map<
+    string,
+    { name: string; type: string; uploadId: string; url: string }
+  >;
+  chatId?: string;
 }) => {
   const {
     accept = "*",
-    keyPrefix,
     maxFileLimit = 1,
     defaultFiles,
     maxFileSizeBytes = 10 * 1024 * 1024,
+    chatId,
   } = props;
 
   const [files, setFiles] = useState<
-    Map<string, { name: string; type?: string; key: string }>
+    Map<string, { name: string; type: string; uploadId: string; url: string }>
   >(defaultFiles ?? new Map());
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -50,10 +51,14 @@ export const useFileUploads = (props: {
     new Map<string, number>(),
   );
   const [localPreviewUrls, setLocalPreviewUrls] = useState(
-    new Map<string, { url: string | null; name: string; type?: string }>(),
+    new Map<string, { url: string; name: string; type: string }>(),
   );
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const acceptedTypes = accept
+    .split(",")
+    .map((type) => type.trim())
+    .filter(Boolean);
   const previewUrls = useMemo(() => {
     return new Map(
       Array.from(
@@ -68,16 +73,7 @@ export const useFileUploads = (props: {
           const localPreviewUrl = localPreviewUrls.get(id);
           const file = files.get(id);
           if (!localPreviewUrl && !file) return null;
-          const previewUrl = localPreviewUrl
-            ? localPreviewUrl
-            : file
-              ? {
-                  url: generateFileUrl(file.key),
-                  name: file?.name ?? "Unknown file",
-                  type: file?.type,
-                  key: file.key,
-                }
-              : null;
+          const previewUrl = localPreviewUrl ?? file;
           if (!previewUrl) return null;
 
           return [id, previewUrl];
@@ -85,10 +81,21 @@ export const useFileUploads = (props: {
         .filter((pair): pair is [string, CustomFile] => Boolean(pair)),
     );
   }, [files, localPreviewUrls]);
-  const acceptedTypes = accept
-    .split(",")
-    .map((type) => type.trim())
-    .filter(Boolean);
+  const uploadedFiles = useMemo(
+    () =>
+      Array.from(files, ([, file]) => ({
+        type: "file",
+        mediaType: file.type,
+        url: file.url,
+        filename: file.name,
+        providerMetadata: {
+          prododesk: {
+            uploadId: file.uploadId,
+          },
+        },
+      })),
+    [files],
+  ) satisfies FileAttachment[];
 
   useEffect(() => {
     if (!localPreviewUrls.size) return;
@@ -135,19 +142,17 @@ export const useFileUploads = (props: {
       });
 
       const fileIdMap = new Map(resolvedFileIdMap);
-      const fileIds = Array.from(fileIdMap).map(([id]) => id);
+      const fileIds = Array.from(fileIdMap);
 
       const filesToUpload = new Map(
-        fileIds.map((id) => {
-          const file = fileIdMap.get(id);
-
-          const fileName = file?.name ?? "Unknown file";
-          const fileType = file?.type;
+        fileIds.map(([id, file]) => {
+          const fileName = file.name ?? "Unknown file";
+          const fileType = file.type;
 
           return [
             id,
             {
-              url: file ? URL.createObjectURL(file) : null,
+              url: URL.createObjectURL(file),
               name: fileName,
               type: fileType,
             },
@@ -161,64 +166,30 @@ export const useFileUploads = (props: {
       setLocalPreviewUrls((prev) => new Map([...prev, ...filesToUpload]));
       setIsUploading(true);
       setUploadProgresses(
-        (prev) => new Map([...prev, ...new Map(fileIds.map((id) => [id, 0]))]),
+        (prev) =>
+          new Map([...prev, ...new Map(fileIds.map(([id]) => [id, 0]))]),
       );
 
       try {
-        const fileIdKeys = (
-          await Promise.all(
-            Array.from(fileIdMap).map(([id, file]) =>
-              createFileKey(file, keyPrefix).then((key) => ({ id, file, key })),
-            ),
-          )
-        )
-          .filter((item): item is { id: string; file: File; key: string } =>
-            Boolean(item.key),
-          )
-          .map(({ id, file, key }) => [id, { file, key }] as const);
-        if (fileIdKeys.length !== fileIdMap.size)
-          throw new Error("Failed to generate file keys.");
-
         const presignedPayloads = await Promise.all(
-          fileIdKeys.map(([id, { key }]) =>
-            fetchUploadPresignedUrl(key).then((url) =>
-              url ? { url, key, id } : null,
-            ),
+          fileIds.map(([id, file]) =>
+            fetchUploadPresignedUrl(file, {
+              purpose: "chat-attachment",
+              chatId,
+            }).then((data) => (data ? { ...data, id, file } : null)),
           ),
         );
 
-        const presignedUrls = presignedPayloads
-          .map((data) =>
-            data
-              ? {
-                  ...data,
-                  file: fileIdMap.get(data.id),
-                }
-              : null,
-          )
-          .filter(
-            (
-              presignedUrl,
-            ): presignedUrl is {
-              url: string;
-              key: string;
-              file: File;
-              id: string;
-            } =>
-              Boolean(presignedUrl) &&
-              Boolean(presignedUrl?.url) &&
-              Boolean(presignedUrl?.file),
-          );
+        const presignedUrls = presignedPayloads.filter(
+          (payload): payload is NonNullable<typeof payload> => Boolean(payload),
+        );
 
-        if (
-          fileIds.length !== presignedPayloads.length ||
-          fileIds.length !== presignedUrls.length
-        )
+        if (fileIds.length !== presignedUrls.length)
           throw new Error("Failed to get upload URL.");
 
         await Promise.all(
-          presignedUrls.map(({ url, file, id }) =>
-            uploadFileWithProgress(url, file, (value) =>
+          presignedUrls.map(({ uploadUrl, file, id }) =>
+            uploadFileWithProgress(uploadUrl, file, (value) =>
               setUploadProgresses((prev) => {
                 const next = new Map(prev);
                 next.set(id, value);
@@ -231,8 +202,13 @@ export const useFileUploads = (props: {
         setFiles((prev) => {
           const next = new Map(prev);
 
-          for (const { id, key, file } of presignedUrls) {
-            next.set(id, { name: file.name, type: file.type, key });
+          for (const { id, uploadId, publicUrl, file } of presignedUrls) {
+            next.set(id, {
+              name: file.name,
+              type: file.type,
+              uploadId,
+              url: publicUrl,
+            });
           }
 
           return next;
@@ -268,7 +244,7 @@ export const useFileUploads = (props: {
         }
       }
     },
-    [keyPrefix, setFiles, validateFiles, localPreviewUrls, uploadProgresses],
+    [setFiles, validateFiles, localPreviewUrls, uploadProgresses, chatId],
   );
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -330,7 +306,10 @@ export const useFileUploads = (props: {
     if (!file) return toast.error("File not found.");
 
     try {
-      const response = await deleteFileClient(file.key);
+      const response = await deleteFileClient({
+        purpose: "upload-intent",
+        uploadId: file.uploadId,
+      });
       if (response.error) throw new Error(response.message);
 
       removeFileFromState(id);
@@ -353,6 +332,7 @@ export const useFileUploads = (props: {
 
   return {
     files,
+    uploadedFiles,
     setFiles,
     isDragging,
     setIsDragging,

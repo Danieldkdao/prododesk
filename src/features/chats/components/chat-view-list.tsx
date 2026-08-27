@@ -2,11 +2,7 @@
 
 import { AIChatInput } from "@/components/ai-chat-input";
 import { AILoadingAnimation } from "@/components/ai-loading-animation";
-import {
-  Message,
-  MessageAvatar,
-  MessageContent,
-} from "@/components/ui/message";
+import { Message, MessageContent } from "@/components/ui/message";
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -16,9 +12,9 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 import { TextShimmer } from "@/components/ui/text-shimmer";
+import { UPLOAD_LIMITS } from "@/features/uploads/lib/constants";
 import { useChatProvider } from "@/hooks/use-chat-provider";
 import { useFileUploads } from "@/hooks/use-file-uploads";
-import { generateFileUrl } from "@/lib/utils";
 import { getModelInfo, LLMModel } from "@/services/ai/models";
 import { CustomUIMessage } from "@/services/ai/types";
 import { useState } from "react";
@@ -52,10 +48,13 @@ export const ChatViewList = ({
   );
 
   const attachmentOptions = useFileUploads({
-    keyPrefix: "ai-chat",
-    accept: "image/jpeg, image/png, application/pdf, .jpg, .jpeg",
+    accept: UPLOAD_LIMITS["chat-attachment"].accept,
+    maxFileSizeBytes: UPLOAD_LIMITS["chat-attachment"].maxSize,
     maxFileLimit: 10,
+    chatId: chat.id,
   });
+
+  const uploadedFiles = attachmentOptions.uploadedFiles;
 
   const handleSendMessage = () => {
     if (attachmentOptions.isUploading || attachmentOptions.isDeleting) return;
@@ -63,29 +62,11 @@ export const ChatViewList = ({
       return toast.error("Please enter a prompt and select a model.");
     clearError();
 
-    const uploadedFiles = Array.from(attachmentOptions.files, ([id, file]) => ({
-      id,
-      name: file.name,
-      type: file.type ?? "application/octet-stream",
-      storageKey: file.key,
-      url: generateFileUrl(file.key),
-    }));
-
     sendChatMessage({
       prompt,
       selectedModel: selectedModel.id,
       chatId: chat.id,
-      additionalParts: uploadedFiles.map((file) => ({
-        type: "file",
-        mediaType: file.type,
-        url: file.url,
-        filename: file.name,
-        providerMetadata: {
-          prododesk: {
-            storageKey: file.storageKey,
-          },
-        },
-      })),
+      additionalParts: uploadedFiles,
       metadata: {
         createdAt: new Date(),
       },

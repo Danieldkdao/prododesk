@@ -16,6 +16,10 @@ import {
 } from "@/features/chats/server/chat-runs";
 import { confirmUserChatOwnership } from "@/features/chats/server/chats";
 import { insertMessagePartDb } from "@/features/chats/server/message-parts";
+import {
+  confirmUserUploadIntentOwnership,
+  deleteUploadIntentDb,
+} from "@/features/uploads/server/uploads";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -133,24 +137,36 @@ export const POST = async (req: Request) => {
         if (!insertedPart) throw new APIError("Failed to insert message part.");
 
         const userFileParts = latestUserMessage.parts.filter(
-          (part) => part.type === "file",
-        );
-
-        const filteredFileParts = userFileParts.filter(
           (part): part is FileAttachment =>
-            part.providerMetadata?.prododesk.storageKey !== undefined,
+            part.type === "file" &&
+            Boolean(part.providerMetadata?.prododesk.uploadId),
         );
 
-        if (filteredFileParts.length) {
+        const existingUploadIntents = (
+          await Promise.all(
+            userFileParts.map((part) =>
+              confirmUserUploadIntentOwnership(
+                part.providerMetadata.prododesk.uploadId,
+              ).then((intent) => (intent ? { ...intent, part } : null)),
+            ),
+          )
+        ).filter((intent): intent is NonNullable<typeof intent> =>
+          Boolean(intent),
+        );
+
+        if (existingUploadIntents.length !== userFileParts.length)
+          throw new APIError("One or more file attachments are invalid.", 400);
+
+        if (existingUploadIntents.length) {
           const filePartsInsertions = await Promise.all(
-            filteredFileParts.map((part) =>
+            existingUploadIntents.map((intent) =>
               insertChatAttachmentDb(
                 {
                   userId,
-                  storageKey: part.providerMetadata.prododesk.storageKey,
+                  storageKey: intent.storageKey,
                   messageId: insertedMessage.id,
-                  fileName: part.filename,
-                  fileType: part.mediaType,
+                  fileName: intent.part.filename,
+                  fileType: intent.part.mediaType,
                 },
                 tx,
               ),
@@ -158,12 +174,22 @@ export const POST = async (req: Request) => {
           );
           if (
             filePartsInsertions.filter(Boolean).length !==
-            filteredFileParts.length
+            existingUploadIntents.length
           ) {
             throw new APIError(
               "Failed to insert one or more file attachments.",
             );
           }
+          const deletedUploadIntents = await Promise.all(
+            existingUploadIntents.map((intent) =>
+              deleteUploadIntentDb(intent.id, tx),
+            ),
+          );
+          if (
+            deletedUploadIntents.filter(Boolean).length !==
+            existingUploadIntents.length
+          )
+            throw new APIError("Failed to delete one or more uploads.");
         }
       });
     } else {
