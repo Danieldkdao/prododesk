@@ -48,7 +48,11 @@ export const GET = async (
       },
       chatRun: {
         with: {
-          artifacts: true,
+          artifacts: {
+            with: {
+              activity: true,
+            },
+          },
         },
       },
       attachments: true,

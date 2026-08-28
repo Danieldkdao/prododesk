@@ -8,6 +8,7 @@ import {
 } from "./schemas";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
+import { isError } from "@/lib/utils";
 import { readProjectsDb } from "../server/projects";
 import { parseISO } from "date-fns";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
@@ -87,7 +88,7 @@ const createProjectTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -157,7 +158,7 @@ const updateProjectTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -217,7 +218,7 @@ const setProjectArchivedTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -272,7 +273,7 @@ const deleteProjectTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({

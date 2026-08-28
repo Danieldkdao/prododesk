@@ -13,6 +13,7 @@ import {
   NOT_FOUND_ERROR_MESSAGE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
+import { isError } from "@/lib/utils";
 import { getDeletePresignedUrl } from "@/services/tigris/presigns";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -127,7 +128,7 @@ export const DELETE = async (request: NextRequest) => {
     });
   } catch (error) {
     console.error(error);
-    const errorMessage = Error.isError(error)
+    const errorMessage = isError(error)
       ? error.message
       : GENERAL_ERROR_MESSAGE;
     return NextResponse.json(

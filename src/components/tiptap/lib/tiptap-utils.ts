@@ -1,7 +1,4 @@
-import { registerDocumentAssetAction } from "@/features/documents/actions/actions";
-import { generateFileUrl } from "@/lib/utils";
 import {
-  createFileKey,
   fetchUploadPresignedUrl,
   uploadFileWithProgress,
 } from "@/features/uploads/lib/helpers";
@@ -411,8 +408,11 @@ export const handleImageUpload = async (
 
   abortSignal?.throwIfAborted();
 
-  await uploadFileWithProgress(uploadResponse.uploadUrl, file, (progress) =>
-    onProgress?.({ progress }),
+  await uploadFileWithProgress(
+    uploadResponse.uploadUrl,
+    file,
+    (progress) => onProgress?.({ progress }),
+    abortSignal,
   );
 
   return uploadResponse.publicUrl;

@@ -17,7 +17,6 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
-import { areValidIds } from "@/lib/utils";
 import {
   and,
   asc,
@@ -174,8 +173,6 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
   };
 };
 export const readAreaAction = async (areaId: string) => {
-  if (!areValidIds(areaId)) return null;
-
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
@@ -285,13 +282,6 @@ export const updateAreaAction = async (
   areaData: Partial<AreaSchemaType>,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(areaId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -338,13 +328,6 @@ export const toggleAreaArchiveStatusAction = async (
   newArchiveStatus: boolean,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(areaId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -391,13 +374,6 @@ export const deleteAreaAction = async (
   areaId: string,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(areaId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {

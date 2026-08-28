@@ -9,7 +9,7 @@ export const ChatMessageAttachments = ({
 }) => {
   const onlyImages =
     attachments.length > 0 &&
-    attachments.every((att) => att.mediaType.startsWith("image/"));
+    attachments.every((att) => att.mediaType?.startsWith("image/"));
 
   return (
     <div className="flex w-full min-w-0 max-w-full items-stretch gap-2 overflow-x-auto p-1 scrollbar-none scroll-fade-x">

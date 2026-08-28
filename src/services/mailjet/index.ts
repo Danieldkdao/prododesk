@@ -1,4 +1,5 @@
 import { envServer } from "@/data/env/server";
+import { isError } from "@/lib/utils";
 import Mailjet from "node-mailjet";
 
 const DEFAULT_FROM_NAME = "Prododesk";
@@ -52,7 +53,7 @@ export const sendEmail = async ({
 
     return response.body;
   } catch (error) {
-    const errorMessage = Error.isError(error)
+    const errorMessage = isError(error)
       ? error.message
       : "Unknown mailjet error.";
     console.error("Mailjet send failed: ", errorMessage);

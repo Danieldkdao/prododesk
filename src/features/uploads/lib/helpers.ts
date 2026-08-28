@@ -1,29 +1,13 @@
-import { getCurrentUser } from "@/lib/auth/helpers";
 import { GENERAL_ERROR_MESSAGE } from "@/lib/constants";
 import { ApiResponse } from "@/lib/types";
+import { isError } from "@/lib/utils";
 import {
   DeleteUploadRequestFor,
   DeleteUploadRequestPurposeType,
   UploadContextFor,
-  UploadContextSchemaType,
+  UploadPayloadPurposeType,
 } from "../actions/schemas";
 import { CreateUploadResponse } from "./types";
-import { UploadPayloadPurposeType } from "../actions/schemas";
-
-export const createFileKey = async (file: File, keyPrefix: string) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) return null;
-
-  const safeFileName = file.name
-    .trim()
-    .replace(/[^a-zA-Z0-9._-]/g, "-")
-    .replace(/-+/g, "-");
-  if (!userId) return null;
-
-  const key = `${userId}/${keyPrefix.replace(/\/+$/, "")}/${crypto.randomUUID()}-${safeFileName}`;
-
-  return key;
-};
 
 export const fetchUploadPresignedUrl = async <
   P extends UploadPayloadPurposeType,
@@ -55,9 +39,35 @@ export const uploadFileWithProgress = (
   url: string,
   file: File,
   onProgress: (progress: number) => void,
+  signal?: AbortSignal,
 ) => {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    let settled = false;
+
+    const handleSignalAbort = () => {
+      xhr.abort();
+    };
+
+    const cleanup = () => {
+      signal?.removeEventListener("abort", handleSignalAbort);
+    };
+
+    const resolveOnce = () => {
+      if (settled) return;
+
+      settled = true;
+      cleanup();
+      resolve();
+    };
+
+    const rejectOnce = (error: Error) => {
+      if (settled) return;
+
+      settled = true;
+      cleanup();
+      reject(error);
+    };
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
@@ -68,16 +78,34 @@ export const uploadFileWithProgress = (
     xhr.onload = () => {
       if (xhr.status === 200 || xhr.status === 204) {
         onProgress(100);
-        resolve();
+        resolveOnce();
         return;
       }
 
-      reject(new Error(`Upload failed with status: ${xhr.status}`));
+      rejectOnce(new Error(`Upload failed with status: ${xhr.status}`));
     };
 
     xhr.onerror = () => {
-      reject(new Error("Upload failed"));
+      rejectOnce(new Error("Upload failed"));
     };
+
+    xhr.onabort = () => {
+      rejectOnce(
+        isError(signal?.reason)
+          ? signal.reason
+          : new DOMException("Upload aborted", "AbortError"),
+      );
+    };
+
+    if (signal?.aborted) {
+      rejectOnce(
+        isError(signal?.reason)
+          ? signal.reason
+          : new DOMException("Upload aborted", "AbortError"),
+      );
+    }
+
+    signal?.addEventListener("abort", handleSignalAbort, { once: true });
 
     xhr.open("PUT", url);
 
@@ -160,9 +188,7 @@ export const deleteFileClient = async <
     };
   } catch (error) {
     console.error(error);
-    const errorMessage = Error.isError(error)
-      ? error.message
-      : GENERAL_ERROR_MESSAGE;
+    const errorMessage = isError(error) ? error.message : GENERAL_ERROR_MESSAGE;
     return {
       error: true,
       message: errorMessage,

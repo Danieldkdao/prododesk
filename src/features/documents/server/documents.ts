@@ -41,6 +41,8 @@ export const confirmUserDocumentOwnership = async (
   additionalFilters?: SQL[],
   tx?: DbTransaction,
 ) => {
+  if (!areValidIds(documentId)) return null;
+
   let userIdToUse: string | null = null;
   if (userId) {
     userIdToUse = userId;
@@ -118,7 +120,6 @@ export const readDocumentsDb = async (
 
   let existingDocumentIds: string[] = [];
   if (documentIds?.length) {
-    if (!areValidIds(documentIds)) return null;
     const existingDocuments = await Promise.all(
       documentIds.map((documentId) =>
         confirmUserDocumentOwnership(documentId, userIdToUse),
@@ -136,7 +137,6 @@ export const readDocumentsDb = async (
 
   let existingProjectIds: string[] = [];
   if (projectIds?.length) {
-    if (!areValidIds(projectIds)) return null;
     const existingProjects = await Promise.all(
       projectIds.map((projectId) =>
         confirmUserProjectOwnership(projectId, userIdToUse),
@@ -155,7 +155,6 @@ export const readDocumentsDb = async (
 
   let existingAreaIds: string[] = [];
   if (areaIds?.length) {
-    if (!areValidIds(areaIds)) return null;
     const existingAreas = await Promise.all(
       areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userIdToUse)),
     );

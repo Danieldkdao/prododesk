@@ -74,6 +74,7 @@ export const FileDisplay = ({
           className="absolute -top-1 -right-1 z-10 hidden group-hover:flex bg-destructive text-white hover:bg-destructive/90 hover:text-white"
           onClick={handleRemoveFile}
           disabled={disableRemoveButton}
+          aria-label={`Remove file ${name}`}
         >
           <XIcon />
         </Button>

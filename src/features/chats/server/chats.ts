@@ -3,6 +3,7 @@ import { ChatInsertType, ChatTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
 import { deleteFilesFromStorage } from "@/features/uploads/lib/delete-files";
+import { areValidIds } from "@/lib/utils";
 import { and, desc, eq, ilike, or, SQL } from "drizzle-orm";
 import { revalidateChatCache } from "./cache/chats";
 
@@ -86,6 +87,8 @@ export const confirmUserChatOwnership = async (
   otherQueries?: SQL<unknown> | undefined,
   tx?: DbTransaction,
 ) => {
+  if (!areValidIds(chatId)) return null;
+
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 

@@ -3,7 +3,8 @@ import {
   uploadFileWithProgress,
   validateFile as validateFileHelper,
 } from "@/features/uploads/lib/helpers";
-import { ChangeEvent, useCallback, useRef, useState } from "react";
+import { isError } from "@/lib/utils";
+import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 export const useProfileImageUpload = ({
   accept = "*",
@@ -19,6 +20,15 @@ export const useProfileImageUpload = ({
   } | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const previewUrl = currentFile?.previewUrl;
+    if (!previewUrl) return;
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [currentFile?.previewUrl]);
 
   const validateFile = useCallback(
     (file: File) => {
@@ -71,7 +81,7 @@ export const useProfileImageUpload = ({
       return data.uploadId;
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : "Failed to upload file. Please try again.";
       setError(errorMessage);

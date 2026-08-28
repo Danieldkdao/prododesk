@@ -9,6 +9,7 @@ import {
   NOT_FOUND_ERROR_MESSAGE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
+import { isError } from "@/lib/utils";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
 import { tool } from "ai";
 import {
@@ -110,7 +111,7 @@ const createDocumentTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -169,7 +170,7 @@ const updateDocumentTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -225,7 +226,7 @@ const deleteDocumentTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({

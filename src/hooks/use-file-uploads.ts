@@ -5,6 +5,7 @@ import {
   validateFile,
 } from "@/features/uploads/lib/helpers";
 import { FileAttachment } from "@/services/ai/types";
+import { isError } from "@/lib/utils";
 import {
   ChangeEvent,
   DragEvent,
@@ -56,6 +57,7 @@ export const useFileUploads = (props: {
     new Map<string, { url: string; name: string; type: string }>(),
   );
   const [error, setError] = useState("");
+  const localPreviewUrlsRef = useRef(localPreviewUrls);
   const inputRef = useRef<HTMLInputElement>(null);
   const acceptedTypes = accept
     .split(",")
@@ -105,11 +107,12 @@ export const useFileUploads = (props: {
   );
 
   useEffect(() => {
-    if (!localPreviewUrls.size) return;
-
-    return () =>
-      localPreviewUrls.forEach(({ url }) => url && URL.revokeObjectURL(url));
-  }, [localPreviewUrls]);
+    return () => {
+      localPreviewUrlsRef.current?.forEach(
+        ({ url }) => url && URL.revokeObjectURL(url),
+      );
+    };
+  }, []);
 
   const validateFiles = useCallback(
     (incomingFiles: File[]) => {
@@ -166,9 +169,6 @@ export const useFileUploads = (props: {
           ];
         }),
       );
-
-      const prevLocalPreviewUrls = localPreviewUrls;
-      const prevUploadProgresses = uploadProgresses;
 
       setLocalPreviewUrls((prev) => new Map([...prev, ...filesToUpload]));
       setIsUploading(true);
@@ -237,13 +237,32 @@ export const useFileUploads = (props: {
         });
       } catch (error) {
         console.error(error);
-        const message = Error.isError(error)
+        const message = isError(error)
           ? error.message
           : `Failed to upload file${fileArray.length > 1 ? "s" : ""}`;
-
-        setLocalPreviewUrls(prevLocalPreviewUrls);
-        setUploadProgresses(prevUploadProgresses);
         toast.error(message);
+
+        setLocalPreviewUrls((prev) => {
+          const next = new Map(prev);
+          for (const [id] of fileIds) {
+            const preview = next.get(id);
+            if (preview?.url) {
+              URL.revokeObjectURL(preview.url);
+            }
+
+            next.delete(id);
+          }
+
+          return next;
+        });
+        setUploadProgresses((prev) => {
+          const next = new Map(prev);
+          for (const [id] of fileIds) {
+            next.delete(id);
+          }
+
+          return next;
+        });
       } finally {
         setIsUploading(false);
         if (inputRef.current) {
@@ -251,7 +270,7 @@ export const useFileUploads = (props: {
         }
       }
     },
-    [setFiles, validateFiles, localPreviewUrls, uploadProgresses, chatId],
+    [setFiles, validateFiles, chatId],
   );
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -286,6 +305,10 @@ export const useFileUploads = (props: {
   const removeFileFromState = (id: string) => {
     setLocalPreviewUrls((prev) => {
       const next = new Map(prev);
+      const preview = next.get(id);
+      if (preview?.url) {
+        URL.revokeObjectURL(preview.url);
+      }
       next.delete(id);
       return next;
     });
@@ -326,9 +349,7 @@ export const useFileUploads = (props: {
       removeFileFromState(id);
     } catch (error) {
       console.error(error);
-      const message = Error.isError(error)
-        ? error.message
-        : "Failed to delete file.";
+      const message = isError(error) ? error.message : "Failed to delete file.";
 
       toast.error(message);
     } finally {
@@ -342,7 +363,14 @@ export const useFileUploads = (props: {
 
   const clearFiles = () => {
     setFiles(new Map());
-    setLocalPreviewUrls(new Map());
+    setLocalPreviewUrls((prev) => {
+      const next = new Map(prev);
+      next.forEach(({ url }) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+
+      return new Map();
+    });
   };
 
   return {

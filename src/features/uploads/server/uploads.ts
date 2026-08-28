@@ -1,12 +1,15 @@
 import { db, DbTransaction } from "@/db/db";
 import { UploadIntentInsertType, UploadIntentTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { areValidIds } from "@/lib/utils";
 import { and, eq } from "drizzle-orm";
 
 export const confirmUserUploadIntentOwnership = async (
   uploadId: string,
   userId?: string,
 ) => {
+  if (!areValidIds(uploadId)) return null;
+
   const userIdToUse = userId ? userId : (await getCurrentUser()).userId;
   if (!userIdToUse) return null;
 

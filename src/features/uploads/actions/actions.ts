@@ -19,26 +19,26 @@ export const completeProfileImageUpload = async ({
 }: {
   uploadId: string;
 }) => {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const existingUploadIntent = await confirmUserUploadIntentOwnership(
+    uploadId,
+    userId,
+  );
+  if (!existingUploadIntent) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
   try {
-    const { userId, user } = await getCurrentUser();
-    if (!userId || !user) {
-      return {
-        error: true,
-        message: UNAUTHED_ERROR_MESSAGE,
-      };
-    }
-
-    const existingUploadIntent = await confirmUserUploadIntentOwnership(
-      uploadId,
-      userId,
-    );
-    if (!existingUploadIntent) {
-      return {
-        error: true,
-        message: NOT_FOUND_ERROR_MESSAGE,
-      };
-    }
-
     const previousProfileImageKey = user.profileImageKey;
 
     await auth.api.updateUser({

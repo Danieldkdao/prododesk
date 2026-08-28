@@ -15,11 +15,7 @@ import { PaginationCursor } from "@/features/tasks/lib/types";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
 import { runMutationCacheInvalidation } from "@/lib/data-cache";
-import {
-  areValidIds,
-  getLocalDayBounds,
-  getLocalWeekBounds,
-} from "@/lib/utils";
+import { getLocalDayBounds, getLocalWeekBounds } from "@/lib/utils";
 import { tz } from "@date-fns/tz";
 import { subDays } from "date-fns";
 import {
@@ -145,7 +141,6 @@ export const readActivityDb = async (filterOptions: ReadActivityDbFilters) => {
 
   let existingProjectIds: string[] = [];
   if (projectIds?.length) {
-    if (!areValidIds(projectIds)) return null;
     const existingProjects = await Promise.all(
       projectIds.map((projectId) =>
         confirmUserProjectOwnership(projectId, userIdToUse),
@@ -164,7 +159,6 @@ export const readActivityDb = async (filterOptions: ReadActivityDbFilters) => {
 
   let existingAreaIds: string[] = [];
   if (areaIds?.length) {
-    if (!areValidIds(areaIds)) return null;
     const existingAreas = await Promise.all(
       areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userIdToUse)),
     );

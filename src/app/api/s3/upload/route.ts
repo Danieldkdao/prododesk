@@ -23,7 +23,7 @@ import {
   NOT_FOUND_ERROR_MESSAGE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
-import { generateFileUrl } from "@/lib/utils";
+import { generateFileUrl, isError } from "@/lib/utils";
 import { getUploadPresignedUrl } from "@/services/tigris/presigns";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -289,7 +289,7 @@ export const POST = async (request: NextRequest) => {
     });
   } catch (error) {
     console.error(error);
-    const errorMessage = Error.isError(error)
+    const errorMessage = isError(error)
       ? error.message
       : GENERAL_ERROR_MESSAGE;
     return NextResponse.json(

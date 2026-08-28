@@ -15,7 +15,7 @@ export const ChatAttachmentTable = pgTable("chat_attachments", {
     .references(() => ChatMessageTable.id, { onDelete: "cascade" })
     .notNull(),
   fileName: text("file_name").notNull(),
-  fileType: text("file_type"),
+  fileType: text("file_type").notNull().default("application/octet-stream"),
   createdAt,
 });
 

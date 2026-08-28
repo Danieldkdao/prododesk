@@ -183,22 +183,6 @@ export function useUndoRedo(config: UseUndoRedoConfig) {
     };
   }, [editor, action, hideWhenUnavailable]);
 
-  useEffect(() => {
-    if (!editor) return;
-
-    const handleUpdate = () => {
-      setIsVisible(shouldShowButton({ editor, hideWhenUnavailable, action }));
-    };
-
-    handleUpdate();
-
-    editor.on("transaction", handleUpdate);
-
-    return () => {
-      editor.off("transaction", handleUpdate);
-    };
-  }, [editor, hideWhenUnavailable, action]);
-
   const handleAction = useCallback(() => {
     if (!editor) return false;
 

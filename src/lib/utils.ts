@@ -1,3 +1,4 @@
+import { envClient } from "@/data/env/client";
 import { tz } from "@date-fns/tz";
 import { clsx, type ClassValue } from "clsx";
 import {
@@ -12,7 +13,6 @@ import {
 import { twMerge } from "tailwind-merge";
 import z from "zod";
 import { timeSchema } from "./schemas";
-import { envClient } from "@/data/env/client";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -118,3 +118,6 @@ export const isValidDate = (date: unknown): date is Date => {
 export const generateFileUrl = (key: string) => {
   return `https://${envClient.NEXT_PUBLIC_TIGRIS_STORAGE_BUCKET}.t3.tigrisfiles.io/${key}`;
 };
+
+export const isError = (error: unknown): error is Error =>
+  error instanceof Error;

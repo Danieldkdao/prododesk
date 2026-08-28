@@ -28,7 +28,7 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { APIError } from "@/lib/errors";
-import { areValidIds } from "@/lib/utils";
+import { areValidIds, isError } from "@/lib/utils";
 import { COMPACT_AFTER_TOKENS, estimateTokens } from "@/services/ai/helpers";
 import { ModelId } from "@/services/ai/model-ids";
 import { openrouter } from "@/services/ai/models/openrouter";
@@ -141,6 +141,11 @@ export const POST = async (req: Request) => {
             part.type === "file" &&
             Boolean(part.providerMetadata?.prododesk.uploadId),
         );
+        const uploadIds = userFileParts.map(
+          (part) => part.providerMetadata.prododesk.uploadId,
+        );
+        if (!areValidIds(uploadIds))
+          throw new APIError("One or more file attachments are invalid.", 400);
 
         const existingUploadIntents = (
           await Promise.all(
@@ -331,7 +336,7 @@ export const POST = async (req: Request) => {
         }
       },
       onError: (error) => {
-        const errorMessage = Error.isError(error)
+        const errorMessage = isError(error)
           ? error.message
           : "Something went wrong during generation. Please try again.";
         return errorMessage;

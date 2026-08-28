@@ -57,7 +57,8 @@ export const ChatViewList = ({
   const uploadedFiles = attachmentOptions.uploadedFiles;
 
   const handleSendMessage = () => {
-    if (attachmentOptions.isUploading || attachmentOptions.isDeleting) return;
+    if (attachmentOptions.isUploading || attachmentOptions.isAnyFileDeleting)
+      return;
     if (!prompt.trim() || !selectedModel)
       return toast.error("Please enter a prompt and select a model.");
     clearError();

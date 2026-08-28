@@ -75,23 +75,31 @@ export const ChatViewListMessage = ({
   const artifacts = msg.metadata?.artifacts;
 
   const fileParts = msg.parts.filter((part) => part.type === "file");
-  const attachments = (
-    fileParts.length
-      ? fileParts
-      : msg.metadata?.attachments
-        ? msg.metadata?.attachments.map((attachment) => ({
-            type: "file",
-            filename: attachment.fileName,
-            mediaType: attachment.fileType,
-            url: generateFileUrl(attachment.storageKey),
-            providerMetadata: {
-              prododesk: {
-                uploadId: attachment.id,
-              },
+  const attachments = fileParts.length
+    ? fileParts.map((part) => ({
+        type: "file" as const,
+        filename: part.filename || "Unknown file",
+        mediaType: part.mediaType || "application/octet-stream",
+        url: part.url,
+        providerMetadata: {
+          prododesk: {
+            uploadId: String(part.providerMetadata?.prododesk?.uploadId) || "",
+          },
+        } as const,
+      }))
+    : msg.metadata?.attachments
+      ? msg.metadata?.attachments.map((attachment) => ({
+          type: "file" as const,
+          filename: attachment.fileName,
+          mediaType: attachment.fileType,
+          url: generateFileUrl(attachment.storageKey),
+          providerMetadata: {
+            prododesk: {
+              uploadId: attachment.id,
             },
-          }))
-        : []
-  ) as FileAttachment[];
+          },
+        }))
+      : [];
 
   const currentAction = formatCurrentAction(latestPart);
 

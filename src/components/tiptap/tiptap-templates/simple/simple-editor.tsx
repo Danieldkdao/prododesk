@@ -88,7 +88,7 @@ import {
 
 // --- Styles ---
 import "@/components/tiptap/tiptap-templates/simple/simple-editor.scss";
-import { cn } from "@/lib/utils";
+import { cn, isError } from "@/lib/utils";
 
 // --- Extensions ---
 import { Markdown } from "@tiptap/markdown";
@@ -126,7 +126,7 @@ const ResizableImage = Image.extend({
       return `<img ${attributes.join(" ")} />`;
     }
 
-    const escapedAlt = String(alt).replaceAll("]", "\\]");
+    const escapedAlt = String(alt ?? "").replaceAll("]", "\\]");
     const escapedTitle = String(title ?? "").replaceAll('"', '\\"');
 
     return title
@@ -469,7 +469,7 @@ export function SimpleEditor({
         },
         onError: (error) => {
           console.error("Upload failed:", error);
-          const errorMessage = Error.isError(error)
+          const errorMessage = isError(error)
             ? error.message
             : "Upload failed";
           toast.error(errorMessage);

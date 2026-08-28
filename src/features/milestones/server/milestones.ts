@@ -52,6 +52,8 @@ export const confirmUserMilestoneOwnership = async (
   additionalFilters?: SQL<unknown>[],
   tx?: DbTransaction,
 ) => {
+  if (!areValidIds(milestoneId)) return null;
+
   let userIdToUse: string | null = null;
   if (userId) {
     userIdToUse = userId;
@@ -141,8 +143,6 @@ export const readMilestonesDb = async (
 
   let existingMilestoneIds: string[] = [];
   if (milestoneIds?.length) {
-    if (!areValidIds(milestoneIds)) return null;
-
     const existingMilestones = await Promise.all(
       milestoneIds.map((milestoneId) =>
         confirmUserMilestoneOwnership(milestoneId, userIdToUse),
@@ -170,8 +170,6 @@ export const readMilestonesDb = async (
 
   let existingProjectIds: string[] = [];
   if (projectIds?.length) {
-    if (!areValidIds(projectIds)) return null;
-
     const existingProjects = await Promise.all(
       projectIds.map((projectId) =>
         confirmUserProjectOwnership(projectId, userIdToUse),

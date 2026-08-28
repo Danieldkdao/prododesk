@@ -6,6 +6,7 @@ import {
 } from "@/features/chats/server/tool-executions";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
+import { isError } from "@/lib/utils";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
 import { tool } from "ai";
 import { parseISO } from "date-fns";
@@ -122,7 +123,7 @@ const createTasksTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -193,7 +194,7 @@ const updateTaskTool = tool({
       return output;
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -261,7 +262,7 @@ const updateTasksStatusTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -326,7 +327,7 @@ const updateTasksPriorityTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -400,7 +401,7 @@ const assignTasksToMilestoneTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -462,7 +463,7 @@ const deleteTaskTool = tool({
       return output;
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({

@@ -36,6 +36,8 @@ export const confirmUserAreaOwnership = async (
   existingUserId?: string,
   tx?: DbTransaction,
 ) => {
+  if (!areValidIds(areaId)) return null;
+
   let userIdToUse: string | null | undefined = null;
   if (existingUserId) {
     userIdToUse = existingUserId;
@@ -140,8 +142,6 @@ export const readAreasDb = async (filterOptions: ReadAreasDbFilters) => {
 
   let existingAreaIds: string[] = [];
   if (areaIds?.length) {
-    if (!areValidIds(areaIds)) return null;
-
     const existingAreas = await Promise.all(
       areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userIdToUse)),
     );

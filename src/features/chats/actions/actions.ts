@@ -185,13 +185,6 @@ export const updateChatAction = async (
   chatId: string,
   unsafeData: ChatSchemaType,
 ) => {
-  if (!areValidIds(chatId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -234,13 +227,6 @@ export const updateChatAction = async (
 };
 
 export const deleteChatAction = async (chatId: string) => {
-  if (!areValidIds(chatId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
