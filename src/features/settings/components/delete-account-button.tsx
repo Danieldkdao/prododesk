@@ -6,6 +6,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { authClient } from "@/lib/auth/auth-client";
 import { ComponentProps, useTransition } from "react";
 import { toast } from "sonner";
+import { resetAccountDataAction } from "../actions/actions";
 
 export const DeleteAccountButton = ({
   children,
@@ -24,6 +25,12 @@ export const DeleteAccountButton = ({
     if (!confirmation) return;
 
     startTransition(async () => {
+      const response = await resetAccountDataAction();
+      if (response.error) {
+        toast.error(response.message);
+        return;
+      }
+
       const { data, error } = await authClient.deleteUser({
         callbackURL: "/",
       });

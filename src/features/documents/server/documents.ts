@@ -386,29 +386,12 @@ export const deleteDocumentDb = async (
     if (existingDocument.projectId && !existingProject)
       throw new Error("No existing project found.");
 
-    const existingDocumentAssets = await (tx ?? db)
-      .select()
-      .from(DocumentAssetTable)
-      .where(eq(DocumentAssetTable.documentId, existingDocument.id));
-
-    if (existingDocumentAssets.length > 0) {
-      const deletedAssets = await (tx ?? db)
-        .delete(DocumentAssetTable)
-        .where(eq(DocumentAssetTable.documentId, existingDocument.id))
-        .returning();
-      if (deletedAssets.length !== existingDocumentAssets.length)
-        throw new Error("Failed to delete document assets.");
-
-      const deletedKeys = deletedAssets.map((asset) => asset.storageKey);
-      if (deletedKeys.length) {
-        const deleteSuccess = await deleteFilesFromStorage(deletedKeys);
-        if (!deleteSuccess) {
-          throw new Error("Failed to delete document assets from storage.");
-        }
-      }
-    }
-
     const deleteDocument = async (pgtx: DbTransaction) => {
+      const existingDocumentAssets = await pgtx
+        .select({ storageKey: DocumentAssetTable.storageKey })
+        .from(DocumentAssetTable)
+        .where(eq(DocumentAssetTable.documentId, existingDocument.id));
+
       const [deletedDocument] = await pgtx
         .delete(DocumentTable)
         .where(
@@ -434,23 +417,36 @@ export const deleteDocumentDb = async (
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
-      return deletedDocument;
+      return {
+        deletedDocument,
+        storageKeys: existingDocumentAssets.map((asset) => asset.storageKey),
+      };
     };
 
-    const deletedDocument = tx
+    const result = tx
       ? await deleteDocument(tx)
       : await db.transaction(deleteDocument);
 
+    if (result.storageKeys.length && !tx) {
+      const deleteSuccess = await deleteFilesFromStorage(result.storageKeys);
+      if (!deleteSuccess) {
+        console.error(
+          "Failed to delete assets from storage for document:",
+          existingDocument.id,
+        );
+      }
+    }
+
     await runMutationCacheInvalidation(source === "ai", () => {
       revalidateDocumentCache(
-        deletedDocument.userId,
-        deletedDocument.id,
-        deletedDocument.projectId,
+        result.deletedDocument.userId,
+        result.deletedDocument.id,
+        result.deletedDocument.projectId,
         existingProject?.areaId,
       );
     });
 
-    return deletedDocument;
+    return result.deletedDocument;
   } catch (error) {
     console.error(error);
     return null;

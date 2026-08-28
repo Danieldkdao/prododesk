@@ -39,17 +39,7 @@ export const completeProfileImageUpload = async ({
       };
     }
 
-    if (user.profileImageKey) {
-      const deleteSuccess = await deleteFilesFromStorage([
-        user.profileImageKey,
-      ]);
-      if (!deleteSuccess) {
-        return {
-          error: true,
-          message: GENERAL_ERROR_MESSAGE,
-        };
-      }
-    }
+    const previousProfileImageKey = user.profileImageKey;
 
     await auth.api.updateUser({
       body: {
@@ -66,6 +56,18 @@ export const completeProfileImageUpload = async ({
         error: true,
         message: GENERAL_ERROR_MESSAGE,
       };
+    }
+
+    if (previousProfileImageKey) {
+      const deleteSuccess = await deleteFilesFromStorage([
+        previousProfileImageKey,
+      ]);
+      if (!deleteSuccess) {
+        return {
+          error: true,
+          message: GENERAL_ERROR_MESSAGE,
+        };
+      }
     }
 
     return {

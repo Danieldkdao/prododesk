@@ -63,15 +63,6 @@ export const resetAccountDataDb = async () => {
         })
       ).map((asset) => asset.storageKey);
 
-      const fileKeysToDelete = [...attachmentKeys, ...documentAssetKeys];
-
-      if (fileKeysToDelete.length > 0) {
-        const deleteSuccess = await deleteFilesFromStorage(fileKeysToDelete);
-        if (!deleteSuccess) {
-          throw new Error("Failed to delete chat attachments from storage.");
-        }
-      }
-
       const deletedChats = await tx
         .delete(ChatTable)
         .where(eq(ChatTable.userId, userId))
@@ -130,9 +121,22 @@ export const resetAccountDataDb = async () => {
         deletedProjects,
         deletedAreas,
         updatedSettings,
+        storageKeys: [...attachmentKeys, ...documentAssetKeys],
       };
     });
     if (!deletedData) throw new Error("Failed to reset account data.");
+
+    if (deletedData.storageKeys.length > 0) {
+      const deleteSuccess = await deleteFilesFromStorage(
+        deletedData.storageKeys,
+      );
+      if (!deleteSuccess) {
+        console.error(
+          "Account data was reset, but storage cleanup failed for user:",
+          userId,
+        );
+      }
+    }
 
     const cacheTags = new Set<string>([
       getUserChatTag(userId),

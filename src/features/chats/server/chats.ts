@@ -107,33 +107,47 @@ export const deleteChatDb = async (
   if (!userId) return null;
 
   const { tx } = options ?? {};
-  const existingChat = await (tx ?? db).query.ChatTable.findFirst({
-    where: and(eq(ChatTable.id, chatId), eq(ChatTable.userId, userId)),
-    with: {
-      messages: {
-        with: {
-          attachments: true,
+  const deleteChat = async (pgtx: DbTransaction) => {
+    const existingChat = await pgtx.query.ChatTable.findFirst({
+      where: and(eq(ChatTable.id, chatId), eq(ChatTable.userId, userId)),
+      with: {
+        messages: {
+          with: {
+            attachments: true,
+          },
         },
       },
-    },
-  });
-  if (!existingChat) return null;
+    });
+    if (!existingChat) return null;
 
-  const attachmentKeys = existingChat.messages
-    .flatMap((message) => message.attachments)
-    .map((attachment) => attachment.storageKey);
-  if (attachmentKeys.length > 0) {
-    const deleteSuccess = await deleteFilesFromStorage(attachmentKeys);
-    if (!deleteSuccess) throw new Error("Failed to delete chat attachments.");
+    const [deletedChat] = await pgtx
+      .delete(ChatTable)
+      .where(eq(ChatTable.id, chatId))
+      .returning();
+    if (!deletedChat) throw new Error("Failed to delete chat.");
+
+    return {
+      deletedChat,
+      storageKeys: existingChat.messages
+        .flatMap((message) => message.attachments)
+        .map((attachment) => attachment.storageKey),
+    };
+  };
+
+  const result = tx ? await deleteChat(tx) : await db.transaction(deleteChat);
+  if (!result) return null;
+
+  if (result.storageKeys.length > 0 && !tx) {
+    const deleteSuccess = await deleteFilesFromStorage(result.storageKeys);
+    if (!deleteSuccess) {
+      console.error(
+        "Failed to delete attachments from storage for chat:",
+        chatId,
+      );
+    }
   }
 
-  const [deletedChat] = await (tx ?? db)
-    .delete(ChatTable)
-    .where(eq(ChatTable.id, chatId))
-    .returning();
-  if (!deletedChat) throw new Error("Failed to delete chat.");
+  revalidateChatCache(result.deletedChat.userId, result.deletedChat.id);
 
-  revalidateChatCache(deletedChat.userId, deletedChat.id);
-
-  return deletedChat;
+  return result.deletedChat;
 };
