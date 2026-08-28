@@ -1,6 +1,8 @@
 import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
   AreaSelectType,
+  DocumentAssetInsertType,
+  DocumentAssetTable,
   DocumentInsertType,
   DocumentSelectType,
   DocumentTable,
@@ -31,6 +33,7 @@ import {
   DocumentsSortByOption,
 } from "../lib/documents-params";
 import { revalidateDocumentCache } from "./cache/documents";
+import { deleteFilesFromStorage } from "@/features/uploads/lib/delete-files";
 
 export const confirmUserDocumentOwnership = async (
   documentId: string,
@@ -38,6 +41,8 @@ export const confirmUserDocumentOwnership = async (
   additionalFilters?: SQL[],
   tx?: DbTransaction,
 ) => {
+  if (!areValidIds(documentId)) return null;
+
   let userIdToUse: string | null = null;
   if (userId) {
     userIdToUse = userId;
@@ -115,7 +120,6 @@ export const readDocumentsDb = async (
 
   let existingDocumentIds: string[] = [];
   if (documentIds?.length) {
-    if (!areValidIds(documentIds)) return null;
     const existingDocuments = await Promise.all(
       documentIds.map((documentId) =>
         confirmUserDocumentOwnership(documentId, userIdToUse),
@@ -133,7 +137,6 @@ export const readDocumentsDb = async (
 
   let existingProjectIds: string[] = [];
   if (projectIds?.length) {
-    if (!areValidIds(projectIds)) return null;
     const existingProjects = await Promise.all(
       projectIds.map((projectId) =>
         confirmUserProjectOwnership(projectId, userIdToUse),
@@ -152,7 +155,6 @@ export const readDocumentsDb = async (
 
   let existingAreaIds: string[] = [];
   if (areaIds?.length) {
-    if (!areValidIds(areaIds)) return null;
     const existingAreas = await Promise.all(
       areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userIdToUse)),
     );
@@ -384,6 +386,11 @@ export const deleteDocumentDb = async (
       throw new Error("No existing project found.");
 
     const deleteDocument = async (pgtx: DbTransaction) => {
+      const existingDocumentAssets = await pgtx
+        .select({ storageKey: DocumentAssetTable.storageKey })
+        .from(DocumentAssetTable)
+        .where(eq(DocumentAssetTable.documentId, existingDocument.id));
+
       const [deletedDocument] = await pgtx
         .delete(DocumentTable)
         .where(
@@ -409,25 +416,53 @@ export const deleteDocumentDb = async (
       );
       if (!insertedActivity) throw new Error("Failed to insert activity.");
 
-      return deletedDocument;
+      return {
+        deletedDocument,
+        storageKeys: existingDocumentAssets.map((asset) => asset.storageKey),
+      };
     };
 
-    const deletedDocument = tx
+    const result = tx
       ? await deleteDocument(tx)
       : await db.transaction(deleteDocument);
 
+    if (result.storageKeys.length && !tx) {
+      const deleteSuccess = await deleteFilesFromStorage(result.storageKeys);
+      if (!deleteSuccess) {
+        console.error(
+          "Failed to delete assets from storage for document:",
+          existingDocument.id,
+        );
+      }
+    }
+
     await runMutationCacheInvalidation(source === "ai", () => {
       revalidateDocumentCache(
-        deletedDocument.userId,
-        deletedDocument.id,
-        deletedDocument.projectId,
+        result.deletedDocument.userId,
+        result.deletedDocument.id,
+        result.deletedDocument.projectId,
         existingProject?.areaId,
       );
     });
 
-    return deletedDocument;
+    return result.deletedDocument;
   } catch (error) {
     console.error(error);
     return null;
   }
+};
+
+export const insertDocumentAssetDb = async (asset: DocumentAssetInsertType) => {
+  const { userId } = await getCurrentUser();
+  if (!userId || userId !== asset.userId) return null;
+
+  const existingDocument = await confirmUserDocumentOwnership(asset.documentId);
+  if (!existingDocument) return null;
+
+  const [insertedDocumentAsset] = await db
+    .insert(DocumentAssetTable)
+    .values(asset)
+    .returning();
+
+  return insertedDocumentAsset || null;
 };

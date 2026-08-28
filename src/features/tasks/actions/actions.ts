@@ -142,13 +142,6 @@ export const updateTaskAction = async (
   unsafeData: UpdateTaskSchemaType,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(taskId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -214,13 +207,6 @@ export const updateTaskMilestoneAction = async (
   milestoneId: string | null,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(taskId) || (milestoneId && !areValidIds(milestoneId))) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -275,13 +261,6 @@ export const deleteTaskAction = async (
   taskId: string,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(taskId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {

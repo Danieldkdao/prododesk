@@ -2,7 +2,9 @@ import { db } from "@/db/db";
 import {
   ActivityTable,
   AreaTable,
+  ChatAttachmentTable,
   ChatTable,
+  DocumentAssetTable,
   DocumentTable,
   MilestoneTable,
   ProjectTable,
@@ -40,6 +42,7 @@ import {
   getUserTaskTag,
 } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { deleteFilesFromStorage } from "@/features/uploads/lib/delete-files";
 import { eq } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 
@@ -49,6 +52,17 @@ export const resetAccountDataDb = async () => {
 
   try {
     const deletedData = await db.transaction(async (tx) => {
+      const attachmentKeys = (
+        await tx.query.ChatAttachmentTable.findMany({
+          where: eq(ChatAttachmentTable.userId, userId),
+        })
+      ).map((attachment) => attachment.storageKey);
+      const documentAssetKeys = (
+        await tx.query.DocumentAssetTable.findMany({
+          where: eq(DocumentAssetTable.userId, userId),
+        })
+      ).map((asset) => asset.storageKey);
+
       const deletedChats = await tx
         .delete(ChatTable)
         .where(eq(ChatTable.userId, userId))
@@ -107,9 +121,22 @@ export const resetAccountDataDb = async () => {
         deletedProjects,
         deletedAreas,
         updatedSettings,
+        storageKeys: [...attachmentKeys, ...documentAssetKeys],
       };
     });
     if (!deletedData) throw new Error("Failed to reset account data.");
+
+    if (deletedData.storageKeys.length > 0) {
+      const deleteSuccess = await deleteFilesFromStorage(
+        deletedData.storageKeys,
+      );
+      if (!deleteSuccess) {
+        console.error(
+          "Account data was reset, but storage cleanup failed for user:",
+          userId,
+        );
+      }
+    }
 
     const cacheTags = new Set<string>([
       getUserChatTag(userId),

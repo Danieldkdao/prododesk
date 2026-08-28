@@ -14,6 +14,7 @@ import {
   upsertToolExecutionDb,
 } from "@/features/chats/server/tool-executions";
 import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
+import { isError } from "@/lib/utils";
 import {
   createAreaAction,
   deleteAreaAction,
@@ -87,7 +88,7 @@ const createAreaTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -147,7 +148,7 @@ const updateAreaTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -207,7 +208,7 @@ const setAreaArchivedTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -262,7 +263,7 @@ const deleteAreaTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({

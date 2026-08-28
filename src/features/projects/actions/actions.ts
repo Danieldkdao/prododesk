@@ -245,13 +245,6 @@ export const updateProjectAction = async (
   unsafeData: UpdateProjectSchemaType,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(projectId)) {
-    return {
-      error: true,
-      message: INVALID_DATA_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -327,13 +320,6 @@ export const toggleProjectArchiveStatusAction = async (
   newArchiveStatus: boolean,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(projectId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -381,13 +367,6 @@ export const deleteProjectAction = async (
   projectId: string,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(projectId)) {
-    return {
-      error: true,
-      message: INVALID_DATA_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {

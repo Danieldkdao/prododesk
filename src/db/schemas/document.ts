@@ -3,6 +3,7 @@ import { pgTable, text, uuid, varchar } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { ProjectTable } from "./project";
 import { user } from "./user";
+import { DocumentAssetTable } from "./document-asset";
 
 export const DocumentTable = pgTable("documents", {
   id,
@@ -21,7 +22,7 @@ export const DocumentTable = pgTable("documents", {
 export type DocumentInsertType = typeof DocumentTable.$inferInsert;
 export type DocumentSelectType = typeof DocumentTable.$inferSelect;
 
-export const documentRelations = relations(DocumentTable, ({ one }) => ({
+export const documentRelations = relations(DocumentTable, ({ one, many }) => ({
   user: one(user, {
     fields: [DocumentTable.userId],
     references: [user.id],
@@ -30,4 +31,5 @@ export const documentRelations = relations(DocumentTable, ({ one }) => ({
     fields: [DocumentTable.projectId],
     references: [ProjectTable.id],
   }),
+  assets: many(DocumentAssetTable),
 }));

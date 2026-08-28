@@ -2,17 +2,17 @@
 
 import { SimpleEditor } from "@/components/tiptap/tiptap-templates/simple/simple-editor";
 import { Input } from "@/components/ui/input";
+import { ProjectCommandSelect } from "@/features/projects/components/project-command-select";
+import { cn } from "@/lib/utils";
 import { useAsyncDebouncer } from "@tanstack/react-pacer";
 import { format } from "date-fns";
 import {
   CheckIcon,
   ClockIcon,
-  FolderKanbanIcon,
   LoaderIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -20,8 +20,6 @@ import {
   updateDocumentAction,
 } from "../actions/actions";
 import { DeleteDocumentButton } from "./delete-document-button";
-import { ProjectCommandSelect } from "@/features/projects/components/project-command-select";
-import { cn } from "@/lib/utils";
 
 type DocumentValues = {
   name: string;
@@ -207,6 +205,7 @@ export const DocumentEditor = ({
           onValueChange={(value) =>
             setDocumentValues((prev) => ({ ...prev, content: value }))
           }
+          documentId={document.id}
         />
       </div>
     </div>

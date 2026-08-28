@@ -1,6 +1,7 @@
 import { db } from "@/db/db";
 import { ChatMessageTable, MessagePartTable } from "@/db/schema";
 import { ArtifactActivityType } from "@/features/activity/lib/types";
+import { insertChatAttachmentDb } from "@/features/chat-attachments/server/chat-attachments";
 import {
   findChatMessageDb,
   insertChatMessageDb,
@@ -13,8 +14,12 @@ import {
   updateChatRunDb,
   upsertChatRunDb,
 } from "@/features/chats/server/chat-runs";
-import { confirmChatOwnership } from "@/features/chats/server/chats";
+import { confirmUserChatOwnership } from "@/features/chats/server/chats";
 import { insertMessagePartDb } from "@/features/chats/server/message-parts";
+import {
+  confirmUserUploadIntentOwnership,
+  deleteUploadIntentDb,
+} from "@/features/uploads/server/uploads";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -23,14 +28,14 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { APIError } from "@/lib/errors";
-import { areValidIds } from "@/lib/utils";
+import { areValidIds, isError } from "@/lib/utils";
 import { COMPACT_AFTER_TOKENS, estimateTokens } from "@/services/ai/helpers";
 import { ModelId } from "@/services/ai/model-ids";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { CHAT_INSTRUCTIONS } from "@/services/ai/prompts";
 import { toolApprovalMap, ToolName } from "@/services/ai/tool-contracts";
 import { tools } from "@/services/ai/tools";
-import { CustomUIMessage } from "@/services/ai/types";
+import { CustomUIMessage, FileAttachment } from "@/services/ai/types";
 import {
   consumeStream,
   createAgentUIStreamResponse,
@@ -76,7 +81,7 @@ export const POST = async (req: Request) => {
     return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 404 });
   }
 
-  const confirmation = await confirmChatOwnership(chatId);
+  const confirmation = await confirmUserChatOwnership(chatId);
   if (!confirmation) {
     return NextResponse.json(NOT_FOUND_ERROR_MESSAGE, { status: 404 });
   }
@@ -130,6 +135,67 @@ export const POST = async (req: Request) => {
         );
 
         if (!insertedPart) throw new APIError("Failed to insert message part.");
+
+        const userFileParts = latestUserMessage.parts.filter(
+          (part): part is FileAttachment =>
+            part.type === "file" &&
+            Boolean(part.providerMetadata?.prododesk.uploadId),
+        );
+        const uploadIds = userFileParts.map(
+          (part) => part.providerMetadata.prododesk.uploadId,
+        );
+        if (!areValidIds(uploadIds))
+          throw new APIError("One or more file attachments are invalid.", 400);
+
+        const existingUploadIntents = (
+          await Promise.all(
+            userFileParts.map((part) =>
+              confirmUserUploadIntentOwnership(
+                part.providerMetadata.prododesk.uploadId,
+              ).then((intent) => (intent ? { ...intent, part } : null)),
+            ),
+          )
+        ).filter((intent): intent is NonNullable<typeof intent> =>
+          Boolean(intent),
+        );
+
+        if (existingUploadIntents.length !== userFileParts.length)
+          throw new APIError("One or more file attachments are invalid.", 400);
+
+        if (existingUploadIntents.length) {
+          const filePartsInsertions = await Promise.all(
+            existingUploadIntents.map((intent) =>
+              insertChatAttachmentDb(
+                {
+                  userId,
+                  storageKey: intent.storageKey,
+                  messageId: insertedMessage.id,
+                  fileName: intent.part.filename,
+                  fileType: intent.part.mediaType,
+                },
+                tx,
+              ),
+            ),
+          );
+          if (
+            filePartsInsertions.filter(Boolean).length !==
+            existingUploadIntents.length
+          ) {
+            throw new APIError(
+              "Failed to insert one or more file attachments.",
+            );
+          }
+          const deletedUploadIntents = await Promise.all(
+            existingUploadIntents.map((intent) =>
+              deleteUploadIntentDb(intent.id, tx),
+            ),
+          );
+          if (
+            deletedUploadIntents.filter(Boolean).length !==
+            existingUploadIntents.length
+          )
+            throw new APIError("Failed to delete one or more uploads.");
+        }
       });
     } else {
       const existingChatRun = await findChatRunDb({
@@ -270,7 +336,7 @@ export const POST = async (req: Request) => {
         }
       },
       onError: (error) => {
-        const errorMessage = Error.isError(error)
+        const errorMessage = isError(error)
           ? error.message
           : "Something went wrong during generation. Please try again.";
         return errorMessage;

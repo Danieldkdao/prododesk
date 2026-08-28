@@ -8,6 +8,9 @@ import { MilestoneTable } from "./milestone";
 import { ProjectTable } from "./project";
 import { SettingsTable } from "./settings";
 import { TaskTable } from "./task";
+import { ChatAttachmentTable } from "./chat-attachment";
+import { DocumentAssetTable } from "./document-asset";
+import { UploadIntentTable } from "./upload-intent";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -21,6 +24,7 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   timeZone: text("time_zone").notNull(),
+  profileImageKey: text("profile_image_key"),
 });
 
 export const session = pgTable(
@@ -93,6 +97,9 @@ export const userRelations = relations(user, ({ one, many }) => ({
   milestones: many(MilestoneTable),
   activity: many(ActivityTable),
   settings: one(SettingsTable),
+  chatAttachments: many(ChatAttachmentTable),
+  documentAssets: many(DocumentAssetTable),
+  uploadIntents: many(UploadIntentTable),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

@@ -1,16 +1,20 @@
+import {
+  fetchUploadPresignedUrl,
+  uploadFileWithProgress,
+} from "@/features/uploads/lib/helpers";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
 import {
-    AllSelection,
-    NodeSelection,
-    Selection,
-    TextSelection,
+  AllSelection,
+  NodeSelection,
+  Selection,
+  TextSelection,
 } from "@tiptap/pm/state";
 import { cellAround, CellSelection } from "@tiptap/pm/tables";
 import {
-    findParentNodeClosestToPos,
-    type Editor,
-    type NodeWithPos,
+  findParentNodeClosestToPos,
+  type Editor,
+  type NodeWithPos,
 } from "@tiptap/react";
 import { clsx, type ClassValue } from "clsx";
 
@@ -370,14 +374,22 @@ export function selectionWithinConvertibleTypes(
  * @param file The file to upload
  * @param onProgress Optional callback for tracking upload progress
  * @param abortSignal Optional AbortSignal for cancelling the upload
+ * @param context Optional context containing documentId for associating the asset
  * @returns Promise resolving to the URL of the uploaded image
  */
 export const handleImageUpload = async (
   file: File,
   onProgress?: (event: { progress: number }) => void,
   abortSignal?: AbortSignal,
+  context?: {
+    documentId: string;
+  },
 ): Promise<string> => {
-  // Validate file
+  const documentId = context?.documentId;
+  if (!documentId) {
+    throw new Error("Document ID is required for image upload.");
+  }
+
   if (!file) {
     throw new Error("No file provided");
   }
@@ -388,17 +400,22 @@ export const handleImageUpload = async (
     );
   }
 
-  // For demo/testing: Simulate upload progress. In production, replace the following code
-  // with your own upload implementation.
-  for (let progress = 0; progress <= 100; progress += 10) {
-    if (abortSignal?.aborted) {
-      throw new Error("Upload cancelled");
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    onProgress?.({ progress });
-  }
+  const uploadResponse = await fetchUploadPresignedUrl(file, {
+    purpose: "document-image",
+    documentId,
+  });
+  if (!uploadResponse) throw new Error("Failed to fetch upload URL.");
 
-  return "/images/tiptap-ui-placeholder-image.jpg";
+  abortSignal?.throwIfAborted();
+
+  await uploadFileWithProgress(
+    uploadResponse.uploadUrl,
+    file,
+    (progress) => onProgress?.({ progress }),
+    abortSignal,
+  );
+
+  return uploadResponse.publicUrl;
 };
 
 type ProtocolOptions = {

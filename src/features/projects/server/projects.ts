@@ -44,6 +44,8 @@ export const confirmUserProjectOwnership = async (
   existingUserId?: string,
   tx?: DbTransaction,
 ) => {
+  if (!areValidIds(projectId)) return null;
+
   let userIdToUse;
   if (existingUserId) {
     userIdToUse = existingUserId;
@@ -232,8 +234,6 @@ export const readProjectsDb = async (
 
   let areas: AreaSelectType[] = [];
   if (areaIds?.length) {
-    if (!areValidIds(areaIds)) return null;
-
     const existingAreas = await Promise.all(
       areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userIdToUse)),
     );
@@ -254,8 +254,6 @@ export const readProjectsDb = async (
 
   let existingProjectIds: string[] = [];
   if (projectIds?.length) {
-    if (!areValidIds(projectIds)) return null;
-
     const existingProjects = await Promise.all(
       projectIds.map((projectId) =>
         confirmUserProjectOwnership(projectId, userIdToUse),

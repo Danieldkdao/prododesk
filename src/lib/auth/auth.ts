@@ -4,6 +4,7 @@ import { sendAccountDeletionEmail } from "@/services/mailjet/emails/account-dele
 import { sendVerificationOtp } from "@/services/mailjet/emails/verification-emails";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins/email-otp";
 
 export const auth = betterAuth({
@@ -12,6 +13,11 @@ export const auth = betterAuth({
       timeZone: {
         type: "string",
         required: true,
+        input: true,
+      },
+      profileImageKey: {
+        type: "string",
+        required: false,
         input: true,
       },
     },
@@ -54,6 +60,7 @@ export const auth = betterAuth({
         await sendVerificationOtp(data);
       },
     }),
+    nextCookies(),
   ],
   session: {
     cookieCache: {

@@ -33,3 +33,58 @@
     margin: 0;
   }
 }
+
+.tiptap.ProseMirror {
+  [data-resize-container] {
+    max-width: 100%;
+  }
+
+  [data-resize-wrapper] {
+    max-width: 100%;
+  }
+
+  [data-resize-wrapper] > img {
+    display: block;
+    max-width: 100%;
+  }
+
+  [data-resize-handle] {
+    width: 0.75rem;
+    height: 0.75rem;
+    z-index: 2;
+    opacity: 0;
+    border: 2px solid white;
+    border-radius: 9999px;
+    background: var(--tt-brand-color-500);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
+  }
+
+  .ProseMirror-selectednode [data-resize-handle],
+  [data-resize-state="true"] [data-resize-handle] {
+    opacity: 1;
+  }
+
+  [data-resize-handle="top-left"] {
+    cursor: nwse-resize;
+    transform: translate(-50%, -50%);
+  }
+
+  [data-resize-handle="top-right"] {
+    cursor: nesw-resize;
+    transform: translate(50%, -50%);
+  }
+
+  [data-resize-handle="bottom-left"] {
+    cursor: nesw-resize;
+    transform: translate(-50%, 50%);
+  }
+
+  [data-resize-handle="bottom-right"] {
+    cursor: nwse-resize;
+    transform: translate(50%, 50%);
+  }
+}
+
+.tiptap-editor--readonly [data-resize-handle] {
+  display: none;
+}

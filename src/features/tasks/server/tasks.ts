@@ -79,6 +79,8 @@ export const confirmUserTaskOwnership = async (
   additionalFilters: SQL<unknown>[] = [],
   tx?: DbTransaction,
 ) => {
+  if (!areValidIds(taskId)) return null;
+
   const { userId } = await getCurrentUser();
   if (!userId) return;
 
@@ -202,8 +204,6 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
   let existingProjects: ProjectSelectType[] = [];
 
   if (projectIds?.length) {
-    if (!areValidIds(projectIds)) return null;
-
     const userProjects = await Promise.all(
       projectIds.map((projectId) =>
         confirmUserProjectOwnership(projectId, userIdToUse),
@@ -227,8 +227,6 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
   let existingAreaIds: string[] = [];
 
   if (areaIds?.length) {
-    if (!areValidIds(areaIds)) return null;
-
     const userAreas = await Promise.all(
       areaIds.map((areaId) => confirmUserAreaOwnership(areaId, userIdToUse)),
     );

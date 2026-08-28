@@ -23,6 +23,7 @@
   },
   "registries": {
     "@shadcnblocks": "https://shadcnblocks.com/r/{name}.json",
-    "@animate-ui": "https://animate-ui.com/r/{name}.json"
+    "@animate-ui": "https://animate-ui.com/r/{name}.json",
+    "@ondo-ui": "https://ui.ondo.dou.so/r/{name}.json"
   }
 }

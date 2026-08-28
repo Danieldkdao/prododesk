@@ -21,24 +21,19 @@ import {
   useState,
 } from "react";
 
-type QueuedMessage = {
+type ChatMessage = {
   prompt: string;
   selectedModel: ModelId;
-  chatId: string;
+  chatId?: string;
+  additionalParts?: CustomUIMessage["parts"];
+  metadata?: CustomUIMessage["metadata"];
 } | null;
+
 type ChatProviderContextType = ReturnType<typeof useChat<CustomUIMessage>> & {
-  sendChatMessage: ({
-    prompt,
-    selectedModel,
-    chatId,
-  }: {
-    prompt: string;
-    selectedModel: ModelId;
-    chatId?: string;
-  }) => void;
+  sendChatMessage: (message: NonNullable<ChatMessage>) => void;
   selectedModel: ModelId | null;
-  queuedMessage: QueuedMessage;
-  sendQueuedMessage: (message: QueuedMessage) => void;
+  queuedMessage: ChatMessage;
+  sendQueuedMessage: (message: ChatMessage) => void;
   cancelledMessageIds: Set<string>;
   setCancelledMessageIds: SetterType<Set<string>>;
 };
@@ -58,7 +53,7 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
   const [cancelledMessageIds, setCancelledMessageIds] = useState<Set<string>>(
     new Set(),
   );
-  const [queuedMessage, setQueuedMessage] = useState<QueuedMessage>(null);
+  const [queuedMessage, setQueuedMessage] = useState<ChatMessage>(null);
   const [selectedModel, setSelectedModel] = useState<ModelId | null>(null);
 
   const chatRef = useRef<ReturnType<typeof useChat<CustomUIMessage>>>(null);
@@ -119,16 +114,15 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
       prompt,
       selectedModel,
       chatId,
-    }: {
-      prompt: string;
-      selectedModel: ModelId;
-      chatId?: string;
-    }) => {
+      additionalParts,
+      metadata,
+    }: NonNullable<ChatMessage>) => {
       setSelectedModel(selectedModel);
       data.sendMessage(
         {
-          parts: [{ type: "text", text: prompt }],
+          parts: [{ type: "text", text: prompt }, ...(additionalParts ?? [])],
           role: "user",
+          metadata,
         },
         { body: { selectedModel, chatId } },
       );
@@ -136,7 +130,7 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
     [data],
   );
 
-  const sendQueuedMessage = (message: QueuedMessage) => {
+  const sendQueuedMessage = (message: ChatMessage) => {
     if (message) {
       setSelectedModel(message.selectedModel);
     }

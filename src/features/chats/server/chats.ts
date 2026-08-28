@@ -1,9 +1,11 @@
 import { db, DbMutationOptions, DbTransaction } from "@/db/db";
-import { ChatTable, ChatInsertType } from "@/db/schema";
-import { revalidateChatCache } from "./cache/chats";
-import { and, desc, eq, ilike, or, SQL } from "drizzle-orm";
+import { ChatInsertType, ChatTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
+import { deleteFilesFromStorage } from "@/features/uploads/lib/delete-files";
+import { areValidIds } from "@/lib/utils";
+import { and, desc, eq, ilike, or, SQL } from "drizzle-orm";
+import { revalidateChatCache } from "./cache/chats";
 
 export const readChatsDb = async (filterOptions: {
   userId?: string;
@@ -80,11 +82,13 @@ export const updateChatDb = async (
   return updatedChat;
 };
 
-export const confirmChatOwnership = async (
+export const confirmUserChatOwnership = async (
   chatId: string,
   otherQueries?: SQL<unknown> | undefined,
   tx?: DbTransaction,
 ) => {
+  if (!areValidIds(chatId)) return null;
+
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
@@ -102,13 +106,51 @@ export const deleteChatDb = async (
   chatId: string,
   options?: DbMutationOptions,
 ) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
   const { tx } = options ?? {};
-  const [deletedChat] = await (tx ?? db)
-    .delete(ChatTable)
-    .where(eq(ChatTable.id, chatId))
-    .returning();
+  const deleteChat = async (pgtx: DbTransaction) => {
+    const existingChat = await pgtx.query.ChatTable.findFirst({
+      where: and(eq(ChatTable.id, chatId), eq(ChatTable.userId, userId)),
+      with: {
+        messages: {
+          with: {
+            attachments: true,
+          },
+        },
+      },
+    });
+    if (!existingChat) return null;
 
-  revalidateChatCache(deletedChat.userId, deletedChat.id);
+    const [deletedChat] = await pgtx
+      .delete(ChatTable)
+      .where(eq(ChatTable.id, chatId))
+      .returning();
+    if (!deletedChat) throw new Error("Failed to delete chat.");
 
-  return deletedChat;
+    return {
+      deletedChat,
+      storageKeys: existingChat.messages
+        .flatMap((message) => message.attachments)
+        .map((attachment) => attachment.storageKey),
+    };
+  };
+
+  const result = tx ? await deleteChat(tx) : await db.transaction(deleteChat);
+  if (!result) return null;
+
+  if (result.storageKeys.length > 0 && !tx) {
+    const deleteSuccess = await deleteFilesFromStorage(result.storageKeys);
+    if (!deleteSuccess) {
+      console.error(
+        "Failed to delete attachments from storage for chat:",
+        chatId,
+      );
+    }
+  }
+
+  revalidateChatCache(result.deletedChat.userId, result.deletedChat.id);
+
+  return result.deletedChat;
 };

@@ -172,13 +172,6 @@ export const updateDocumentAction = async (
   unsafeData: PartialNull<DocumentSchemaType>,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(documentId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -225,13 +218,6 @@ export const deleteDocumentAction = async (
   documentId: string,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(documentId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {

@@ -1,13 +1,13 @@
 import {
-  OpenAI,
-  Grok,
   Claude,
-  Gemini,
   DeepSeek,
+  Gemini,
+  Grok,
+  IconType,
+  Minimax,
+  OpenAI,
   Qwen,
   ZAI,
-  Minimax,
-  IconType,
 } from "@lobehub/icons";
 import { ModelId } from "./model-ids";
 
@@ -19,6 +19,7 @@ type LLMModel = {
   logo: IconType;
   kind: LLMModelKind;
   logoColor?: string;
+  survivesDarkMode: boolean;
 };
 
 const models = [
@@ -28,6 +29,7 @@ const models = [
     kind: "most-powerful" as const,
     logo: OpenAI,
     logoColor: OpenAI.colorPrimary,
+    survivesDarkMode: false,
   },
   {
     name: "Claude Opus 5",
@@ -35,12 +37,14 @@ const models = [
     kind: "most-powerful" as const,
     logo: Claude,
     logoColor: Claude.colorPrimary,
+    survivesDarkMode: true,
   },
   {
     name: "Gemini 3.1 Pro Preview",
     id: "google/gemini-3.1-pro-preview" as const,
     kind: "most-powerful" as const,
     logo: Gemini.Color,
+    survivesDarkMode: true,
   },
   {
     name: "Grok 4.5",
@@ -48,36 +52,42 @@ const models = [
     kind: "most-powerful" as const,
     logo: Grok,
     logoColor: Grok.colorPrimary,
+    survivesDarkMode: false,
   },
   {
-    name: "DeepSeek V4 Pro",
-    id: "deepseek/deepseek-v4-pro-0813" as const,
+    name: "DeepSeek V4 Flash",
+    id: "deepseek/deepseek-v4-flash-0731" as const,
     logo: DeepSeek.Color,
     kind: "fast-cost-efficient",
+    survivesDarkMode: true,
   },
   {
-    name: "Qwen 3.7 Plus",
-    id: "qwen/qwen3.7-plus" as const,
-    logo: Qwen.Color,
-    kind: "fast-cost-efficient",
-  },
-  {
-    name: "GLM-5.2",
-    id: "z-ai/glm-5.2" as const,
+    name: "GLM-5.3 Flash",
+    id: "z-ai/glm-5.3-flash" as const,
     logo: ZAI,
     kind: "fast-cost-efficient",
+    survivesDarkMode: false,
+  },
+  {
+    name: "Qwen 3.8 Flash",
+    id: "qwen/qwen3.8-flash" as const,
+    logo: Qwen.Color,
+    kind: "fast-cost-efficient",
+    survivesDarkMode: true,
   },
   {
     name: "MiniMax M3",
     id: "minimax/minimax-m3" as const,
     logo: Minimax.Color,
     kind: "fast-cost-efficient",
+    survivesDarkMode: true,
   },
   {
     name: "Gemini 3.1 Flash Lite",
     id: "google/gemini-3.1-flash-lite" as const,
     logo: Gemini.Color,
     kind: "fast-cost-efficient",
+    survivesDarkMode: true,
   },
 ] satisfies LLMModel[];
 

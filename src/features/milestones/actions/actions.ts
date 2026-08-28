@@ -13,7 +13,6 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
-import { areValidIds } from "@/lib/utils";
 import { format } from "date-fns";
 import { and, between, count, eq, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
@@ -85,8 +84,6 @@ export const readProjectMilestonesAction = async (
   projectId: string,
   filterOptions: ReadProjectMilestonesFilters,
 ) => {
-  if (!areValidIds(projectId)) return null;
-
   const { userId } = await getCurrentUser();
   if (!userId) return null;
 
@@ -162,13 +159,6 @@ export const updateMilestoneAction = async (
   unsafeData: Partial<MilestoneSchemaType>,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(milestoneId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -229,13 +219,6 @@ export const updateMilestoneStatusAction = async (
   newStatus: MilestoneStatus,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(milestoneId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -280,13 +263,6 @@ export const moveMilestoneAction = async (
   options?: ActivityMutationOptions,
 ) => {
   const { source = "user", tx, chatRunId } = options ?? {};
-  if (!areValidIds([projectId, milestoneId])) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -425,13 +401,6 @@ export const deleteMilestoneAction = async (
   milestoneId: string,
   options?: ActivityMutationOptions,
 ) => {
-  if (!areValidIds(milestoneId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {

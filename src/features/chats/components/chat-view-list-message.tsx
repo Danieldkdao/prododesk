@@ -15,16 +15,18 @@ import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Button } from "@/components/ui/button";
 import {
   Message,
-  MessageAvatar,
   MessageContent,
   MessageFooter,
 } from "@/components/ui/message";
 import { MessageScrollerItem } from "@/components/ui/message-scroller";
 import { TextShimmer } from "@/components/ui/text-shimmer";
-import { UserAvatar } from "@/components/user-avatar";
-import { useAuthSession } from "@/hooks/use-auth-session";
+import {
+  formatActivityLink,
+  formatActivitySubject,
+  groupActivityBySubject,
+} from "@/features/activity/lib/formatters";
 import { useChatProvider } from "@/hooks/use-chat-provider";
-import { cn, formatMs } from "@/lib/utils";
+import { cn, formatMs, generateFileUrl } from "@/lib/utils";
 import { RegenerateButton } from "@/services/ai/components/regenerate-button";
 import { getModelInfo } from "@/services/ai/models";
 import { ToolName } from "@/services/ai/tool-contracts";
@@ -46,12 +48,7 @@ import {
   formatToolNameForChat,
   getApprovalReason,
 } from "../lib/formatters";
-import {
-  formatActivitySubject,
-  groupActivityBySubject,
-} from "@/features/activity/lib/formatters";
-import { formatActivityLink } from "@/features/activity/lib/formatters";
-import Image from "next/image";
+import { ChatMessageAttachments } from "./chat-message-attachments";
 
 export const ChatViewListMessage = ({
   msg,
@@ -62,7 +59,6 @@ export const ChatViewListMessage = ({
   messages: CustomUIMessage[];
   currentModelInfo: ReturnType<typeof getModelInfo>;
 }) => {
-  const { data: session } = useAuthSession();
   const { id, addToolApprovalResponse, status, cancelledMessageIds } =
     useChatProvider();
 
@@ -77,6 +73,33 @@ export const ChatViewListMessage = ({
   const responseTimeMs = msg.metadata?.responseTimeMs;
   const artifacts = msg.metadata?.artifacts;
 
+  const fileParts = msg.parts.filter((part) => part.type === "file");
+  const attachments = fileParts.length
+    ? fileParts.map((part) => ({
+        type: "file" as const,
+        filename: part.filename || "Unknown file",
+        mediaType: part.mediaType || "application/octet-stream",
+        url: part.url,
+        providerMetadata: {
+          prododesk: {
+            uploadId: String(part.providerMetadata?.prododesk?.uploadId) || "",
+          },
+        } as const,
+      }))
+    : msg.metadata?.attachments
+      ? msg.metadata?.attachments.map((attachment) => ({
+          type: "file" as const,
+          filename: attachment.fileName,
+          mediaType: attachment.fileType,
+          url: generateFileUrl(attachment.storageKey),
+          providerMetadata: {
+            prododesk: {
+              uploadId: attachment.id,
+            },
+          },
+        }))
+      : [];
+
   const currentAction = formatCurrentAction(latestPart);
 
   const pendingApprovals = msg.parts.filter(
@@ -90,28 +113,14 @@ export const ChatViewListMessage = ({
 
   return (
     <MessageScrollerItem messageId={msg.id} className="group">
-      <Message align={msg.role === "user" ? "end" : "start"}>
-        <MessageAvatar>
-          {msg.role === "user" ? (
-            <UserAvatar
-              name={session?.user.name ?? "You"}
-              image={session?.user.image}
-              className="size-10"
-            />
-          ) : (
-            <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
-              <div className="relative size-7 rounded-full shrink-0">
-                <Image
-                  src="/logo.png"
-                  alt="AI"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-            </div>
-          )}
-        </MessageAvatar>
-        <MessageContent className="max-w-4/5">
+      <Message
+        align={msg.role === "user" ? "end" : "start"}
+        className="@container"
+      >
+        <MessageContent className="w-full @2xl:max-w-4/5 @container flex flex-col gap-4">
+          {attachments?.length ? (
+            <ChatMessageAttachments attachments={attachments} />
+          ) : null}
           <Bubble
             variant={
               msg.metadata?.runStatus === "failed"

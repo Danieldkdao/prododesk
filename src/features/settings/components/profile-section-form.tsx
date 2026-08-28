@@ -13,19 +13,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import { Textarea } from "@/components/ui/textarea";
-import { UserAvatar } from "@/components/user-avatar";
 import { authClient } from "@/lib/auth/auth-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { EmailChangeOtpDialog } from "./email-change-otp-dialog";
 import {
   ReadUserProfileActionReturnType,
   updateUserSettingsAction,
 } from "../actions/actions";
 import { profileSchema, ProfileSchemaType } from "../actions/schemas";
+import { EmailChangeOtpDialog } from "./email-change-otp-dialog";
+import { ProfilePictureUpload } from "./profile-picture-upload";
 
 export const ProfileSectionForm = ({
   userProfile,
@@ -120,18 +120,17 @@ export const ProfileSectionForm = ({
           >
             <div className="flex flex-col gap-2">
               <Label className="text-lg">Profile Picture</Label>
-              <UserAvatar
-                name={userProfile.name}
-                image={userProfile.image}
-                className="size-20"
-              />
+              <ProfilePictureUpload {...userProfile} />
             </div>
             <Controller
               control={form.control}
               name="name"
               render={({ field, fieldState }) => (
                 <Field data-invalid={!!fieldState.error}>
-                  <FieldLabel className="text-base" htmlFor="profile-name-input">
+                  <FieldLabel
+                    className="text-base"
+                    htmlFor="profile-name-input"
+                  >
                     Name
                   </FieldLabel>
                   <FieldContent>

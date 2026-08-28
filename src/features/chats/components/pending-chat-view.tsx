@@ -26,7 +26,6 @@ export const PendingChatView = ({
       <div className="min-h-0 flex-1 overflow-hidden">
         <PendingChatMessagesView prompt={prompt} />
       </div>
-
       <div className="shrink-0">
         <AIChatInput
           value=""

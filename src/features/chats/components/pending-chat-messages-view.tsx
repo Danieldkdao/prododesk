@@ -1,12 +1,6 @@
-"use client";
-
 import { AILoadingAnimation } from "@/components/ai-loading-animation";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
-import {
-  Message,
-  MessageAvatar,
-  MessageContent,
-} from "@/components/ui/message";
+import { Message, MessageContent } from "@/components/ui/message";
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -16,13 +10,16 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 import { TextShimmer } from "@/components/ui/text-shimmer";
-import { UserAvatar } from "@/components/user-avatar";
-import { useAuthSession } from "@/hooks/use-auth-session";
-import Image from "next/image";
+import { FileAttachment } from "@/services/ai/types";
+import { ChatMessageAttachments } from "./chat-message-attachments";
 
-export const PendingChatMessagesView = ({ prompt }: { prompt: string }) => {
-  const { data: session } = useAuthSession();
-
+export const PendingChatMessagesView = ({
+  prompt,
+  attachments,
+}: {
+  prompt: string;
+  attachments?: FileAttachment[];
+}) => {
   return (
     <MessageScrollerProvider autoScroll>
       <MessageScroller className="flex-1 min-h-0 w-full">
@@ -30,15 +27,10 @@ export const PendingChatMessagesView = ({ prompt }: { prompt: string }) => {
           <MessageScrollerContent>
             <MessageScrollerItem>
               <Message align="end">
-                <MessageAvatar>
-                  <UserAvatar
-                    name={session?.user.name ?? "You"}
-                    image={session?.user.image}
-                    className="size-10"
-                  />
-                </MessageAvatar>
-
-                <MessageContent>
+                <MessageContent className="w-full @2xl:max-w-4/5 @container flex flex-col gap-4">
+                  {attachments?.length ? (
+                    <ChatMessageAttachments attachments={attachments} />
+                  ) : null}
                   <Bubble variant="secondary" align="start">
                     <BubbleContent className="text-lg">{prompt}</BubbleContent>
                   </Bubble>
@@ -47,19 +39,6 @@ export const PendingChatMessagesView = ({ prompt }: { prompt: string }) => {
             </MessageScrollerItem>
             <MessageScrollerItem>
               <Message align="start">
-                <MessageAvatar>
-                  <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
-                    <div className="relative size-7 rounded-full shrink-0">
-                      <Image
-                        src="/logo.png"
-                        alt="AI"
-                        fill
-                        className="object-contain"
-                      />
-                    </div>
-                  </div>
-                </MessageAvatar>
-
                 <MessageContent className="flex flex-col gap-0.5 h-15">
                   <TextShimmer
                     duration={2}

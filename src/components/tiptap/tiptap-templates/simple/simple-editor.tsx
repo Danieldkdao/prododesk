@@ -1,10 +1,13 @@
 "use client";
 
+import { closeHistory } from "@tiptap/pm/history";
 import {
   EditorContent,
   EditorContext,
   Extension,
+  ResizableNodeView,
   useEditor,
+  type Attributes,
 } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -85,17 +88,158 @@ import {
 
 // --- Styles ---
 import "@/components/tiptap/tiptap-templates/simple/simple-editor.scss";
-import { cn } from "@/lib/utils";
+import { cn, isError } from "@/lib/utils";
 
 // --- Extensions ---
 import { Markdown } from "@tiptap/markdown";
 import { Plugin } from "@tiptap/pm/state";
+import { toast } from "sonner";
+import { UPLOAD_LIMITS } from "@/features/uploads/lib/constants";
 
 const lowlight = createLowlight(common);
 
 const SEARCH_AND_REPLACE_SCROLL_OPTIONS: ScrollIntoViewOptions = {
   block: "center",
 };
+
+const escapeAttribute = (value: unknown) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+const ResizableImage = Image.extend({
+  renderMarkdown(node) {
+    const { src, alt, title, width, height } = node.attrs ?? {};
+
+    if (width || height) {
+      const attributes = [
+        `src="${escapeAttribute(src)}"`,
+        alt ? `alt="${escapeAttribute(alt)}"` : null,
+        title ? `title="${escapeAttribute(title)}"` : null,
+        width ? `width="${escapeAttribute(width)}"` : null,
+        height ? `height="${escapeAttribute(height)}"` : null,
+      ].filter(Boolean);
+
+      return `<img ${attributes.join(" ")} />`;
+    }
+
+    const escapedAlt = String(alt ?? "").replaceAll("]", "\\]");
+    const escapedTitle = String(title ?? "").replaceAll('"', '\\"');
+    const escapedSrc = String(src ?? "")
+      .replaceAll("<", "%3C")
+      .replaceAll(">", "%3E");
+
+    return title
+      ? `![${escapedAlt}](<${escapedSrc}> "${escapedTitle}")`
+      : `![${escapedAlt}](<${escapedSrc}>)`;
+  },
+  addNodeView() {
+    const resize = this.options.resize;
+
+    if (!resize || !resize.enabled || typeof document === "undefined") {
+      return null;
+    }
+
+    return ({ node, getPos, HTMLAttributes, editor }) => {
+      const image = document.createElement("img");
+      image.draggable = false;
+
+      const syncAttributes = (attributes: Attributes) => {
+        const src = attributes.src;
+        if (typeof src === "string" && src) {
+          image.src = src;
+        } else {
+          image.removeAttribute("src");
+        }
+
+        for (const attribute of ["alt", "title"] as const) {
+          const value = attributes[attribute];
+
+          if (value == null) {
+            image.removeAttribute(attribute);
+          } else {
+            image.setAttribute(attribute, String(value));
+          }
+        }
+
+        const width = Number(attributes.width);
+        const height = Number(attributes.height);
+
+        if (Number.isFinite(width) && width > 0) {
+          image.style.width = `${width}px`;
+        } else {
+          image.style.removeProperty("width");
+        }
+
+        if (Number.isFinite(height) && height > 0) {
+          image.style.height = `${height}px`;
+        } else {
+          image.style.removeProperty("height");
+        }
+      };
+
+      syncAttributes(HTMLAttributes);
+
+      return new ResizableNodeView({
+        element: image,
+        editor,
+        node,
+        getPos,
+        onResize(width, height) {
+          image.style.width = `${width}px`;
+          image.style.height = `${height}px`;
+        },
+        onCommit(width, height) {
+          const position = getPos();
+          if (position === undefined) return;
+
+          const imageNode = editor.state.doc.nodeAt(position);
+          if (!imageNode || imageNode.type.name !== "image") return;
+
+          const transaction = editor.state.tr.setNodeMarkup(
+            position,
+            undefined,
+            {
+              ...imageNode.attrs,
+              width: Math.round(width),
+              height: Math.round(height),
+            },
+          );
+
+          editor.view.dispatch(closeHistory(transaction));
+        },
+        onUpdate(updatedNode) {
+          if (updatedNode.type !== node.type) {
+            return false;
+          }
+
+          syncAttributes(updatedNode.attrs);
+
+          return true;
+        },
+        options: {
+          directions: resize.directions,
+          min: {
+            width: resize.minWidth,
+            height: resize.minHeight,
+          },
+          preserveAspectRatio: resize.alwaysPreserveAspectRatio,
+        },
+      });
+    };
+  },
+}).configure({
+  resize: {
+    enabled: true,
+    directions: ["top-left", "top-right", "bottom-left", "bottom-right"],
+    minWidth: 80,
+    minHeight: 80,
+    alwaysPreserveAspectRatio: true,
+  },
+});
 
 const looksLikeMarkdown = (text: string) =>
   [
@@ -259,11 +403,13 @@ export function SimpleEditor({
   onValueChange,
   className,
   editorClassName,
+  documentId,
 }: {
   value: string;
   onValueChange?: (value: string) => void;
   className?: string;
   editorClassName?: string;
+  documentId: string;
 }) {
   const isMobile = useIsBreakpoint();
   const { height } = useWindowSize();
@@ -271,6 +417,8 @@ export function SimpleEditor({
     "main",
   );
   const [isSearchAndReplaceOpen, setIsSearchAndReplaceOpen] = useState(false);
+
+  const lastEmittedValueRef = useRef(value);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const searchAndReplaceButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -304,7 +452,7 @@ export function SimpleEditor({
       TaskList,
       TaskItem.configure({ nested: true }),
       Highlight.configure({ multicolor: true }),
-      Image,
+      ResizableImage,
       Typography,
       Superscript,
       Subscript,
@@ -314,17 +462,27 @@ export function SimpleEditor({
         injectCSS: false,
       }),
       ImageUploadNode.configure({
-        accept: "image/*",
-        maxSize: MAX_FILE_SIZE,
+        accept: UPLOAD_LIMITS["document-image"].accept,
+        maxSize: UPLOAD_LIMITS["document-image"].maxSize,
         limit: 3,
-        upload: handleImageUpload,
-        onError: (error) => console.error("Upload failed:", error),
+        upload: (file, onProgress, abortSignal) => {
+          return handleImageUpload(file, onProgress, abortSignal, {
+            documentId,
+          });
+        },
+        onError: (error) => {
+          console.error("Upload failed:", error);
+          const errorMessage = isError(error) ? error.message : "Upload failed";
+          toast.error(errorMessage);
+        },
       }),
     ],
     content: value,
     contentType: "markdown",
     onUpdate: ({ editor }) => {
-      onValueChange?.(editor.getMarkdown());
+      const nextValue = editor.getMarkdown();
+      lastEmittedValueRef.current = nextValue;
+      onValueChange?.(nextValue);
     },
   });
 
@@ -338,23 +496,32 @@ export function SimpleEditor({
   });
 
   useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+
+    if (value === lastEmittedValueRef.current) return;
+
+    if (editor.getMarkdown() !== value) {
+      editor
+        .chain()
+        .command(({ tr }) => {
+          tr.setMeta("addToHistory", false);
+          return true;
+        })
+        .setContent(value || "", {
+          emitUpdate: false,
+          contentType: "markdown",
+        })
+        .run();
+    }
+
+    lastEmittedValueRef.current = value;
+  }, [editor, value]);
+
+  useEffect(() => {
     if (!isMobile && mobileView !== "main") {
       setMobileView("main");
     }
   }, [isMobile, mobileView]);
-
-  useEffect(() => {
-    if (!editor || editor.isDestroyed) return;
-
-    const currentValue = editor.getMarkdown();
-
-    if (currentValue !== value) {
-      editor.commands.setContent(value || "", {
-        emitUpdate: false,
-        contentType: "markdown",
-      });
-    }
-  }, [editor, value]);
 
   const openSearchAndReplace = useCallback(() => {
     setMobileView("main");

@@ -17,3 +17,11 @@ export type SQLMap<T> = {
 export type PartialNull<T> = {
   [K in keyof T]: T[K] | undefined | null;
 };
+
+export type ApiResponse<T> =
+  | { error: true; message: string }
+  | {
+      error: false;
+      message: string;
+      data: T;
+    };

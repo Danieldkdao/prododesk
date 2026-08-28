@@ -8,8 +8,10 @@ import {
   MarqueeItem,
 } from "@/components/kibo-ui/marquee";
 import { Button } from "@/components/ui/button";
+import { UPLOAD_LIMITS } from "@/features/uploads/lib/constants";
 import { useAbortableAction } from "@/hooks/use-abortable-action";
 import { useChatProvider } from "@/hooks/use-chat-provider";
+import { useFileUploads } from "@/hooks/use-file-uploads";
 import { LLMModel } from "@/services/ai/models";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -32,6 +34,12 @@ export const InitialAIInputClient = () => {
 
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
+  const attachmentOptions = useFileUploads({
+    accept: UPLOAD_LIMITS["chat-attachment"].accept,
+    maxFileSizeBytes: UPLOAD_LIMITS["chat-attachment"].maxSize,
+    maxFileLimit: 10,
+  });
+
   const [isCreating, setIsCreating] = useState(false);
   const [isNavigating, startNavigating] = useTransition();
 
@@ -42,10 +50,17 @@ export const InitialAIInputClient = () => {
 
   const abortableCreateChatAction = useAbortableAction(createChatAction);
 
+  const uploadedFiles = attachmentOptions.uploadedFiles;
+
   const handleSubmit = async () => {
     const submittedPrompt = prompt.trim();
 
-    if (isPending) return;
+    if (
+      isPending ||
+      attachmentOptions.isUploading ||
+      attachmentOptions.isAnyFileDeleting
+    )
+      return;
     if (!submittedPrompt.trim() || !selectedModel)
       return toast.error("Please enter a prompt and select a model.");
 
@@ -70,11 +85,13 @@ export const InitialAIInputClient = () => {
         prompt: submittedPrompt,
         selectedModel: selectedModel.id,
         chatId: response.chat.id,
+        additionalParts: uploadedFiles,
       });
       const url = `/dashboard/ai/chat/${response.chat.id}`;
 
       startNavigating(() => {
         setPrompt("");
+        attachmentOptions.clearFiles();
         setIsCreating(false);
         router.push(url);
       });
@@ -91,7 +108,10 @@ export const InitialAIInputClient = () => {
       {isPending && selectedModel ? (
         <>
           <ChatHeader />
-          <PendingChatMessagesView prompt={pendingPrompt ?? ""} />
+          <PendingChatMessagesView
+            prompt={pendingPrompt ?? ""}
+            attachments={uploadedFiles}
+          />
         </>
       ) : (
         <div className="w-full flex flex-col items-center justify-center gap-8">
@@ -127,6 +147,7 @@ export const InitialAIInputClient = () => {
           setIsCreating(false);
         }}
         className={isPending && selectedModel ? "max-w-400" : "max-w-6xl"}
+        attachmentOptions={attachmentOptions}
       />
     </div>
   );

@@ -9,6 +9,7 @@ import {
 } from "./schemas";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
+import { isError } from "@/lib/utils";
 import {
   getMaxMilestonePositionDb,
   readMilestonesDb,
@@ -140,7 +141,7 @@ const createMilestonesTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -206,7 +207,7 @@ const updateMilestoneTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -271,7 +272,7 @@ const updateMilestonesStatusTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -332,7 +333,7 @@ const moveMilestoneTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({
@@ -388,7 +389,7 @@ const deleteMilestoneTool = tool({
       throw new Error(output);
     } catch (error) {
       console.error(error);
-      const errorMessage = Error.isError(error)
+      const errorMessage = isError(error)
         ? error.message
         : GENERAL_ERROR_MESSAGE;
       await upsertToolExecutionDb({

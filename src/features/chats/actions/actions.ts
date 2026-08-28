@@ -25,7 +25,7 @@ import { and, asc, count, eq, inArray } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { getChatIdTag, getUserChatTag } from "../server/cache/chats";
 import {
-  confirmChatOwnership,
+  confirmUserChatOwnership,
   deleteChatDb,
   insertChatDb,
   readChatsDb,
@@ -98,6 +98,7 @@ export const readChatAction = async (userId: string, chatId: string) => {
       messages: {
         orderBy: [asc(ChatMessageTable.createdAt), asc(ChatMessageTable.id)],
         with: {
+          attachments: true,
           chatRun: {
             with: {
               artifacts: {
@@ -184,13 +185,6 @@ export const updateChatAction = async (
   chatId: string,
   unsafeData: ChatSchemaType,
 ) => {
-  if (!areValidIds(chatId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -199,7 +193,7 @@ export const updateChatAction = async (
     };
   }
 
-  const existingChat = await confirmChatOwnership(chatId);
+  const existingChat = await confirmUserChatOwnership(chatId);
   if (!existingChat) {
     return {
       error: true,
@@ -233,13 +227,6 @@ export const updateChatAction = async (
 };
 
 export const deleteChatAction = async (chatId: string) => {
-  if (!areValidIds(chatId)) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
-
   const { userId } = await getCurrentUser();
   if (!userId) {
     return {
@@ -248,7 +235,7 @@ export const deleteChatAction = async (chatId: string) => {
     };
   }
 
-  const existingChat = await confirmChatOwnership(chatId);
+  const existingChat = await confirmUserChatOwnership(chatId);
   if (!existingChat) {
     return {
       error: true,

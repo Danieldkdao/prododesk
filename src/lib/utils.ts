@@ -1,3 +1,4 @@
+import { envClient } from "@/data/env/client";
 import { tz } from "@date-fns/tz";
 import { clsx, type ClassValue } from "clsx";
 import {
@@ -113,3 +114,14 @@ export const nullifyZodSchema = <T extends z.ZodObject>(schema: T) => {
 export const isValidDate = (date: unknown): date is Date => {
   return date instanceof Date && !isNaN(date.getTime());
 };
+
+export const generateFileUrl = (key: string) => {
+  const encodedKey = key
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `https://${envClient.NEXT_PUBLIC_TIGRIS_STORAGE_BUCKET}.t3.tigrisfiles.io/${encodedKey}`;
+};
+
+export const isError = (error: unknown): error is Error =>
+  error instanceof Error;
