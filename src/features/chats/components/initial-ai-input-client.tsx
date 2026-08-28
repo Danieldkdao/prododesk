@@ -58,7 +58,7 @@ export const InitialAIInputClient = () => {
     if (
       isPending ||
       attachmentOptions.isUploading ||
-      attachmentOptions.isDeleting
+      attachmentOptions.isAnyFileDeleting
     )
       return;
     if (!submittedPrompt.trim() || !selectedModel)

@@ -522,19 +522,6 @@ export function SimpleEditor({
     }
   }, [isMobile, mobileView]);
 
-  useEffect(() => {
-    if (!editor || editor.isDestroyed) return;
-
-    const currentValue = editor.getMarkdown();
-
-    if (currentValue !== value) {
-      editor.commands.setContent(value || "", {
-        emitUpdate: false,
-        contentType: "markdown",
-      });
-    }
-  }, [editor, value]);
-
   const openSearchAndReplace = useCallback(() => {
     setMobileView("main");
     setIsSearchAndReplaceOpen(true);

@@ -61,6 +61,9 @@ export const AIChatInput = ({
     | "error"
     | "uploadProgresses"
     | "handleRemoveFile"
+    | "isFilesDeleting"
+    | "isAnyFileDeleting"
+    | "isUploading"
   >;
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -73,6 +76,9 @@ export const AIChatInput = ({
   const error = attachmentOptions?.error ?? null;
   const handleRemoveFile = attachmentOptions?.handleRemoveFile ?? (() => {});
   const uploadProgresses = attachmentOptions?.uploadProgresses;
+  const isFilesDeleting = attachmentOptions?.isFilesDeleting;
+  const isUploading = attachmentOptions?.isUploading ?? false;
+  const isAnyFileDeleting = attachmentOptions?.isAnyFileDeleting ?? false;
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -135,6 +141,11 @@ export const AIChatInput = ({
                   type={type}
                   handleRemoveFile={() => handleRemoveFile(id)}
                   uploadProgress={uploadProgresses?.get(id)}
+                  disableRemoveButton={
+                    (isFilesDeleting?.get(id) ?? false) ||
+                    isUploading ||
+                    isPending
+                  }
                 />
               </div>
             );
@@ -170,6 +181,8 @@ export const AIChatInput = ({
               e.preventDefault();
 
               if (!canSubmit || e.repeat) return;
+
+              if (isPending || isUploading || isAnyFileDeleting) return;
 
               onSubmit();
             }}
@@ -277,7 +290,11 @@ export const AIChatInput = ({
           <Button
             type="button"
             size="icon-sm"
-            disabled={!isPending && (!submittedPrompt || !selectedModel)}
+            disabled={
+              (!isPending && (!submittedPrompt || !selectedModel)) ||
+              isUploading ||
+              isAnyFileDeleting
+            }
             onClick={isPending ? onStop : onSubmit}
           >
             {isPending ? <SquareIcon /> : <SendIcon />}

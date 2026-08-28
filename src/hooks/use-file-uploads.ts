@@ -46,7 +46,9 @@ export const useFileUploads = (props: {
   >(defaultFiles ?? new Map());
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isFilesDeleting, setIsFilesDeleting] = useState(
+    new Map<string, boolean>(),
+  );
   const [uploadProgresses, setUploadProgresses] = useState(
     new Map<string, number>(),
   );
@@ -96,6 +98,11 @@ export const useFileUploads = (props: {
       })),
     [files],
   ) satisfies FileAttachment[];
+
+  const isAnyFileDeleting = useMemo(
+    () => isFilesDeleting.size > 0,
+    [isFilesDeleting],
+  );
 
   useEffect(() => {
     if (!localPreviewUrls.size) return;
@@ -300,7 +307,11 @@ export const useFileUploads = (props: {
       return;
     }
 
-    setIsDeleting(false);
+    setIsFilesDeleting((prev) => {
+      const next = new Map(prev);
+      next.set(id, true);
+      return next;
+    });
 
     const file = files.get(id);
     if (!file) return toast.error("File not found.");
@@ -321,7 +332,11 @@ export const useFileUploads = (props: {
 
       toast.error(message);
     } finally {
-      setIsDeleting(false);
+      setIsFilesDeleting((prev) => {
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
 
@@ -338,8 +353,9 @@ export const useFileUploads = (props: {
     setIsDragging,
     isUploading,
     setIsUploading,
-    isDeleting,
-    setIsDeleting,
+    isFilesDeleting,
+    isAnyFileDeleting,
+    setIsFilesDeleting,
     uploadProgresses,
     setUploadProgresses,
     localPreviewUrls,

@@ -11,12 +11,14 @@ export const FileDisplay = ({
   type,
   handleRemoveFile,
   uploadProgress,
+  disableRemoveButton = false,
 }: {
   url: string | null;
   name: string;
   type?: string;
   handleRemoveFile?: () => void;
   uploadProgress?: number;
+  disableRemoveButton?: boolean;
 }) => {
   let elementToReturn = null;
 
@@ -71,6 +73,7 @@ export const FileDisplay = ({
           size="icon-xs"
           className="absolute -top-1 -right-1 z-10 hidden group-hover:flex bg-destructive text-white hover:bg-destructive/90 hover:text-white"
           onClick={handleRemoveFile}
+          disabled={disableRemoveButton}
         >
           <XIcon />
         </Button>
