@@ -3,9 +3,9 @@
 import { UseFileUploadsReturnType } from "@/hooks/use-file-uploads";
 import { cn } from "@/lib/utils";
 import {
-  fastCostEfficientModels,
-  LLMModel,
-  mostPowerfulModels,
+    fastCostEfficientModels,
+    LLMModel,
+    mostPowerfulModels,
 } from "@/services/ai/models";
 import { PlusIcon, SendIcon, SquareIcon } from "lucide-react";
 import { motion } from "motion/react";
@@ -16,13 +16,13 @@ import { TooltipWrapper } from "./tooltip-wrapper";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue,
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 

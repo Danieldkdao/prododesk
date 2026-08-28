@@ -18,13 +18,14 @@ import { LoadingSwap } from "@/components/ui/loading-swap";
 import { UserAvatar } from "@/components/user-avatar";
 import { completeProfileImageUpload } from "@/features/uploads/actions/actions";
 import { UPLOAD_LIMITS } from "@/features/uploads/lib/constants";
+import { useAuthSync } from "@/hooks/use-auth-sync-provider";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useProfileImageUpload } from "@/hooks/use-profile-image-upload";
 import { authClient } from "@/lib/auth/auth-client";
 import { generateFileUrl } from "@/lib/utils";
 import { CheckIcon, EditIcon, RefreshCcwIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 export const ProfilePictureUpload = ({
@@ -38,15 +39,23 @@ export const ProfilePictureUpload = ({
 }) => {
   const router = useRouter();
 
+  const { refetch } = useAuthSync();
+
   const [isImageChangePending, startImageChangeTransition] = useTransition();
   const [isImageResetPending, startImageResetTransition] = useTransition();
 
   const [confirmImageDialogOpen, setConfirmImageDialogOpen] = useState(false);
-  const { inputRef, currentFile, reset, handleFileUpload, handleFilePreview } =
-    useProfileImageUpload({
-      accept: UPLOAD_LIMITS["profile-image"].accept,
-      maxFileSizeBytes: UPLOAD_LIMITS["profile-image"].maxSize,
-    });
+  const {
+    inputRef,
+    currentFile,
+    reset,
+    handleFileUpload,
+    handleFilePreview,
+    error,
+  } = useProfileImageUpload({
+    accept: UPLOAD_LIMITS["profile-image"].accept,
+    maxFileSizeBytes: UPLOAD_LIMITS["profile-image"].maxSize,
+  });
   const [ResetConfirmationDialog, confirmReset] = useConfirm(
     "Confirm Reset",
     "Are you sure you want to reset your profile image? It will go back to the social provider default image or no image, whichever applies.",
@@ -75,6 +84,12 @@ export const ProfilePictureUpload = ({
         toast.error(response.message);
         return;
       }
+
+      await refetch({
+        query: {
+          disableCookieCache: true,
+        },
+      });
 
       toast.success("Profile image updated successfully.");
       router.refresh();
@@ -107,6 +122,12 @@ export const ProfilePictureUpload = ({
       router.refresh();
     });
   };
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const isDropdownItemDisabled = isImageChangePending || isImageResetPending;
 
@@ -194,7 +215,7 @@ export const ProfilePictureUpload = ({
 
             <DropdownMenuItem
               variant="destructive"
-              disabled={isDropdownItemDisabled}
+              disabled={isDropdownItemDisabled || !profileImageKey}
               onClick={handleResetProfileImage}
             >
               <RefreshCcwIcon />
@@ -208,7 +229,8 @@ export const ProfilePictureUpload = ({
           accept="image/*"
           className="hidden"
           onChange={(event) => {
-            handleFilePreview(event);
+            const previewSuccess = handleFilePreview(event);
+            if (!previewSuccess) return;
             setConfirmImageDialogOpen(true);
           }}
         />

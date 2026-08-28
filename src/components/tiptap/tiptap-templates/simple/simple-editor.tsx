@@ -128,10 +128,13 @@ const ResizableImage = Image.extend({
 
     const escapedAlt = String(alt ?? "").replaceAll("]", "\\]");
     const escapedTitle = String(title ?? "").replaceAll('"', '\\"');
+    const escapedSrc = String(src ?? "")
+      .replaceAll("<", "%3C")
+      .replaceAll(">", "%3E");
 
     return title
-      ? `![${escapedAlt}](${src} "${escapedTitle}")`
-      : `![${escapedAlt}](${src})`;
+      ? `![${escapedAlt}](<${escapedSrc}> "${escapedTitle}")`
+      : `![${escapedAlt}](<${escapedSrc}>)`;
   },
   addNodeView() {
     const resize = this.options.resize;
@@ -469,9 +472,7 @@ export function SimpleEditor({
         },
         onError: (error) => {
           console.error("Upload failed:", error);
-          const errorMessage = isError(error)
-            ? error.message
-            : "Upload failed";
+          const errorMessage = isError(error) ? error.message : "Upload failed";
           toast.error(errorMessage);
         },
       }),

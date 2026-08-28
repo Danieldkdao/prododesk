@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuthSession } from "@/hooks/use-auth-session";
+import { useAuthSync } from "@/hooks/use-auth-sync-provider";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { authClient } from "@/lib/auth/auth-client";
 import {
@@ -12,6 +12,7 @@ import {
   SunIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
@@ -27,7 +28,6 @@ import {
 } from "../ui/dropdown-menu";
 import { Separator } from "../ui/separator";
 import { UserAvatar } from "../user-avatar";
-import Link from "next/link";
 
 const themes = [
   { label: "Light", theme: "light", icon: SunIcon },
@@ -41,7 +41,7 @@ const themes = [
 
 export const UserProfile = () => {
   const router = useRouter();
-  const { data: session } = useAuthSession();
+  const { session } = useAuthSync();
   const isMounted = useIsMounted();
   const { setTheme, resolvedTheme, theme } = useTheme();
 

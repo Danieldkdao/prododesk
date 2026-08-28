@@ -6,7 +6,6 @@ import {
   CollapsiblePanel,
   CollapsibleTrigger,
 } from "@/components/animate-ui/primitives/base/collapsible";
-import { FileDisplay } from "@/components/file-display";
 import {
   markdownAnimateOptions,
   StreamMarkdownRenderer,
@@ -31,7 +30,7 @@ import { cn, formatMs, generateFileUrl } from "@/lib/utils";
 import { RegenerateButton } from "@/services/ai/components/regenerate-button";
 import { getModelInfo } from "@/services/ai/models";
 import { ToolName } from "@/services/ai/tool-contracts";
-import { CustomUIMessage, FileAttachment } from "@/services/ai/types";
+import { CustomUIMessage } from "@/services/ai/types";
 import { getToolName, isToolUIPart } from "ai";
 import { format, isSameDay } from "date-fns";
 import {

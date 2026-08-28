@@ -51,11 +51,13 @@ export const useProfileImageUpload = ({
 
       const file = files[0];
 
-      if (!validateFile(file)) return;
+      if (!validateFile(file)) return false;
 
       const previewUrl = URL.createObjectURL(file);
 
       setCurrentFile({ file, previewUrl });
+
+      return true;
     },
     [validateFile],
   );

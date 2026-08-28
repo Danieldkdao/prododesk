@@ -32,6 +32,7 @@ export const FileDisplay = ({
             <ProgressRing
               value={uploadProgress === 0 ? null : uploadProgress}
               formatValue={() => ""}
+              size="xs"
             />
           </div>
         ) : null}
@@ -49,6 +50,7 @@ export const FileDisplay = ({
           <ProgressRing
             value={uploadProgress === 0 ? null : uploadProgress}
             formatValue={() => ""}
+            size="xs"
           />
         ) : (
           <FaFilePdf className="size-8 shrink-0 text-destructive" />

@@ -116,7 +116,11 @@ export const isValidDate = (date: unknown): date is Date => {
 };
 
 export const generateFileUrl = (key: string) => {
-  return `https://${envClient.NEXT_PUBLIC_TIGRIS_STORAGE_BUCKET}.t3.tigrisfiles.io/${key}`;
+  const encodedKey = key
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `https://${envClient.NEXT_PUBLIC_TIGRIS_STORAGE_BUCKET}.t3.tigrisfiles.io/${encodedKey}`;
 };
 
 export const isError = (error: unknown): error is Error =>

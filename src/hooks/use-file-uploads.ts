@@ -1,19 +1,19 @@
 import {
-  deleteFileClient,
-  fetchUploadPresignedUrl,
-  uploadFileWithProgress,
-  validateFile,
+    deleteFileClient,
+    fetchUploadPresignedUrl,
+    uploadFileWithProgress,
+    validateFile,
 } from "@/features/uploads/lib/helpers";
-import { FileAttachment } from "@/services/ai/types";
 import { isError } from "@/lib/utils";
+import { FileAttachment } from "@/services/ai/types";
 import {
-  ChangeEvent,
-  DragEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    ChangeEvent,
+    DragEvent,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from "react";
 import { toast } from "sonner";
 
