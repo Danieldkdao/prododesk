@@ -117,7 +117,7 @@ function SidebarProvider({
   React.useEffect(() => {
     if (!enableShortcut) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!enableShortcut || iconsOnly) return;
+      if (!enableShortcut || (iconsOnly && !isMobile)) return;
 
       if (
         event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
@@ -130,7 +130,7 @@ function SidebarProvider({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleSidebar, enableShortcut, iconsOnly]);
+  }, [toggleSidebar, enableShortcut, iconsOnly, isMobile]);
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.

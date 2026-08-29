@@ -27,7 +27,7 @@ import { format, isValid } from "date-fns";
 import { and, count, eq, gte, lte, ne } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { TasksFilters } from "../lib/tasks-params";
-import { getUserTaskTag } from "../server/cache/tasks";
+import { getTaskIdTag, getUserTaskTag } from "../server/cache/tasks";
 import {
   confirmUserTaskOwnership,
   deleteTaskDb,
@@ -694,3 +694,27 @@ export const updateTasksPriorityAction = async (
     };
   }
 };
+
+const readCachedTaskAction = async (userId: string, taskId: string) => {
+  "use cache";
+  cacheTag(getTaskIdTag(taskId));
+
+  const task = await db.query.TaskTable.findFirst({
+    where: and(eq(TaskTable.userId, userId), eq(TaskTable.id, taskId)),
+    with: {
+      project: true,
+      milestone: true,
+    },
+  });
+
+  return task ?? null;
+};
+export const readTaskAction = async (taskId: string | null) => {
+  if (!taskId || !areValidIds(taskId)) return null;
+
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  return readCachedTaskAction(userId, taskId);
+};
+export type ReadTaskActionReturnType = UnwrapAsync<typeof readTaskAction>;

@@ -45,8 +45,8 @@ export const ProjectsInfiniteList = ({
   });
 
   return projects.length ? (
-    <div className="w-full">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="w-full @container">
+      <div className="grid grid-cols-1 @3xl:grid-cols-2 gap-4">
         {projects.map((project) => (
           <ProjectCard key={project.id} project={project} />
         ))}

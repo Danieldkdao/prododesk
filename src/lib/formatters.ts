@@ -10,7 +10,7 @@ export const formatColor = (color: Color) => {
       return {
         label: "Amber",
         bg: "bg-amber-500 dark:bg-amber-500",
-        bgLight: "bg-amber-500/30 dark:bg-amber-500/30",
+        bgLight: "bg-amber-500/15 dark:bg-amber-500/15",
         text: "text-amber-500 dark:text-amber-500",
         hoverText: "hover:text-amber-500 dark:hover:text-amber-500",
         border: "border-amber-500 dark:border-amber-500",
@@ -25,7 +25,7 @@ export const formatColor = (color: Color) => {
       return {
         label: "Blue",
         bg: "bg-blue-500 dark:bg-blue-500",
-        bgLight: "bg-blue-500/30 dark:bg-blue-500/30",
+        bgLight: "bg-blue-500/15 dark:bg-blue-500/15",
         text: "text-blue-500 dark:text-blue-500",
         hoverText: "hover:text-blue-500 dark:hover:text-blue-500",
         border: "border-blue-500 dark:border-blue-500",
@@ -40,7 +40,7 @@ export const formatColor = (color: Color) => {
       return {
         label: "Cyan",
         bg: "bg-cyan-500 dark:bg-cyan-500",
-        bgLight: "bg-cyan-500/30 dark:bg-cyan-500/30",
+        bgLight: "bg-cyan-500/15 dark:bg-cyan-500/15",
         text: "text-cyan-500 dark:text-cyan-500",
         hoverText: "hover:text-cyan-500 dark:hover:text-cyan-500",
         border: "border-cyan-500 dark:border-cyan-500",
@@ -55,7 +55,7 @@ export const formatColor = (color: Color) => {
       return {
         label: "Green",
         bg: "bg-green-500 dark:bg-green-500",
-        bgLight: "bg-green-500/30 dark:bg-green-500/30",
+        bgLight: "bg-green-500/15 dark:bg-green-500/15",
         text: "text-green-500 dark:text-green-500",
         hoverText: "hover:text-green-500 dark:hover:text-green-500",
         border: "border-green-500 dark:border-green-500",
@@ -70,7 +70,7 @@ export const formatColor = (color: Color) => {
       return {
         label: "Orange",
         bg: "bg-orange-500 dark:bg-orange-500",
-        bgLight: "bg-orange-500/30 dark:bg-orange-500/30",
+        bgLight: "bg-orange-500/15 dark:bg-orange-500/15",
         text: "text-orange-500 dark:text-orange-500",
         hoverText: "hover:text-orange-500 dark:hover:text-orange-500",
         border: "border-orange-500 dark:border-orange-500",
@@ -85,7 +85,7 @@ export const formatColor = (color: Color) => {
       return {
         label: "Pink",
         bg: "bg-pink-500 dark:bg-pink-500",
-        bgLight: "bg-pink-500/30 dark:bg-pink-500/30",
+        bgLight: "bg-pink-500/15 dark:bg-pink-500/15",
         text: "text-pink-500 dark:text-pink-500",
         hoverText: "hover:text-pink-500 dark:hover:text-pink-500",
         border: "border-pink-500 dark:border-pink-500",
@@ -100,7 +100,7 @@ export const formatColor = (color: Color) => {
       return {
         label: "Purple",
         bg: "bg-purple-500 dark:bg-purple-500",
-        bgLight: "bg-purple-500/30 dark:bg-purple-500/30",
+        bgLight: "bg-purple-500/15 dark:bg-purple-500/15",
         text: "text-purple-500 dark:text-purple-500",
         hoverText: "hover:text-purple-500 dark:hover:text-purple-500",
         border: "border-purple-500 dark:border-purple-500",
@@ -115,7 +115,7 @@ export const formatColor = (color: Color) => {
       return {
         label: "Rose",
         bg: "bg-rose-500 dark:bg-rose-500",
-        bgLight: "bg-rose-500/30 dark:bg-rose-500/30",
+        bgLight: "bg-rose-500/15 dark:bg-rose-500/15",
         text: "text-rose-500 dark:text-rose-500",
         hoverText: "hover:text-rose-500 dark:hover:text-rose-500",
         border: "border-rose-500 dark:border-rose-500",
@@ -130,7 +130,7 @@ export const formatColor = (color: Color) => {
       return {
         label: "Slate",
         bg: "bg-slate-500 dark:bg-slate-500",
-        bgLight: "bg-slate-500/30 dark:bg-slate-500/30",
+        bgLight: "bg-slate-500/15 dark:bg-slate-500/15",
         text: "text-slate-500 dark:text-slate-500",
         hoverText: "hover:text-slate-500 dark:hover:text-slate-500",
         border: "border-slate-500 dark:border-slate-500",
@@ -145,7 +145,7 @@ export const formatColor = (color: Color) => {
       return {
         label: "Stone",
         bg: "bg-stone-500 dark:bg-stone-500",
-        bgLight: "bg-stone-500/30 dark:bg-stone-500/30",
+        bgLight: "bg-stone-500/15 dark:bg-stone-500/15",
         text: "text-stone-500 dark:text-stone-500",
         hoverText: "hover:text-stone-500 dark:hover:text-stone-500",
         border: "border-stone-500 dark:border-stone-500",
