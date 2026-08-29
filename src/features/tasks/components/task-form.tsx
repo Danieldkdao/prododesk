@@ -42,7 +42,7 @@ export const TaskForm = ({
 }: {
   defaultValues?: TaskFormDefaultValues;
   existingTask?: TaskSelectType;
-  afterAction?: () => void;
+  afterAction?: () => void | Promise<void>;
 }) => {
   const router = useRouter();
   const form = useForm<TaskSchemaType>({
@@ -74,8 +74,8 @@ export const TaskForm = ({
     } else {
       toast.success(response.message);
       form.reset();
+      await afterAction?.();
       router.refresh();
-      afterAction?.();
     }
   };
 
@@ -89,9 +89,7 @@ export const TaskForm = ({
         name="name"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel htmlFor="task-name-input">
-              Name
-            </FieldLabel>
+            <FieldLabel htmlFor="task-name-input">Name</FieldLabel>
             <FieldContent>
               <div className="w-full flex items-center gap-2">
                 <Controller
@@ -139,9 +137,7 @@ export const TaskForm = ({
 
           return (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel htmlFor="task-priority-input">
-                Priority
-              </FieldLabel>
+              <FieldLabel htmlFor="task-priority-input">Priority</FieldLabel>
               <FieldContent>
                 <Select value={value} onValueChange={onChange} {...props}>
                   <SelectTrigger

@@ -4,6 +4,7 @@ import {
   formatActivitySubject,
 } from "../lib/formatters";
 import { cn } from "@/lib/utils";
+import { TaskDetailsTrigger } from "@/features/tasks/components/task-details-trigger";
 
 export const DashboardActivityItem = ({
   activity,
@@ -14,11 +15,8 @@ export const DashboardActivityItem = ({
 }) => {
   const { icon: SubjectIcon } = formatActivitySubject(activity.subject);
 
-  return (
-    <div
-      key={activity.id}
-      className="flex items-start gap-2 w-full min-w-0 leading-7"
-    >
+  const mainElement = (
+    <div className="flex items-start gap-2 w-full min-w-0 leading-7">
       <span className="h-[1lh] flex items-center shrink-0">
         <SubjectIcon className={textColorClassName} />
       </span>
@@ -29,4 +27,18 @@ export const DashboardActivityItem = ({
       </div>
     </div>
   );
+
+  if (
+    activity.subject === "task" &&
+    activity.subjectId &&
+    activity.action !== "delete"
+  ) {
+    return (
+      <TaskDetailsTrigger taskId={activity.subjectId}>
+        {mainElement}
+      </TaskDetailsTrigger>
+    );
+  }
+
+  return mainElement;
 };

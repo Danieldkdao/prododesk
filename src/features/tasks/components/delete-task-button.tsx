@@ -1,11 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import { useConfirm } from "@/hooks/use-confirm";
+import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ComponentProps, ReactNode, useTransition } from "react";
 import { toast } from "sonner";
 import { deleteTaskAction } from "../actions/actions";
-import { cn } from "@/lib/utils";
 
 export const DeleteTaskButton = ({
   children,
@@ -13,11 +13,13 @@ export const DeleteTaskButton = ({
   onClick,
   disabled,
   innerClassName,
+  afterAction,
   ...props
 }: {
   children?: ReactNode;
   taskId: string;
   innerClassName?: string;
+  afterAction?: () => void | Promise<void>;
 } & ComponentProps<typeof Button>) => {
   const router = useRouter();
   const [ConfirmationDialog, confirm] = useConfirm(
@@ -36,6 +38,7 @@ export const DeleteTaskButton = ({
         toast.error(response.message);
       } else {
         toast.success(response.message);
+        await afterAction?.();
         router.refresh();
       }
     });

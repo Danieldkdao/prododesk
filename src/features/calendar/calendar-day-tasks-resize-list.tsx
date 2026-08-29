@@ -3,12 +3,14 @@
 import { TaskSelectType } from "@/db/schema";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { TaskCalendarItem } from "../tasks/components/task-calendar-item";
+import { useTaskDetailsDialog } from "../tasks/hooks/use-task-details-dialog";
 
 export const CalendarDayTasksResizeList = ({
   tasks,
 }: {
   tasks: TaskSelectType[];
 }) => {
+  const { openTaskDetails } = useTaskDetailsDialog();
   const [hiddenCount, setHiddenCount] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -78,7 +80,15 @@ export const CalendarDayTasksResizeList = ({
       className="w-full flex flex-col gap-1 overflow-hidden h-45 min-w-0"
     >
       {tasks.map((task) => (
-        <div key={task.id} data-calendar-task className="shrink-0">
+        <div
+          key={task.id}
+          data-calendar-task
+          className="shrink-0 cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            openTaskDetails(task.id);
+          }}
+        >
           <TaskCalendarItem task={task} />
         </div>
       ))}

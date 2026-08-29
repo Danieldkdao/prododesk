@@ -54,6 +54,7 @@ export const TaskTableRow = ({
               href={`/dashboard/projects/${task.project.id}`}
               target="_blank"
               className="flex items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
             >
               <span>{task.project.name}</span>
               <SquareArrowOutUpRightIcon className="size-4" />
@@ -64,11 +65,13 @@ export const TaskTableRow = ({
         </TableCell>
       )}
       <TableCell>
-        <TaskOptions task={task}>
-          <Button variant="ghost" size="icon-sm">
-            <MoreHorizontalIcon />
-          </Button>
-        </TaskOptions>
+        <div onClick={(e) => e.stopPropagation()}>
+          <TaskOptions task={task}>
+            <Button variant="ghost" size="icon-sm">
+              <MoreHorizontalIcon />
+            </Button>
+          </TaskOptions>
+        </div>
       </TableCell>
     </TableRow>
   );

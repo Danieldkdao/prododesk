@@ -23,6 +23,7 @@ import { ReadProjectsActionReturnType } from "../actions/actions";
 import { formatProjectStatus } from "../lib/formatters";
 import { ProjectDialog } from "./project-dialog";
 import { ProjectOptions } from "./project-options";
+import { TaskDetailsTrigger } from "@/features/tasks/components/task-details-trigger";
 
 export const ProjectCard = ({
   project,
@@ -131,8 +132,11 @@ export const ProjectCard = ({
           </ProjectOptions>
         </div>
         <div className="flex items-start gap-2 leading-6 p-2 bg-muted">
-          {project.isArchived || project.nextTask ? (
-            <>
+          {project.nextTask ? (
+            <TaskDetailsTrigger
+              taskId={project.nextTask.id}
+              className="relative z-10 flex items-start gap-2"
+            >
               <span className="h-[1lh] flex items-center">
                 <ArrowRightIcon className="size-5 text-muted-foreground shrink-0" />
               </span>
@@ -144,7 +148,7 @@ export const ProjectCard = ({
                     : project.nextTask.name}
                 </span>
               </span>
-            </>
+            </TaskDetailsTrigger>
           ) : (
             <>
               <span className="h-[1lh] flex items-center">

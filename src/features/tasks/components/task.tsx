@@ -2,12 +2,14 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
 import { useConfetti } from "@/hooks/use-confetti";
 import { formatTaskDates } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { CheckIcon, ClockIcon } from "lucide-react";
 import { useState } from "react";
 import { ReadTasksActionReturnType } from "../actions/actions";
+import { useTaskDetailsDialog } from "../hooks/use-task-details-dialog";
 import {
   formatTaskPriority,
   getTaskPriorityBadgeClasses,
@@ -26,9 +28,9 @@ export const Task = ({
   disabled?: boolean;
 }) => {
   const [taskStatus, setTaskStatus] = useState(task.status);
-  const [statusSelectOpen, setStatusSelectOpen] = useState(false);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const { triggerConfetti } = useConfetti();
+  const { openTaskDetails } = useTaskDetailsDialog();
 
   const priorityBadgeClasses = getTaskPriorityBadgeClasses(task.priority);
   const isTaskComplete = taskStatus === "completed";
@@ -59,12 +61,10 @@ export const Task = ({
           childrenClassName={cn(isTaskComplete && "text-emerald-600")}
           outsideStatus={taskStatus}
           setOutsideStatus={setTaskStatus}
-          outsideOpen={statusSelectOpen}
-          setOutsideOpen={setStatusSelectOpen}
         />
         <div
           className="min-w-0 flex-1 flex flex-col gap-1.5 cursor-pointer"
-          onClick={() => setStatusSelectOpen((prev) => !prev)}
+          onClick={() => openTaskDetails(task.id)}
         >
           <div className="flex items-center gap-2 min-w-0">
             <Label

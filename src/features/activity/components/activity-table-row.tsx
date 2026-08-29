@@ -1,3 +1,5 @@
+"use client";
+
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ReadActivityActionReturnType } from "../actions/actions";
 import {
@@ -8,6 +10,7 @@ import {
 import { ClockIcon, SquareArrowOutUpRightIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
+import { useTaskDetailsDialog } from "@/features/tasks/hooks/use-task-details-dialog";
 
 export const ActivityTableRow = ({
   activity,
@@ -16,6 +19,7 @@ export const ActivityTableRow = ({
   activity: ReadActivityActionReturnType["activity"][number];
   showProject?: boolean;
 }) => {
+  const { openTaskDetails } = useTaskDetailsDialog();
   const { label: sourceLabel, icon: SourceIcon } = formatActivitySource(
     activity.source,
   );
@@ -31,10 +35,20 @@ export const ActivityTableRow = ({
     includeSeconds: true,
   });
 
+  const handleTaskDetails = () => {
+    if (
+      activity.subject === "task" &&
+      activity.subjectId &&
+      activity.action !== "delete"
+    ) {
+      openTaskDetails(activity.subjectId);
+    }
+  };
+
   return (
-    <TableRow>
+    <TableRow className="cursor-pointer" onClick={handleTaskDetails}>
       {showProject && (
-        <TableCell className="text-base">
+        <TableCell className="text-base" onClick={(e) => e.stopPropagation()}>
           {activity.project ? (
             <Link
               href={`/dashboard/projects/${activity.project.id}`}

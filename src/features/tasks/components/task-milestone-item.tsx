@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { TaskOptions } from "./task-options";
 import { Button } from "@/components/ui/button";
 import { EllipsisIcon } from "lucide-react";
+import { useTaskDetailsDialog } from "../hooks/use-task-details-dialog";
 
 export const TaskMilestoneItem = ({
   task,
@@ -23,6 +24,7 @@ export const TaskMilestoneItem = ({
     milestone: MilestoneSelectType | null;
   };
 }) => {
+  const { openTaskDetails } = useTaskDetailsDialog();
   const { ref } = useDraggable({
     id: task.id,
     type: "task",
@@ -37,7 +39,10 @@ export const TaskMilestoneItem = ({
       ref={ref}
       className="bg-background border cursor-pointer flex items-center justify-between w-full min-w-0"
     >
-      <div className="min-w-0 p-2 w-full">
+      <div
+        className="min-w-0 p-2 w-full cursor-pointer"
+        onClick={() => openTaskDetails(task.id)}
+      >
         <div className="flex items-center gap-2 min-w-0">
           <StatusIcon className={cn("size-4 shrink-0", textColor)} />
           <span className="text-base font-medium">{task.name}</span>

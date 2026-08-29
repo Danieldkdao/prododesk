@@ -13,15 +13,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatMilestoneStatus } from "@/features/milestones/lib/formatters";
 import { formatColor, formatTaskDates } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarCheckIcon,
   CalendarClockIcon,
+  CheckCircleIcon,
   CircleDotIcon,
   FlagIcon,
   FolderKanbanIcon,
   ListCheckIcon,
   MilestoneIcon,
+  RotateCcwIcon,
 } from "lucide-react";
 import { ReactNode } from "react";
 import { readTaskAction, ReadTaskActionReturnType } from "../actions/actions";
@@ -29,6 +31,9 @@ import { formatTaskPriority, formatTaskStatus } from "../lib/formatters";
 import { DeleteTaskButton } from "./delete-task-button";
 import { TaskDialog } from "./task-dialog";
 import { UpdateTaskStatusButton } from "./update-task-status-button";
+import { useTaskDetailsDialog } from "../hooks/use-task-details-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { format, formatDistanceToNow } from "date-fns";
 
 const EmptyDetailsState = ({ text }: { text: string }) => {
   return (
@@ -111,6 +116,10 @@ const TaskDialogDetailsSuspense = ({
 }: {
   data: ReadTaskActionReturnType;
 }) => {
+  const { closeTaskDetails } = useTaskDetailsDialog();
+  const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
+
   const { project, milestone, ...task } = data;
 
   const { text: projectTextColor, bgLight: projectBgLight } = formatColor(
@@ -192,7 +201,8 @@ const TaskDialogDetailsSuspense = ({
         <EmptyDetailsState
           text={
             task.scheduledAt
-              ? (formatTaskDates(task.scheduledAt, null) ?? "Not scheduled")
+              ? (formatTaskDates(task.scheduledAt, null, true) ??
+                "Not scheduled")
               : "Not scheduled"
           }
         />
@@ -205,7 +215,7 @@ const TaskDialogDetailsSuspense = ({
         <EmptyDetailsState
           text={
             task.dueAt
-              ? (formatTaskDates(null, task.dueAt) ?? "Not due")
+              ? (formatTaskDates(null, task.dueAt, true) ?? "Not due")
               : "Not due"
           }
         />
@@ -261,6 +271,14 @@ const TaskDialogDetailsSuspense = ({
     },
   ];
 
+  const invalidateTaskQuery = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["task", task.id],
+    });
+  };
+
+  const isCompleted = task.status === "completed";
+
   return (
     <>
       <DialogHeader className="sr-only">
@@ -268,7 +286,12 @@ const TaskDialogDetailsSuspense = ({
       </DialogHeader>
       <div className="flex flex-col gap-4 px-6 pt-6 min-w-0">
         <div className="flex flex-col @xl:flex-row items-start gap-4 min-w-0">
-          <div className="size-16 flex items-center justify-center shrink-0 bg-primary/20">
+          <div
+            className={cn(
+              "size-16 flex items-center justify-center shrink-0",
+              isCompleted ? "bg-emerald-600/20" : "bg-primary/20",
+            )}
+          >
             {task?.emoji ? (
               <span className="text-4xl">{task?.emoji}</span>
             ) : (
@@ -277,11 +300,19 @@ const TaskDialogDetailsSuspense = ({
           </div>
           <div className="flex flex-col gap-4 flex-1 w-full min-w-0">
             <div className="flex flex-col gap-0.5">
-              <h2 className="text-2xl font-semibold">{task.name}</h2>
+              <h2
+                className={cn(
+                  "text-2xl font-semibold",
+                  isCompleted && "text-emerald-600 line-through",
+                )}
+              >
+                {task.name}
+              </h2>
               <p
                 className={cn(
                   "text-muted-foreground text-lg",
                   !task.description && "italic",
+                  isCompleted && "text-emerald-600",
                 )}
               >
                 {task.description || "No description provided."}
@@ -305,23 +336,63 @@ const TaskDialogDetailsSuspense = ({
                 </div>
               ))}
             </div>
+            <Separator />
+            <div className="flex items-center gap-2 justify-between flex-wrap">
+              <span className="text-muted-foreground font-medium text-base">
+                Created {format(task.createdAt, "PP 'at' p")}
+              </span>
+              <span className="text-muted-foreground font-medium text-base">
+                Updated{" "}
+                {formatDistanceToNow(task.updatedAt, {
+                  includeSeconds: true,
+                  addSuffix: true,
+                })}
+              </span>
+            </div>
           </div>
         </div>
       </div>
       <Separator />
       <DialogFooter className="w-full flex flex-row! items-center gap-2 justify-between! pb-6 px-6">
-        <DeleteTaskButton taskId={task.id} variant="destructive">
+        <DeleteTaskButton
+          taskId={task.id}
+          variant="destructive"
+          afterAction={async () => {
+            await invalidateTaskQuery();
+            closeTaskDetails();
+          }}
+          size={isMobile ? "sm" : "default"}
+        >
           Delete
         </DeleteTaskButton>
         <div className="flex items-center gap-2">
           <TaskDialog
             existingTask={task}
             defaultValues={{ project, milestone }}
+            afterAction={invalidateTaskQuery}
           >
-            <Button variant="outline">Edit</Button>
+            <Button variant="outline" size={isMobile ? "sm" : "default"}>
+              Edit
+            </Button>
           </TaskDialog>
-          <UpdateTaskStatusButton taskId={task.id} newStatus="completed">
-            Complete task
+          <UpdateTaskStatusButton
+            taskId={task.id}
+            newStatus={isCompleted ? "not_started" : "completed"}
+            afterAction={invalidateTaskQuery}
+            variant={isCompleted ? "outline" : "default"}
+            size={isMobile ? "sm" : "default"}
+          >
+            {isCompleted ? (
+              <>
+                <RotateCcwIcon />
+                Reopen task
+              </>
+            ) : (
+              <>
+                <CheckCircleIcon />
+                Complete task
+              </>
+            )}
           </UpdateTaskStatusButton>
         </div>
       </DialogFooter>

@@ -14,14 +14,15 @@ export const UpdateTaskStatusButton = ({
   newStatus,
   children,
   disabled,
+  afterAction,
   ...props
 }: {
   taskId: string;
   newStatus: TaskStatus;
+  afterAction?: () => void | Promise<void>;
 } & Omit<ComponentProps<typeof Button>, "onClick">) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const { closeTaskDetails } = useTaskDetailsDialog();
 
   const handleTaskStatusUpdate = () => {
     startTransition(async () => {
@@ -29,7 +30,7 @@ export const UpdateTaskStatusButton = ({
       if (response.error) {
         toast.error(response.message);
       } else {
-        closeTaskDetails();
+        await afterAction?.();
         router.refresh();
         toast.success(response.message);
       }

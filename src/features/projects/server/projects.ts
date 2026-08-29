@@ -147,9 +147,7 @@ type ReadProjectsDbFilters = Partial<ProjectsFilters> & {
   limit?: number;
 };
 
-export const readProjectsDb = async (
-  filterOptions: ReadProjectsDbFilters,
-) => {
+export const readProjectsDb = async (filterOptions: ReadProjectsDbFilters) => {
   const {
     search,
     sortBy = "recently_created",
@@ -294,6 +292,21 @@ export const readProjectsDb = async (
     END
   `;
 
+  const nextTaskQuery = db
+    .select({
+      ...getTableColumns(TaskTable),
+    })
+    .from(TaskTable)
+    .where(
+      and(
+        ne(TaskTable.status, "completed"),
+        eq(TaskTable.projectId, ProjectTable.id),
+      ),
+    )
+    .orderBy(asc(priorityRank), asc(TaskTable.id))
+    .limit(1)
+    .as("next_task");
+
   let query = db
     .select({
       ...getTableColumns(ProjectTable),
@@ -309,26 +322,26 @@ export const readProjectsDb = async (
         WHERE tt.project_id = ${ProjectTable.id}
           AND tt.status = 'completed'
       )`,
-      nextTask: sql<TaskSelectType | null>`(
-        ${db
-          .select({ task: sql`row_to_json(tasks.*)` })
-          .from(TaskTable)
-          .where(
-            and(
-              ne(TaskTable.status, "completed"),
-              eq(TaskTable.projectId, ProjectTable.id),
-            ),
-          )
-          .orderBy(asc(priorityRank), asc(TaskTable.id))
-          .limit(1)}
-      )`.mapWith((val) => {
-        if (!val) return null;
-        return typeof val === "string" ? JSON.parse(val) : val;
-      }),
+      nextTask: {
+        id: nextTaskQuery.id,
+        userId: nextTaskQuery.userId,
+        name: nextTaskQuery.name,
+        description: nextTaskQuery.description,
+        emoji: nextTaskQuery.emoji,
+        status: nextTaskQuery.status,
+        priority: nextTaskQuery.priority,
+        scheduledAt: nextTaskQuery.scheduledAt,
+        dueAt: nextTaskQuery.dueAt,
+        projectId: nextTaskQuery.projectId,
+        milestoneId: nextTaskQuery.milestoneId,
+        createdAt: nextTaskQuery.createdAt,
+        updatedAt: nextTaskQuery.updatedAt,
+      },
     })
     .from(ProjectTable)
-    .where(whereQuery)
     .leftJoin(AreaTable, eq(AreaTable.id, ProjectTable.areaId))
+    .leftJoinLateral(nextTaskQuery, sql`true`)
+    .where(whereQuery)
     .$dynamic();
 
   if (sortBy) {

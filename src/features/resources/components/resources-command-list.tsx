@@ -17,6 +17,7 @@ import { formatResource, getResourceListElement } from "../lib/formatters";
 import { useRouter } from "next/navigation";
 import { SetterType } from "@/lib/types";
 import { useDebouncedValue } from "@tanstack/react-pacer";
+import { useTaskDetailsDialog } from "@/features/tasks/hooks/use-task-details-dialog";
 
 export const ResourcesCommandList = ({
   setOpen,
@@ -28,6 +29,7 @@ export const ResourcesCommandList = ({
   const [selectedResources, setSelectedResources] = useState<ResourceType[]>(
     [],
   );
+  const { openTaskDetails } = useTaskDetailsDialog();
 
   const debouncedSearch = useDebouncedValue(search, { wait: 500 })["0"];
 
@@ -132,11 +134,7 @@ export const ResourcesCommandList = ({
                         resource,
                         item,
                         onSelect: (item) => {
-                          router.push(
-                            item.projectId
-                              ? `/dashboard/projects/${item.projectId}/tasks`
-                              : "/dashboard/tasks",
-                          );
+                          openTaskDetails(item.id);
                           setOpen(false);
                         },
                       }),

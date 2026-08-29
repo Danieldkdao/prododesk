@@ -16,6 +16,7 @@ import {
 import { BoardProperty } from "@/features/tasks/lib/types";
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import { ReadTasksActionReturnType } from "../actions/actions";
+import { useTaskDetailsDialog } from "../hooks/use-task-details-dialog";
 
 export const TaskBoardItem = ({
   task,
@@ -28,6 +29,7 @@ export const TaskBoardItem = ({
   minimizeSmallScreens?: boolean;
   property?: BoardProperty;
 }) => {
+  const { openTaskDetails } = useTaskDetailsDialog();
   const { ref } = useDraggable({
     id: task.id,
     type: "task",
@@ -55,7 +57,10 @@ export const TaskBoardItem = ({
       )}
     >
       <div className="flex-1 min-w-0 p-2 flex flex-col gap-1">
-        <div className="min-w-0">
+        <div
+          className="min-w-0 cursor-pointer"
+          onClick={() => openTaskDetails(task.id)}
+        >
           <div className="flex items-start gap-2 min-w-0 leading-7">
             {(property === "priority" || !property) && (
               <TooltipWrapper content={statusLabel}>

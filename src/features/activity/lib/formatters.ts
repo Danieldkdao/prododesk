@@ -196,10 +196,15 @@ export const formatActivityLink = (activity: ActivitySelectType) => {
       return activity.projectId
         ? `/dashboard/projects/${activity.projectId}`
         : "/dashboard/projects";
-    case "task":
-      return activity.projectId
+    case "task": {
+      const basePath = activity.projectId
         ? `/dashboard/projects/${activity.projectId}/tasks`
-        : "/dashboard/tasks";
+        : `/dashboard/tasks`;
+
+      return activity.subjectId
+        ? `${basePath}?taskId=${encodeURIComponent(activity.subjectId)}`
+        : basePath;
+    }
     default:
       throw new Error(
         `Unknown activity subject: ${activitySubject satisfies never}`,

@@ -20,6 +20,7 @@ export const TaskDialog = ({
   existingTask,
   open,
   onOpenChange,
+  afterAction,
   ...triggerProps
 }: {
   defaultValues?: TaskFormDefaultValues;
@@ -27,6 +28,7 @@ export const TaskDialog = ({
   existingTask?: TaskSelectType;
   open?: boolean;
   onOpenChange?: SetterType<boolean>;
+  afterAction?: () => void | Promise<void>;
 } & Omit<ComponentProps<typeof DialogTrigger>, "render" | "children">) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -48,7 +50,10 @@ export const TaskDialog = ({
         <TaskForm
           defaultValues={defaultValues}
           existingTask={existingTask}
-          afterAction={() => handleOpenChange(false)}
+          afterAction={async () => {
+            handleOpenChange(false);
+            await afterAction?.();
+          }}
         />
       </DialogContent>
     </Dialog>
