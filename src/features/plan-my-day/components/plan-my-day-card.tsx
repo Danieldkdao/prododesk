@@ -1,16 +1,15 @@
-import { Suspense } from "react";
-import { readPlanMyDayDataAction } from "../actions/actions";
 import { ErrorState } from "@/components/error-state";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
   AlertCircleIcon,
   CalendarCheckIcon,
   InboxIcon,
-  SparklesIcon,
   WandSparklesIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Suspense } from "react";
+import { readPlanMyDayDataAction } from "../actions/actions";
+import { formatPlannerCardState } from "../lib/formatters";
 
 export const PlanMyDayCard = () => {
   return (
@@ -55,6 +54,20 @@ const PlanMyDayCardSuspense = async () => {
     },
   ];
 
+  const {
+    title,
+    description,
+    actionButton: ActionButton,
+  } = formatPlannerCardState(
+    response.state === "single"
+      ? {
+          state: "single",
+          source: response.source,
+          taskId: response.singleTask.id,
+        }
+      : { state: response.state },
+  );
+
   return (
     <Card className="py-4 border-2 border-primary/60 bg-linear-to-br from-primary/5 to-card">
       <CardContent className="flex items-center gap-x-8 gap-y-4 px-4 justify-between flex-wrap">
@@ -66,12 +79,9 @@ const PlanMyDayCardSuspense = async () => {
             </span>
           </div>
           <div className="flex flex-col gap-0.5">
-            <h2 className="text-2xl font-semibold">
-              Make today feel manageable
-            </h2>
+            <h2 className="text-2xl font-semibold">{title}</h2>
             <p className="text-lg text-muted-foreground font-medium max-w-150">
-              ProdoDesk can turn your priorities, deadlines, and available time
-              into a calm plan you can actually finish.
+              {description}
             </p>
           </div>
           <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
@@ -85,10 +95,7 @@ const PlanMyDayCardSuspense = async () => {
             ))}
           </div>
         </div>
-        <Button size="lg">
-          <SparklesIcon />
-          Plan my day
-        </Button>
+        <ActionButton />
       </CardContent>
     </Card>
   );
