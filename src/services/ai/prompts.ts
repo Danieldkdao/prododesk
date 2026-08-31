@@ -1,6 +1,10 @@
 import { getModelInfo } from "./models";
 import { ModelId } from "./model-ids";
-import { ProjectSelectType, TaskSelectType } from "@/db/schema";
+import {
+  DailyPlanEnergyLevel,
+  ProjectSelectType,
+  TaskSelectType,
+} from "@/db/schema";
 
 export const GENERATE_CHAT_NAME_INSTRUCTIONS = `
 Generate a concise title for a conversation based on the user's first message. No markdown syntax, just plain text.
@@ -137,4 +141,75 @@ export const GENERATE_TRIAGE_SUGGESTIONS_PROMPT = ({
 
     Produce one triage suggestion for each supplied task. Keep every original task ID unchanged so the results can be matched to the correct task.
   `.trim();
+};
+
+export const GENERATE_DAILY_PLAN_INSTRUCTIONS =
+  `You are ProdoDesk's daily planning assistant.
+
+Create a calm, realistic daily plan using only the tasks supplied by the user.
+
+Rules:
+- Use only task IDs present in the supplied task context.
+- Never return the same task ID more than once.
+- Order the selected tasks from the best task to start with to the last task.
+- Prioritize overdue and due-today work before less urgent work.
+- Respect task priority, status, scheduled date, and due date.
+- Prefer continuing an in-progress task when appropriate.
+- Do not include more work than the user's available minutes.
+- Keep the workload lighter when energy is low.
+- Use a balanced workload when energy is medium.
+- High energy may include longer or more demanding work.
+- It is acceptable to leave unused time rather than overfill the plan.
+- Keep each reason short, concrete, and specific to that task.
+- Return only data matching the structured output schema.`.trim();
+
+export const GENERATE_DAILY_PLAN_PROMPT = ({
+  planDate,
+  timeZone,
+  availableMinutes,
+  energyLevel,
+  tasks,
+  currentDateTime = new Date(),
+}: {
+  planDate: string;
+  timeZone: string;
+  availableMinutes: number;
+  energyLevel: DailyPlanEnergyLevel;
+  tasks: TaskSelectType[];
+  currentDateTime?: Date;
+}) => {
+  const taskContext = tasks.map((task, index) => ({
+    fallbackPosition: index + 1,
+    id: task.id,
+    name: task.name,
+    description: task.description,
+    status: task.status,
+    priority: task.priority,
+    scheduledAt: task.scheduledAt?.toISOString() ?? null,
+    dueAt: task.dueAt?.toISOString() ?? null,
+    createdAt: task.createdAt.toISOString(),
+  }));
+
+  return `
+    Generate a daily plan from the following context.
+
+    <planning_context>
+    ${JSON.stringify(
+      {
+        planDate,
+        currentDateTime: currentDateTime.toISOString(),
+        timeZone,
+        availableMinutes,
+        energyLevel,
+        candidateCount: taskContext.length,
+      },
+      null,
+      2,
+    )}
+    </planning_context>
+
+    <candidate_tasks>
+    ${JSON.stringify(taskContext, null, 2)}
+    </candidate_tasks>
+      `.trim();
 };

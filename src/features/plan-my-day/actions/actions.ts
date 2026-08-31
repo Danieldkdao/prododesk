@@ -1,7 +1,13 @@
 "use server";
 
 import { db } from "@/db/db";
-import { TaskSelectType, TaskTable } from "@/db/schema";
+import {
+  DailyPlanEnergyLevel,
+  DailyPlanItemTable,
+  DailyPlanTable,
+  TaskSelectType,
+  TaskTable,
+} from "@/db/schema";
 import { milestoneTools } from "@/features/milestones/ai/tools";
 import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
 import { projectTools } from "@/features/projects/ai/tools";
@@ -26,16 +32,26 @@ import { UnwrapAsync } from "@/lib/types";
 import { getLocalDayBounds, isError } from "@/lib/utils";
 import { openrouter } from "@/services/ai/models/openrouter";
 import {
+  GENERATE_DAILY_PLAN_INSTRUCTIONS,
+  GENERATE_DAILY_PLAN_PROMPT,
   GENERATE_TRIAGE_SUGGESTIONS_INSTRUCTIONS,
   GENERATE_TRIAGE_SUGGESTIONS_PROMPT,
 } from "@/services/ai/prompts";
 import { tz, TZDate } from "@date-fns/tz";
 import { generateText, Output } from "ai";
 import { format, parse, parseISO, subDays } from "date-fns";
-import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
-import { triageSuggestionSchema } from "../ai/schemas";
 import {
+  dailyPlanDraftSchema,
+  DailyPlanDraftSchemaType,
+  generatedDailyPlanSchema,
+  GeneratedDailyPlanSchemaType,
+  triageSuggestionSchema,
+} from "../ai/schemas";
+import {
+  MAX_PLAN_CANDIDATES,
+  MAX_PLAN_ITEMS,
   MAX_PROJECT_PROMPT_INJECTION_LIMIT,
   TRIAGE_TASK_LIMIT,
 } from "../lib/constants";
@@ -46,7 +62,12 @@ import {
   TriageSuggestion,
 } from "../lib/types";
 import { getPlannerCardState } from "../lib/utils";
-import { suggestionAnswerSchema, SuggestionAnswerSchemaType } from "./schemas";
+import {
+  planMyDaySchema,
+  PlanMyDaySchemaType,
+  suggestionAnswerSchema,
+  SuggestionAnswerSchemaType,
+} from "./schemas";
 
 const readCachedPlanMyDayDataAction = async (
   userId: string,
@@ -411,6 +432,440 @@ export const processTriageAnswerAction = async ({
     return {
       error: true,
       message: errorMessage,
+    };
+  }
+};
+
+const getPlanDateInformation = (
+  timeZone: string,
+  currentDateTime = new Date(),
+) => {
+  const planDate = format(currentDateTime, "yyyy-MM-dd", {
+    in: tz(timeZone),
+  });
+
+  const localDate = parse(planDate, "yyyy-MM-dd", TZDate.tz(timeZone), {
+    in: tz(timeZone),
+  });
+
+  const { startUtc, endUtc } = getLocalDayBounds(localDate, timeZone);
+
+  return {
+    planDate,
+    startUtc,
+    endUtc,
+  };
+};
+const readDailyPlanCandidates = async ({
+  userId,
+  startUtc,
+  endUtc,
+}: {
+  userId: string;
+  startUtc: Date;
+  endUtc: Date;
+}) => {
+  const relevanceRank = sql<number>`
+    CASE
+      WHEN ${TaskTable.dueAt} < ${startUtc} THEN 1
+      WHEN ${TaskTable.scheduledAt} < ${startUtc} THEN 2
+      WHEN ${TaskTable.dueAt} <= ${endUtc} THEN 3
+      WHEN ${TaskTable.scheduledAt} <= ${endUtc} THEN 4
+      WHEN ${TaskTable.status} = 'in_progress' THEN 5
+      ELSE 6
+    END
+  `;
+
+  const priorityRank = sql<number>`
+    CASE ${TaskTable.priority}
+      WHEN 'urgent' THEN 1
+      WHEN 'high' THEN 2
+      WHEN 'medium' THEN 3
+      WHEN 'low' THEN 4
+      ELSE 5
+    END
+  `;
+
+  return db
+    .select()
+    .from(TaskTable)
+    .where(
+      and(
+        eq(TaskTable.userId, userId),
+        inArray(TaskTable.status, ["not_started", "in_progress"]),
+        or(
+          lte(TaskTable.scheduledAt, endUtc),
+          lte(TaskTable.dueAt, endUtc),
+          and(isNull(TaskTable.scheduledAt), isNull(TaskTable.dueAt)),
+        ),
+      ),
+    )
+    .orderBy(
+      relevanceRank,
+      priorityRank,
+      asc(TaskTable.dueAt),
+      asc(TaskTable.scheduledAt),
+      asc(TaskTable.createdAt),
+      asc(TaskTable.id),
+    )
+    .limit(MAX_PLAN_CANDIDATES);
+};
+const createFallbackDailyPlan = ({
+  candidates,
+  availableMinutes,
+  energyLevel,
+  startUtc,
+  endUtc,
+}: {
+  candidates: TaskSelectType[];
+  availableMinutes: number;
+  energyLevel: DailyPlanEnergyLevel;
+  startUtc: Date;
+  endUtc: Date;
+}): GeneratedDailyPlanSchemaType => {
+  const defaultEstimate = {
+    low: 20,
+    medium: 30,
+    high: 45,
+  }[energyLevel];
+
+  let remainingMinutes = availableMinutes;
+
+  const items: GeneratedDailyPlanSchemaType["items"] = [];
+
+  for (const task of candidates) {
+    if (remainingMinutes < 10 || items.length >= MAX_PLAN_ITEMS) {
+      break;
+    }
+
+    const estimatedMinutes = Math.min(defaultEstimate, remainingMinutes);
+
+    const reason =
+      task.status === "in_progress"
+        ? "Continue work that is already in progress."
+        : task.dueAt && task.dueAt < startUtc
+          ? "Prioritized because this task is overdue."
+          : task.scheduledAt && task.scheduledAt < startUtc
+            ? "Prioritized because this scheduled task needs attention."
+            : task.dueAt && task.dueAt <= endUtc
+              ? "Included because this task is due today."
+              : task.scheduledAt && task.scheduledAt <= endUtc
+                ? "Included because this task is scheduled for today."
+                : "Included based on its priority and age.";
+
+    items.push({
+      taskId: task.id,
+      estimatedMinutes,
+      reason,
+    });
+
+    remainingMinutes -= estimatedMinutes;
+  }
+
+  const energyDescription = {
+    low: "a lighter workload with shorter focus blocks",
+    medium: "a balanced and achievable workload",
+    high: "a focused workload that uses your available energy",
+  }[energyLevel];
+
+  return {
+    summary:
+      items.length > 0
+        ? `Your plan uses ${energyDescription} and prioritizes the work that needs attention first.`
+        : "There are no eligible active tasks to include in today's plan.",
+    items,
+  };
+};
+const normalizeGeneratedPlan = ({
+  plan,
+  candidates,
+  availableMinutes,
+}: {
+  plan: GeneratedDailyPlanSchemaType;
+  candidates: TaskSelectType[];
+  availableMinutes: number;
+}): GeneratedDailyPlanSchemaType | null => {
+  const candidateIds = new Set(candidates.map((candidate) => candidate.id));
+
+  const seenTaskIds = new Set<string>();
+  const items: GeneratedDailyPlanSchemaType["items"] = [];
+
+  let remainingMinutes = availableMinutes;
+
+  for (const item of plan.items) {
+    if (items.length >= MAX_PLAN_ITEMS || remainingMinutes < 10) {
+      break;
+    }
+
+    if (!candidateIds.has(item.taskId) || seenTaskIds.has(item.taskId)) {
+      continue;
+    }
+
+    const estimatedMinutes = Math.min(item.estimatedMinutes, remainingMinutes);
+
+    items.push({
+      ...item,
+      estimatedMinutes,
+    });
+
+    seenTaskIds.add(item.taskId);
+    remainingMinutes -= estimatedMinutes;
+  }
+
+  if (candidates.length > 0 && items.length === 0) {
+    return null;
+  }
+
+  return {
+    summary: plan.summary,
+    items,
+  };
+};
+
+export const generateDailyPlanAction = async (
+  unsafeData: PlanMyDaySchemaType,
+) => {
+  const { userId, user } = await getCurrentUser();
+
+  if (!userId || !user) {
+    return {
+      error: true as const,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const parsedInput = planMyDaySchema.safeParse(unsafeData);
+
+  if (!parsedInput.success) {
+    return {
+      error: true as const,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
+  const { timeAvailable, energyLevel } = parsedInput.data;
+
+  try {
+    const now = new Date();
+
+    const { planDate, startUtc, endUtc } = getPlanDateInformation(
+      user.timeZone,
+      now,
+    );
+
+    const candidates = await readDailyPlanCandidates({
+      userId,
+      startUtc,
+      endUtc,
+    });
+
+    const fallbackPlan = () =>
+      createFallbackDailyPlan({
+        candidates,
+        availableMinutes: timeAvailable,
+        energyLevel,
+        startUtc,
+        endUtc,
+      });
+
+    let generatedPlan: GeneratedDailyPlanSchemaType;
+    let usedFallback = false;
+
+    if (candidates.length === 0) {
+      generatedPlan = fallbackPlan();
+      usedFallback = true;
+    } else {
+      try {
+        const { output } = await generateText({
+          model: openrouter("z-ai/glm-5.3-flash"),
+          output: Output.object({
+            schema: generatedDailyPlanSchema,
+          }),
+          instructions: GENERATE_DAILY_PLAN_INSTRUCTIONS,
+          prompt: GENERATE_DAILY_PLAN_PROMPT({
+            planDate,
+            timeZone: user.timeZone,
+            availableMinutes: timeAvailable,
+            energyLevel,
+            tasks: candidates,
+            currentDateTime: now,
+          }),
+        });
+
+        const normalizedPlan = normalizeGeneratedPlan({
+          plan: output,
+          candidates,
+          availableMinutes: timeAvailable,
+        });
+
+        if (normalizedPlan) {
+          generatedPlan = normalizedPlan;
+        } else {
+          generatedPlan = fallbackPlan();
+          usedFallback = true;
+        }
+      } catch (error) {
+        console.error("Daily-plan AI generation failed:", error);
+
+        generatedPlan = fallbackPlan();
+        usedFallback = true;
+      }
+    }
+
+    const draft: DailyPlanDraftSchemaType = {
+      planDate,
+      availableMinutes: timeAvailable,
+      energyLevel,
+      summary: generatedPlan.summary,
+      items: generatedPlan.items,
+    };
+
+    return {
+      error: false as const,
+      message: "Your daily plan is ready!",
+      draft,
+      usedFallback,
+    };
+  } catch (error) {
+    console.error("Failed to generate daily plan:", error);
+
+    return {
+      error: true as const,
+      message: isError(error) ? error.message : GENERAL_ERROR_MESSAGE,
+    };
+  }
+};
+export const acceptDailyPlanAction = async (
+  unsafeDraft: DailyPlanDraftSchemaType,
+) => {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) {
+    return {
+      error: true as const,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const { data: draft, success } = dailyPlanDraftSchema.safeParse(unsafeDraft);
+  if (!success) {
+    return {
+      error: true as const,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
+  try {
+    const { planDate: currentPlanDate } = getPlanDateInformation(user.timeZone);
+
+    if (draft.planDate !== currentPlanDate) {
+      return {
+        error: true as const,
+        message:
+          "This plan was generated for a different day. Please generate a new plan.",
+      };
+    }
+
+    const taskIds = draft.items.map((item) => item.taskId);
+    const uniqueTaskIds = new Set(taskIds);
+
+    if (uniqueTaskIds.size !== taskIds.length) {
+      return {
+        error: true as const,
+        message: "This plan contains duplicate tasks.",
+      };
+    }
+
+    const totalEstimatedMinutes = draft.items.reduce(
+      (total, item) => total + item.estimatedMinutes,
+      0,
+    );
+
+    if (totalEstimatedMinutes > draft.availableMinutes) {
+      return {
+        error: true as const,
+        message: "The plan requires more time than is available.",
+      };
+    }
+
+    const existingTasks =
+      taskIds.length > 0
+        ? await db
+            .select()
+            .from(TaskTable)
+            .where(
+              and(eq(TaskTable.userId, userId), inArray(TaskTable.id, taskIds)),
+            )
+        : [];
+    if (existingTasks.length !== uniqueTaskIds.size) {
+      return {
+        error: true as const,
+        message: "One or more tasks in this plan are no longer available.",
+      };
+    }
+
+    const taskById = new Map(existingTasks.map((task) => [task.id, task]));
+    const savedPlan = await db.transaction(async (tx) => {
+      const [dailyPlan] = await tx
+        .insert(DailyPlanTable)
+        .values({
+          userId,
+          planDate: draft.planDate,
+          availableMinutes: draft.availableMinutes,
+          energyLevel: draft.energyLevel,
+          status: "active",
+          summary: draft.summary,
+        })
+        .onConflictDoUpdate({
+          target: [DailyPlanTable.userId, DailyPlanTable.planDate],
+          set: {
+            availableMinutes: draft.availableMinutes,
+            energyLevel: draft.energyLevel,
+            status: "active",
+            summary: draft.summary,
+          },
+        })
+        .returning();
+      if (!dailyPlan) throw new Error("Failed to save the daily plan.");
+
+      await tx
+        .delete(DailyPlanItemTable)
+        .where(eq(DailyPlanItemTable.dailyPlanId, dailyPlan.id));
+
+      const planItems =
+        draft.items.length > 0
+          ? await tx
+              .insert(DailyPlanItemTable)
+              .values(
+                draft.items.map((item, position) => ({
+                  dailyPlanId: dailyPlan.id,
+                  taskId: item.taskId,
+                  position,
+                  estimatedMinutes: item.estimatedMinutes,
+                  reason: item.reason,
+                })),
+              )
+              .returning()
+          : [];
+
+      return {
+        ...dailyPlan,
+        items: planItems.map((item) => ({
+          ...item,
+          task: taskById.get(item.taskId)!,
+        })),
+      };
+    });
+
+    return {
+      error: false as const,
+      message: "Your daily plan was saved successfully!",
+      plan: savedPlan,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      error: true as const,
+      message: isError(error) ? error.message : GENERAL_ERROR_MESSAGE,
     };
   }
 };

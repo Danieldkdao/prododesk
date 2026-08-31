@@ -1,6 +1,11 @@
 import z from "zod";
-import { taskPriorities, taskStatuses } from "@/db/shared";
+import {
+  dailyPlanEnergyLevels,
+  taskPriorities,
+  taskStatuses,
+} from "@/db/shared";
 import { isoDatetimeFormatInstructions } from "@/services/ai/tools/helpers";
+import { MAX_PLAN_ITEMS } from "../lib/constants";
 
 export const triageSuggestionSchema = z.object({
   suggestedName: z
@@ -67,3 +72,44 @@ export const triageSuggestionSchema = z.object({
     ),
 });
 export type TriageSuggestionSchemaType = z.infer<typeof triageSuggestionSchema>;
+
+export const generatedDailyPlanSchema = z.object({
+  summary: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500)
+    .describe("A brief summary of the generated daily plan."),
+  items: z
+    .array(
+      z.object({
+        taskId: z.uuid().describe("The ID of the task in the daily plan."),
+        estimatedMinutes: z
+          .number()
+          .int()
+          .positive()
+          .min(10)
+          .max(480)
+          .describe("The estimated time in minutes to complete the task."),
+        reason: z
+          .string()
+          .trim()
+          .min(1)
+          .max(300)
+          .describe(
+            "A brief reason explaining why this task was included in the daily plan.",
+          ),
+      }),
+    )
+    .max(MAX_PLAN_ITEMS),
+});
+export const dailyPlanDraftSchema = generatedDailyPlanSchema.extend({
+  planDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  availableMinutes: z.number().int().min(30).max(1440),
+  energyLevel: z.enum(dailyPlanEnergyLevels),
+});
+
+export type DailyPlanDraftSchemaType = z.infer<typeof dailyPlanDraftSchema>;
+export type GeneratedDailyPlanSchemaType = z.infer<
+  typeof generatedDailyPlanSchema
+>;

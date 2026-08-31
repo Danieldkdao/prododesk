@@ -3,6 +3,9 @@ import { TriageTasksDialog } from "@/features/plan-my-day/components/triage-task
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
 import { TriggerTaskDetailsButton } from "@/features/tasks/components/trigger-task-details-button";
 import {
+  BatteryFullIcon,
+  BatteryLowIcon,
+  BatteryMediumIcon,
   FolderInputIcon,
   ListChecksIcon,
   PlayIcon,
@@ -13,12 +16,12 @@ import {
 import { ReactNode } from "react";
 import {
   PlannerCardOutcome,
-  PlannerCardState,
-  SingleTaskSource,
   TriageQuestionnaireChoice,
   TriageQuestionnaireItem,
   TriageSuggestion,
 } from "./types";
+import { DailyPlanDialog } from "../components/daily-plan-dialog";
+import { DailyPlanEnergyLevel } from "@/db/shared";
 
 export const formatPlannerCardState = ({
   state,
@@ -100,10 +103,12 @@ export const formatPlannerCardState = ({
         description:
           "Let us turn your priorities, deadlines, and available time into a calm plan that you can actually finish.",
         actionButton: () => (
-          <Button size="lg">
-            <SparklesIcon />
-            Plan my day
-          </Button>
+          <DailyPlanDialog>
+            <Button size="lg">
+              <SparklesIcon />
+              Plan my day
+            </Button>
+          </DailyPlanDialog>
         ),
       };
     default:
@@ -151,4 +156,42 @@ export const formatSuggestionToQuestionnaireItem = (
     choices,
     suggestion,
   };
+};
+
+export const formatEnergyLevel = (energyLevel: DailyPlanEnergyLevel) => {
+  switch (energyLevel) {
+    case "low":
+      return {
+        label: "Low",
+        description: "I have low energy and want to focus on easy tasks.",
+        icon: BatteryLowIcon,
+        bgColor: "bg-sky-50 dark:bg-sky-950/50",
+        bgHoverColor: "hover:bg-sky-100/60 dark:hover:bg-sky-900/40",
+        textColor: "text-sky-700 dark:text-sky-300",
+      };
+
+    case "medium":
+      return {
+        label: "Medium",
+        description: "I have steady energy and can handle a balanced workload.",
+        icon: BatteryMediumIcon,
+        bgColor: "bg-amber-50 dark:bg-amber-950/50",
+        bgHoverColor: "hover:bg-amber-100/60 dark:hover:bg-amber-900/40",
+        textColor: "text-amber-700 dark:text-amber-300",
+      };
+
+    case "high":
+      return {
+        label: "High",
+        description:
+          "I have lots of energy and want to tackle challenging tasks.",
+        icon: BatteryFullIcon,
+        bgColor: "bg-emerald-50 dark:bg-emerald-950/50",
+        bgHoverColor: "hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40",
+        textColor: "text-emerald-700 dark:text-emerald-300",
+      };
+
+    default:
+      throw new Error(`Unknown energy level: ${energyLevel satisfies never}`);
+  }
 };
