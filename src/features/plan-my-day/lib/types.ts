@@ -3,7 +3,10 @@ import {
   ProjectSelectType,
   TaskSelectType,
 } from "@/db/schema";
-import { TriageSuggestionSchemaType } from "../ai/schemas";
+import {
+  DailyPlanDraftSchemaType,
+  TriageSuggestionSchemaType,
+} from "../ai/schemas";
 import { QuestionnaireItemDefinition } from "@shadcn/react/questionnaire";
 
 export type PlannerCounts = {
@@ -44,3 +47,9 @@ export type PlannerCardOutcome = {
       }
     : { state: S; source?: never; taskId?: never };
 }[PlannerCardState];
+
+export type EnrichedDailyPlanDraft = Omit<DailyPlanDraftSchemaType, "items"> & {
+  items: (DailyPlanDraftSchemaType["items"][number] & {
+    task: TaskSelectType;
+  })[];
+};

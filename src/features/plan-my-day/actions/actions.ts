@@ -712,12 +712,24 @@ export const generateDailyPlanAction = async (
       }
     }
 
-    const draft: DailyPlanDraftSchemaType = {
+    const taskById = new Map(candidates.map((task) => [task.id, task]));
+
+    const enrichedItems = generatedPlan.items.map((item) => {
+      const task = taskById.get(item.taskId);
+      if (!task) throw new Error("Generated plan referenced unknown task.");
+
+      return {
+        ...item,
+        task,
+      };
+    });
+
+    const draft = {
       planDate,
       availableMinutes: timeAvailable,
       energyLevel,
       summary: generatedPlan.summary,
-      items: generatedPlan.items,
+      items: enrichedItems,
     };
 
     return {

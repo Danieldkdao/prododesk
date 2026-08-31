@@ -1,33 +1,34 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { ReactElement, useState, useTransition } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { planMyDaySchema, PlanMyDaySchemaType } from "../actions/schemas";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
 } from "@/components/ui/field";
-import { TimeAvailableInput } from "./time-available-input";
-import { useConfirm } from "@/hooks/use-confirm";
-import { EnergyLevelInput } from "./energy-level-input";
-import { Button } from "@/components/ui/button";
 import { LoadingSwap } from "@/components/ui/loading-swap";
+import { useConfirm } from "@/hooks/use-confirm";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { CheckIcon, RotateCcwIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ReactElement, useState, useTransition } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import {
   acceptDailyPlanAction,
   generateDailyPlanAction,
 } from "../actions/actions";
-import { toast } from "sonner";
-import { DailyPlanDraftSchemaType } from "../ai/schemas";
-import { useRouter } from "next/navigation";
-import { CheckIcon, RotateCcwIcon } from "lucide-react";
+import { planMyDaySchema, PlanMyDaySchemaType } from "../actions/schemas";
+import { EnrichedDailyPlanDraft } from "../lib/types";
+import { EnergyLevelInput } from "./energy-level-input";
+import { PlanDraftDisplay } from "./plan-draft-display";
+import { TimeAvailableInput } from "./time-available-input";
 
 export const DailyPlanDialog = ({ children }: { children: ReactElement }) => {
   const router = useRouter();
-  const [draft, setDraft] = useState<DailyPlanDraftSchemaType | null>(null);
+  const [draft, setDraft] = useState<EnrichedDailyPlanDraft | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isRegeneratePending, startRegenerateTransition] = useTransition();
   const [isAcceptPending, startAcceptTransition] = useTransition();
@@ -50,6 +51,7 @@ export const DailyPlanDialog = ({ children }: { children: ReactElement }) => {
       toast.error(response.message, { id: toastId });
     } else {
       toast.success(response.message, { id: toastId });
+      console.log(response.draft);
       setDraft(response.draft);
     }
   };
@@ -112,7 +114,7 @@ export const DailyPlanDialog = ({ children }: { children: ReactElement }) => {
           </div>
           {draft ? (
             <div className="flex flex-col gap-4">
-              <p className="text-muted-foreground">{JSON.stringify(draft)}</p>
+              <PlanDraftDisplay draft={draft} />
               <div className="flex items-center gap-4 justify-between">
                 <Button
                   variant="outline"
