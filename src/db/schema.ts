@@ -16,3 +16,5 @@ export * from "./schemas/settings";
 export * from "./schemas/chat-attachment";
 export * from "./schemas/document-asset";
 export * from "./schemas/upload-intent";
+export * from "./schemas/daily-plan";
+export * from "./scheamas/daily-plan-item";

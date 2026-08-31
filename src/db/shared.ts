@@ -127,3 +127,17 @@ export const uploadIntentStatusEnum = pgEnum(
   "upload_intent_statuses",
   uploadIntentStatuses,
 );
+
+export const dailyPlanEnergyLevels = ["low", "medium", "high"] as const;
+export type DailyPlanEnergyLevel = (typeof dailyPlanEnergyLevels)[number];
+export const dailyPlanEnergyLevelEnum = pgEnum(
+  "daily_plan_energy_levels",
+  dailyPlanEnergyLevels,
+);
+
+export const dailyPlanStatuses = ["draft", "active", "completed"] as const;
+export type DailyPlanStatus = (typeof dailyPlanStatuses)[number];
+export const dailyPlanStatusEnum = pgEnum(
+  "daily_plan_statuses",
+  dailyPlanStatuses,
+);
