@@ -13,6 +13,7 @@ import {
 import { twMerge } from "tailwind-merge";
 import z from "zod";
 import { timeSchema } from "./schemas";
+import { NullishZodObject } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -103,12 +104,14 @@ export const formatTimeInput = (time: Date) => {
   return format(time, "HH:mm:ss");
 };
 
-export const nullifyZodSchema = <T extends z.ZodObject>(schema: T) => {
+export const nullifyZodSchema = <T extends z.ZodObject>(
+  schema: T,
+): NullishZodObject<T> => {
   const entries = Object.entries(schema.shape).map(([key, value]) => [
     key,
     value.nullish(),
   ]);
-  return z.object(Object.fromEntries(entries));
+  return z.object(Object.fromEntries(entries)) as NullishZodObject<T>;
 };
 
 export const isValidDate = (date: unknown): date is Date => {

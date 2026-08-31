@@ -9,8 +9,8 @@ import Link from "next/link";
 import { ReadTasksActionReturnType } from "../actions/actions";
 import { useTaskDetailsDialog } from "../hooks/use-task-details-dialog";
 import { TaskOptions } from "./task-options";
-import { TaskPrioritySelect } from "./task-priority-select";
-import { TaskStatusSelect } from "./task-status-select";
+import { TaskPriorityUpdater } from "./task-priority-updater";
+import { TaskStatusUpdater } from "./task-status-updater";
 
 export const TaskTableRow = ({
   task,
@@ -29,10 +29,10 @@ export const TaskTableRow = ({
     >
       <TableCell className="font-medium text-base">{task.name}</TableCell>
       <TableCell>
-        <TaskStatusSelect taskId={task.id} initialStatus={task.status} />
+        <TaskStatusUpdater taskId={task.id} initialStatus={task.status} />
       </TableCell>
       <TableCell>
-        <TaskPrioritySelect taskId={task.id} initialPriority={task.priority} />
+        <TaskPriorityUpdater taskId={task.id} initialPriority={task.priority} />
       </TableCell>
       <TableCell>
         <span className={cn("text-base", !task.description && "italic")}>

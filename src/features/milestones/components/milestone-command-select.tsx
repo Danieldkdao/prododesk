@@ -31,13 +31,15 @@ export const MilestoneCommandSelect = ({
   value,
   onValueChange,
   projectId,
+  triggerClassName,
 }: {
   id?: string;
   fieldError?: boolean;
-  initialValue: { name: string; status: MilestoneStatus } | null | undefined;
+  initialValue?: { name: string; status: MilestoneStatus } | null | undefined;
   value?: string | null | undefined;
   onValueChange: (value: unknown) => void;
   projectId?: string | null;
+  triggerClassName?: string;
 }) => {
   const [commandOpen, setCommandOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -109,7 +111,10 @@ export const MilestoneCommandSelect = ({
         id={id}
         aria-invalid={!!fieldError}
         disabled={!projectId}
-        className="border-b cursor-pointer h-11 flex items-center gap-2 w-full min-w-0"
+        className={cn(
+          "border-b cursor-pointer h-11 flex items-center gap-2 w-full min-w-0",
+          triggerClassName,
+        )}
       >
         <div className="min-w-0 w-full flex items-center gap-2">
           {selectedMilestone ? (

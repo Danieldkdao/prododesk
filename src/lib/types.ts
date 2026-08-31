@@ -1,6 +1,7 @@
 import { SQL } from "drizzle-orm";
 import { SearchParams } from "nuqs";
 import { Dispatch, SetStateAction } from "react";
+import z from "zod";
 
 export type ParamsId<T extends string> = {
   params: Promise<Record<T, string>>;
@@ -25,3 +26,7 @@ export type ApiResponse<T> =
       message: string;
       data: T;
     };
+
+export type NullishZodObject<T extends z.ZodObject> = z.ZodObject<{
+  [K in keyof T["shape"]]: ReturnType<T["shape"][K]["nullish"]>;
+}>;

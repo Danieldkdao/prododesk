@@ -85,6 +85,24 @@ export const TriageTasksDialog = ({ children }: { children: ReactElement }) => {
       reason:
         "Clear semantic match to the Cooking Adventures project, whose outcome explicitly includes cooking more meals from scratch. No deadline is implied, so no due date is suggested, and scheduling was left open pending the milestone lookup.",
       clarification: null,
+      project: {
+        id: "b0439721-c3af-4462-8498-7b5384268bbc",
+        userId: "SQTKBvsbZqrxYPfmGz40pMuunIu4Rvsz",
+        name: "Cooking Adventures",
+        outcome:
+          "Become a more confident home cook by mastering new techniques, expanding my recipe repertoire, and cooking more meals from scratch.",
+        icon: "🍳",
+        color: "orange" as const,
+        areaId: null,
+        startAt: null,
+        endAt: null,
+        status: "active" as const,
+        isArchived: false,
+        archivedAt: null,
+        createdAt: new Date("2026-08-30T18:30:48.444518Z"),
+        updatedAt: new Date("2026-08-30T18:30:48.444518Z"),
+      },
+      milestone: null,
       task: {
         id: "13d45717-ecbb-4c9d-a7fd-2ece99dbc183",
         userId: "SQTKBvsbZqrxYPfmGz40pMuunIu4Rvsz",
@@ -114,6 +132,24 @@ export const TriageTasksDialog = ({ children }: { children: ReactElement }) => {
       reason:
         "Algorithm katas are self-directed technical learning, which aligns directly with the Software Engineering Improvement outcome (consistent technical learning). No real deadline is implied, so no due date is suggested.",
       clarification: null,
+      project: {
+        id: "16a8af47-0877-4edf-a05e-076abc5c859c",
+        userId: "SQTKBvsbZqrxYPfmGz40pMuunIu4Rvsz",
+        name: "Software Engineering Improvement",
+        outcome:
+          "Level up engineering skills: cleaner code, better testing habits, stronger system design, and consistent technical learning.",
+        icon: "⚙️",
+        color: "green" as const,
+        areaId: null,
+        startAt: null,
+        endAt: null,
+        status: "active" as const,
+        isArchived: false,
+        archivedAt: null,
+        createdAt: new Date("2026-08-30T18:30:48.297631Z"),
+        updatedAt: new Date("2026-08-30T18:30:48.297631Z"),
+      },
+      milestone: null,
       task: {
         id: "38d0badb-eb0b-4b79-ae92-c45ab873ac4c",
         userId: "SQTKBvsbZqrxYPfmGz40pMuunIu4Rvsz",
@@ -143,6 +179,24 @@ export const TriageTasksDialog = ({ children }: { children: ReactElement }) => {
       reason:
         "Bug fixing toward cleaner code is a core part of the Software Engineering Improvement outcome. No specific bug or deadline is named, so no due date is suggested.",
       clarification: null,
+      project: {
+        id: "16a8af47-0877-4edf-a05e-076abc5c859c",
+        userId: "SQTKBvsbZqrxYPfmGz40pMuunIu4Rvsz",
+        name: "Software Engineering Improvement",
+        outcome:
+          "Level up engineering skills: cleaner code, better testing habits, stronger system design, and consistent technical learning.",
+        icon: "⚙️",
+        color: "green" as const,
+        areaId: null,
+        startAt: null,
+        endAt: null,
+        status: "active" as const,
+        isArchived: false,
+        archivedAt: null,
+        createdAt: new Date("2026-08-30T18:30:48.297631Z"),
+        updatedAt: new Date("2026-08-30T18:30:48.297631Z"),
+      },
+      milestone: null,
       task: {
         id: "394a6282-5121-47da-986c-25d4e1a40473",
         userId: "SQTKBvsbZqrxYPfmGz40pMuunIu4Rvsz",
@@ -172,6 +226,24 @@ export const TriageTasksDialog = ({ children }: { children: ReactElement }) => {
       reason:
         "Refactoring for small, testable functions maps directly to the Software Engineering Improvement outcome (cleaner code, better testing habits). No due date is implied.",
       clarification: null,
+      project: {
+        id: "16a8af47-0877-4edf-a05e-076abc5c859c",
+        userId: "SQTKBvsbZqrxYPfmGz40pMuunIu4Rvsz",
+        name: "Software Engineering Improvement",
+        outcome:
+          "Level up engineering skills: cleaner code, better testing habits, stronger system design, and consistent technical learning.",
+        icon: "⚙️",
+        color: "green" as const,
+        areaId: null,
+        startAt: null,
+        endAt: null,
+        status: "active" as const,
+        isArchived: false,
+        archivedAt: null,
+        createdAt: new Date("2026-08-30T18:30:48.297631Z"),
+        updatedAt: new Date("2026-08-30T18:30:48.297631Z"),
+      },
+      milestone: null,
       task: {
         id: "47319e7a-2d95-4e0c-840a-293ed9121a5c",
         userId: "SQTKBvsbZqrxYPfmGz40pMuunIu4Rvsz",
@@ -201,6 +273,24 @@ export const TriageTasksDialog = ({ children }: { children: ReactElement }) => {
       reason:
         "Writing tests for untested code is a direct expression of the Software Engineering Improvement outcome (better testing habits). No real deadline is implied, so no due date is suggested.",
       clarification: null,
+      project: {
+        id: "16a8af47-0877-4edf-a05e-076abc5c859c",
+        userId: "SQTKBvsbZqrxYPfmGz40pMuunIu4Rvsz",
+        name: "Software Engineering Improvement",
+        outcome:
+          "Level up engineering skills: cleaner code, better testing habits, stronger system design, and consistent technical learning.",
+        icon: "⚙️",
+        color: "green" as const,
+        areaId: null,
+        startAt: null,
+        endAt: null,
+        status: "active" as const,
+        isArchived: false,
+        archivedAt: null,
+        createdAt: new Date("2026-08-30T18:30:48.297631Z"),
+        updatedAt: new Date("2026-08-30T18:30:48.297631Z"),
+      },
+      milestone: null,
       task: {
         id: "53a39b3a-6792-4a4d-a39a-20b3ed82cad6",
         userId: "SQTKBvsbZqrxYPfmGz40pMuunIu4Rvsz",
@@ -261,7 +351,7 @@ export const TriageTasksDialog = ({ children }: { children: ReactElement }) => {
       {ConfirmationDialog}
       <Dialog open={triageDialogOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger render={children} />
-        <DialogContent className="min-w-0 sm:max-w-3xl">
+        <DialogContent className="min-w-0 sm:max-w-3xl" showCloseButton={false}>
           {mainContent}
         </DialogContent>
       </Dialog>

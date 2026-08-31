@@ -1,10 +1,3 @@
-"use client";
-
-import { taskPriorities, TaskPriority } from "@/db/shared";
-import { useState, useTransition } from "react";
-import { formatTaskPriority } from "../lib/formatters";
-import { updateTasksPriorityAction } from "../actions/actions";
-import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -12,65 +5,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { taskPriorities, TaskPriority } from "@/db/shared";
+import { formatTaskPriority } from "../lib/formatters";
+import { ComponentProps } from "react";
 
 export const TaskPrioritySelect = ({
-  taskId,
-  initialPriority,
-}: {
-  taskId: string;
-  initialPriority: TaskPriority;
+  triggerProps,
+  valueProps,
+  contentProps,
+  ...props
+}: ComponentProps<typeof Select> & {
+  triggerProps?: ComponentProps<typeof SelectTrigger>;
+  valueProps?: ComponentProps<typeof SelectValue>;
+  contentProps?: ComponentProps<typeof SelectContent>;
 }) => {
-  const [currentPriority, setCurrentPriority] = useState(initialPriority);
-  const [isPriorityPending, startPriorityTransition] = useTransition();
-
-  const {
-    label: priorityLabel,
-    icon: PriorityIcon,
-    textColor: priorityTextColor,
-  } = formatTaskPriority(currentPriority);
-
-  const handlePriorityUpdate = (newPriority: TaskPriority) => {
-    const prevPriority = currentPriority;
-    setCurrentPriority(newPriority);
-
-    startPriorityTransition(async () => {
-      const response = await updateTasksPriorityAction(taskId, newPriority);
-      if (response.error) {
-        toast.error(response.message);
-        setCurrentPriority(prevPriority);
-      }
-    });
-  };
+  const formattedPriority = props.value
+    ? formatTaskPriority(props.value as TaskPriority)
+    : null;
 
   return (
-    <Select
-      value={currentPriority}
-      onValueChange={(priority) =>
-        handlePriorityUpdate(priority as TaskPriority)
-      }
-    >
-      <SelectTrigger
-        className="w-fit border-none"
-        disabled={isPriorityPending}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <SelectValue>
-          <div className="flex items-center gap-2">
-            <PriorityIcon className={cn("size-5", priorityTextColor)} />
-            <span className="text-base">{priorityLabel}</span>
-          </div>
+    <Select {...props}>
+      <SelectTrigger className="w-full" {...triggerProps}>
+        <SelectValue placeholder="Select task priority" {...valueProps}>
+          {formattedPriority ? (
+            <div className="flex items-center gap-2">
+              <formattedPriority.icon />
+              <span>{formattedPriority.label}</span>
+            </div>
+          ) : undefined}
         </SelectValue>
       </SelectTrigger>
-      <SelectContent onClick={(e) => e.stopPropagation()}>
+      <SelectContent {...contentProps}>
         {taskPriorities.map((priority) => {
-          const { label, icon: Icon, textColor } = formatTaskPriority(priority);
+          const { label, icon: Icon } = formatTaskPriority(priority);
 
           return (
             <SelectItem key={priority} value={priority}>
               <div className="flex items-center gap-2">
-                <Icon className={cn("size-5", textColor)} />
-                <span className="text-base">{label}</span>
+                <Icon />
+                <span>{label}</span>
               </div>
             </SelectItem>
           );

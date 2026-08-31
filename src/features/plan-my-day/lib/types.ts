@@ -1,4 +1,8 @@
-import { TaskSelectType } from "@/db/schema";
+import {
+  MilestoneSelectType,
+  ProjectSelectType,
+  TaskSelectType,
+} from "@/db/schema";
 import { TriageSuggestionSchemaType } from "../ai/schemas";
 import { QuestionnaireItemDefinition } from "@shadcn/react/questionnaire";
 
@@ -13,6 +17,8 @@ export type SingleTaskSource = "today" | "attention" | "unsorted";
 
 export type TriageSuggestion = TriageSuggestionSchemaType & {
   task: TaskSelectType;
+  project: ProjectSelectType | null;
+  milestone: MilestoneSelectType | null;
 };
 
 export type TriageQuestionnaireChoice = {

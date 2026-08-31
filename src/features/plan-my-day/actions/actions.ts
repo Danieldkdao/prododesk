@@ -3,8 +3,12 @@
 import { db } from "@/db/db";
 import { TaskSelectType, TaskTable } from "@/db/schema";
 import { milestoneTools } from "@/features/milestones/ai/tools";
+import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
 import { projectTools } from "@/features/projects/ai/tools";
-import { readProjectsDb } from "@/features/projects/server/projects";
+import {
+  confirmUserProjectOwnership,
+  readProjectsDb,
+} from "@/features/projects/server/projects";
 import { taskPriorityRank } from "@/features/tasks/lib/helpers";
 import { getUserTaskTag } from "@/features/tasks/server/cache/tasks";
 import { confirmUserTaskOwnership } from "@/features/tasks/server/tasks";
@@ -273,23 +277,40 @@ export const generateTriageSuggestionsAction = async () => {
       },
     });
 
-    const outputWithTasks = output
-      .map((suggestion) => ({
-        ...suggestion,
-        task: triageCandidates.find(
-          (candidate) => candidate.id === suggestion.taskId,
-        ),
-      }))
-      .filter((suggestion): suggestion is TriageSuggestion =>
-        Boolean(suggestion.task),
-      );
-    if (outputWithTasks.length !== output.length)
+    const outputWithExtras = (
+      await Promise.all(
+        output.map(async (suggestion) => {
+          const [project, milestone] = await Promise.all([
+            suggestion.suggestedProjectId
+              ? confirmUserProjectOwnership(suggestion.suggestedProjectId)
+              : Promise.resolve(null),
+            suggestion.suggestedMilestoneId
+              ? confirmUserMilestoneOwnership(suggestion.suggestedMilestoneId)
+              : Promise.resolve(null),
+          ]);
+
+          const task = triageCandidates.find(
+            (candidate) => candidate.id === suggestion.taskId,
+          );
+
+          return {
+            ...suggestion,
+            task,
+            project,
+            milestone,
+          };
+        }),
+      )
+    ).filter((suggestion): suggestion is TriageSuggestion =>
+      Boolean(suggestion.task),
+    );
+    if (outputWithExtras.length !== output.length)
       throw new Error(GENERAL_ERROR_MESSAGE);
 
     return {
       error: false,
       message: "Triage suggestions generated successfully!",
-      output: outputWithTasks,
+      output: outputWithExtras,
     };
   } catch (error) {
     const errorMessage = isError(error) ? error.message : GENERAL_ERROR_MESSAGE;

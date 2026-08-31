@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Select,
   SelectContent,
@@ -8,68 +6,44 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TaskStatus, taskStatuses } from "@/db/shared";
-import { cn } from "@/lib/utils";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
-import { updateTasksStatusAction } from "../actions/actions";
+import { ComponentProps } from "react";
 import { formatTaskStatus } from "../lib/formatters";
 
 export const TaskStatusSelect = ({
-  taskId,
-  initialStatus,
-}: {
-  taskId: string;
-  initialStatus: TaskStatus;
-  className?: string;
+  triggerProps,
+  valueProps,
+  contentProps,
+  ...props
+}: ComponentProps<typeof Select> & {
+  triggerProps?: ComponentProps<typeof SelectTrigger>;
+  valueProps?: ComponentProps<typeof SelectValue>;
+  contentProps?: ComponentProps<typeof SelectContent>;
 }) => {
-  const [currentStatus, setCurrentStatus] = useState(initialStatus);
-  const [isStatusPending, startStatusTransition] = useTransition();
-
-  const {
-    label: statusLabel,
-    icon: StatusIcon,
-    textColor: statusTextColor,
-  } = formatTaskStatus(currentStatus);
-
-  const handleStatusUpdate = (newStatus: TaskStatus) => {
-    const prevStatus = currentStatus;
-    setCurrentStatus(newStatus);
-
-    startStatusTransition(async () => {
-      const response = await updateTasksStatusAction(taskId, newStatus);
-      if (response.error) {
-        toast.error(response.message);
-        setCurrentStatus(prevStatus);
-      }
-    });
-  };
+  const formattedStatus = props.value
+    ? formatTaskStatus(props.value as TaskStatus)
+    : null;
 
   return (
-    <Select
-      value={currentStatus}
-      onValueChange={(status) => handleStatusUpdate(status as TaskStatus)}
-    >
-      <SelectTrigger
-        className="w-fit border-none"
-        disabled={isStatusPending}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <SelectValue placeholder="Select a status">
-          <div className="flex items-center gap-2">
-            <StatusIcon className={cn("size-5", statusTextColor)} />
-            <span className="text-base">{statusLabel}</span>
-          </div>
+    <Select {...props}>
+      <SelectTrigger className="w-full" {...triggerProps}>
+        <SelectValue placeholder="Select a status" {...valueProps}>
+          {formattedStatus ? (
+            <div className="flex items-center gap-2">
+              <formattedStatus.icon />
+              {formattedStatus.label}
+            </div>
+          ) : undefined}
         </SelectValue>
       </SelectTrigger>
-      <SelectContent onClick={(e) => e.stopPropagation()}>
+      <SelectContent {...contentProps}>
         {taskStatuses.map((status) => {
-          const { label, icon: Icon, textColor } = formatTaskStatus(status);
+          const { label, icon: Icon } = formatTaskStatus(status);
 
           return (
             <SelectItem key={status} value={status}>
               <div className="flex items-center gap-2">
-                <Icon className={cn("size-5", textColor)} />
-                <span className="text-base">{label}</span>
+                <Icon />
+                <span>{label}</span>
               </div>
             </SelectItem>
           );

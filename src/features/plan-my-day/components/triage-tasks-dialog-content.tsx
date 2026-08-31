@@ -18,9 +18,12 @@ import {
   QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
 import { cn } from "@/lib/utils";
-import { ListCheckIcon } from "lucide-react";
+import { ListCheckIcon, SlidersHorizontalIcon } from "lucide-react";
 import { formatSuggestionToQuestionnaireItem } from "../lib/formatters";
 import { TriageSuggestion } from "../lib/types";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { TriageSuggestionEditor } from "./triage-suggestion-editor";
 
 export const TriageTasksDialogContent = ({
   triageSuggestions,
@@ -32,6 +35,13 @@ export const TriageTasksDialogContent = ({
   );
   const definitions = questionnaireItems.map((item) => item.definition);
 
+  const [currentItemName, setCurrentItemName] = useState(definitions[0]?.name);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+
+  const currentItem = questionnaireItems.find(
+    (item) => item.definition.name === currentItemName,
+  );
+
   return (
     <>
       <DialogHeader className="sr-only">
@@ -40,9 +50,31 @@ export const TriageTasksDialogContent = ({
       <Questionnaire
         className="flex flex-col gap-4 min-w-0"
         items={definitions}
+        onItemChange={(itemName) => {
+          setCurrentItemName(itemName);
+          setEditingTaskId(null);
+        }}
         shortcuts="letters"
       >
-        <QuestionnaireProgress />
+        <QuestionnaireProgress
+          className="w-full"
+          render={(props, state) => (
+            <div {...props}>
+              <div className="mb-2 flex gap-1.5" aria-hidden="true">
+                {Array.from({ length: state.total }, (_, index) => (
+                  <span
+                    key={index}
+                    className={
+                      index < state.current
+                        ? "h-1.5 flex-1 bg-primary"
+                        : "h-1.5 flex-1 bg-muted"
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        />
         {questionnaireItems.map((item) => (
           <QuestionnaireItem
             key={item.definition.name}
@@ -63,7 +95,7 @@ export const TriageTasksDialogContent = ({
                 {item.suggestion.task.emoji ? (
                   <span className="text-2xl">{item.suggestion.task.emoji}</span>
                 ) : (
-                  <ListCheckIcon className="size-10" />
+                  <ListCheckIcon className="size-8 text-primary" />
                 )}
               </div>
               <div className="flex flex-col gap-0.5">
@@ -81,25 +113,52 @@ export const TriageTasksDialogContent = ({
                 </p>
               </div>
             </div>
-            <QuestionnaireChoices>
-              {item.choices.map((choice) => (
-                <QuestionnaireChoice key={choice.value} value={choice.value}>
-                  <span className="text-lg font-semibold">{choice.label}</span>
-                  {choice.description && (
-                    <QuestionnaireChoiceDescription className="text-lg">
-                      {choice.description}
-                    </QuestionnaireChoiceDescription>
-                  )}
-                </QuestionnaireChoice>
-              ))}
-            </QuestionnaireChoices>
+            {editingTaskId == item.suggestion.taskId ? (
+              <TriageSuggestionEditor triageSuggestion={item.suggestion} />
+            ) : (
+              <QuestionnaireChoices>
+                {item.choices.map((choice) => (
+                  <QuestionnaireChoice key={choice.value} value={choice.value}>
+                    <span className="text-lg font-semibold">
+                      {choice.label}
+                    </span>
+                    {choice.description && (
+                      <QuestionnaireChoiceDescription className="text-lg">
+                        {choice.description}
+                      </QuestionnaireChoiceDescription>
+                    )}
+                  </QuestionnaireChoice>
+                ))}
+              </QuestionnaireChoices>
+            )}
             <QuestionnaireError className="text-lg" />
           </QuestionnaireItem>
         ))}
         <QuestionnaireActions>
-          <QuestionnairePrevious />
-          <QuestionnaireSkip />
-          <QuestionnaireNext />
+          <div className="col-start-1 row-start-1 flex items-center gap-2">
+            <QuestionnairePrevious />
+            {currentItem && (
+              <Button
+                variant={editingTaskId ? "ghost" : "outline"}
+                onClick={() =>
+                  setEditingTaskId((prev) =>
+                    prev === null ? currentItem.suggestion.taskId : null,
+                  )
+                }
+              >
+                {editingTaskId ? (
+                  "Discard edits"
+                ) : (
+                  <>
+                    <SlidersHorizontalIcon />
+                    Edit
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+          <QuestionnaireSkip variant="ghost" />
+          <QuestionnaireNext>Continue</QuestionnaireNext>
           <QuestionnaireSubmit>Finish triage</QuestionnaireSubmit>
         </QuestionnaireActions>
       </Questionnaire>
