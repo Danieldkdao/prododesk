@@ -43,16 +43,16 @@ export const DashboardProjectCard = ({
             >
               {project.outcome || "No outcome provided."}
             </p>
-            <div className="flex items-center gap-0.5 mt-1">
+            <div className="flex items-center gap-0.5 mt-1 flex-wrap">
               <div className="flex items-center gap-2">
-                <Icon className="size-4 text-muted-foreground" />
+                <Icon className="size-4 text-muted-foreground shrink-0" />
                 <span className="text-base text-muted-foreground">
                   {statusText}
                 </span>
               </div>
               <DotIcon className="text-muted-foreground/30 size-5" />
               <div className="flex items-center gap-2">
-                <ClockIcon className="size-4 text-muted-foreground" />
+                <ClockIcon className="size-4 text-muted-foreground shrink-0" />
                 <span className="text-base text-muted-foreground">
                   {formatDistanceToNow(project.updatedAt)}
                 </span>

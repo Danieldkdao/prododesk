@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { TriageTasksDialog } from "@/features/plan-my-day/components/triage-tasks-dialog";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
 import { TriggerTaskDetailsButton } from "@/features/tasks/components/trigger-task-details-button";
 import {
@@ -11,32 +12,19 @@ import {
 } from "lucide-react";
 import { ReactNode } from "react";
 import {
+  PlannerCardOutcome,
   PlannerCardState,
   SingleTaskSource,
   TriageQuestionnaireChoice,
   TriageQuestionnaireItem,
   TriageSuggestion,
 } from "./types";
-import { TriageTasksDialog } from "@/features/plan-my-day/components/triage-tasks-dialog";
-import { type QuestionnaireItemDefinition } from "@shadcn/react/questionnaire";
 
 export const formatPlannerCardState = ({
   state,
   source,
   taskId,
-}: {
-  [S in PlannerCardState]: S extends "single"
-    ? {
-        state: S;
-        source: SingleTaskSource;
-        taskId: string;
-      }
-    : {
-        state: S;
-        source?: never;
-        taskId?: never;
-      };
-}[PlannerCardState]) => {
+}: PlannerCardOutcome) => {
   switch (state) {
     case "clear":
       return {

@@ -76,7 +76,7 @@ const ProjectsSectionSuspense = async () => {
         </LinkButton>
       </CardHeader>
       {projects.length ? (
-        <CardContent className="px-0 min-w-0 grid grid-cols-1 @lg:grid-cols-2 @xl:grid-cols-3 gap-4">
+        <CardContent className="px-0 min-w-0 grid grid-cols-1 @2xl:grid-cols-2 @3xl:grid-cols-3 gap-4">
           {projects.map((project) => (
             <DashboardProjectCard key={project.id} project={project} />
           ))}

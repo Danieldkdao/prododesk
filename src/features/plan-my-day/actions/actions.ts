@@ -11,10 +11,14 @@ import {
 } from "@/features/projects/server/projects";
 import { taskPriorityRank } from "@/features/tasks/lib/helpers";
 import { getUserTaskTag } from "@/features/tasks/server/cache/tasks";
-import { confirmUserTaskOwnership } from "@/features/tasks/server/tasks";
+import {
+  confirmUserTaskOwnership,
+  updateTaskDb,
+} from "@/features/tasks/server/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
+  INVALID_DATA_ERROR_MESSAGE,
   NOT_FOUND_ERROR_MESSAGE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
@@ -27,8 +31,8 @@ import {
 } from "@/services/ai/prompts";
 import { tz, TZDate } from "@date-fns/tz";
 import { generateText, Output } from "ai";
-import { format, parse, subDays } from "date-fns";
-import { and, asc, eq, gte, isNull, lte, ne, or } from "drizzle-orm";
+import { format, parse, parseISO, subDays } from "date-fns";
+import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { triageSuggestionSchema } from "../ai/schemas";
 import {
@@ -42,6 +46,7 @@ import {
   TriageSuggestion,
 } from "../lib/types";
 import { getPlannerCardState } from "../lib/utils";
+import { suggestionAnswerSchema, SuggestionAnswerSchemaType } from "./schemas";
 
 const readCachedPlanMyDayDataAction = async (
   userId: string,
@@ -94,7 +99,7 @@ const readCachedPlanMyDayDataAction = async (
             lte(TaskTable.scheduledAt, startUtc),
             lte(TaskTable.dueAt, startUtc),
           ),
-          ne(TaskTable.status, "completed"),
+          inArray(TaskTable.status, ["in_progress", "not_started"]),
         ),
       ),
     db
@@ -108,6 +113,7 @@ const readCachedPlanMyDayDataAction = async (
           isNull(TaskTable.milestoneId),
           lte(TaskTable.createdAt, threeDaysAgo),
           eq(TaskTable.userId, userId),
+          inArray(TaskTable.status, ["in_progress", "not_started"]),
         ),
       ),
   ]);
@@ -193,6 +199,7 @@ const readCachedTriageCandidatesAction = async (
         isNull(TaskTable.milestoneId),
         lte(TaskTable.createdAt, threeDaysAgo),
         eq(TaskTable.userId, userId),
+        inArray(TaskTable.status, ["not_started", "in_progress"]),
       ),
     )
     .orderBy(taskPriorityRank, asc(TaskTable.id))
@@ -307,10 +314,96 @@ export const generateTriageSuggestionsAction = async () => {
     if (outputWithExtras.length !== output.length)
       throw new Error(GENERAL_ERROR_MESSAGE);
 
+    const outputTaskIds = new Set(
+      outputWithExtras.map((suggestion) => suggestion.taskId),
+    );
+
+    const hasEveryCandidate =
+      outputWithExtras.length === triageCandidates.length &&
+      outputTaskIds.size === triageCandidates.length &&
+      triageCandidates.every((task) => outputTaskIds.has(task.id));
+    if (!hasEveryCandidate)
+      throw new Error("The AI did not return one suggestion for every task.");
+
     return {
       error: false,
       message: "Triage suggestions generated successfully!",
       output: outputWithExtras,
+    };
+  } catch (error) {
+    const errorMessage = isError(error) ? error.message : GENERAL_ERROR_MESSAGE;
+    console.error(error);
+    return {
+      error: true,
+      message: errorMessage,
+    };
+  }
+};
+
+export const processTriageAnswerAction = async ({
+  taskId,
+  answer: unsafeAnswer,
+  suggestion,
+}: {
+  taskId: string;
+  answer: SuggestionAnswerSchemaType;
+  suggestion: TriageSuggestion;
+}) => {
+  const { userId } = await getCurrentUser();
+  if (!userId) {
+    return {
+      error: true,
+      message: UNAUTHED_ERROR_MESSAGE,
+    };
+  }
+
+  const { data: answer, success } =
+    suggestionAnswerSchema.safeParse(unsafeAnswer);
+  if (!success) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
+  let taskData: Partial<TaskSelectType> = {};
+
+  try {
+    switch (answer) {
+      case "accept": {
+        taskData = {
+          name: suggestion.suggestedName ?? undefined,
+          projectId: suggestion.suggestedProjectId ?? undefined,
+          milestoneId: suggestion.suggestedMilestoneId ?? undefined,
+          status: suggestion.suggestedStatus ?? undefined,
+          priority: suggestion.suggestedPriority ?? undefined,
+          scheduledAt: suggestion.suggestedScheduledAt
+            ? parseISO(suggestion.suggestedScheduledAt)
+            : undefined,
+          dueAt: suggestion.suggestedDueAt
+            ? parseISO(suggestion.suggestedDueAt)
+            : undefined,
+        };
+        break;
+      }
+      case "someday": {
+        taskData = {
+          status: "backlog",
+          scheduledAt: null,
+        };
+        break;
+      }
+      default: {
+        throw new Error(`Unknown answer: ${answer satisfies never}`);
+      }
+    }
+
+    const updatedTask = await updateTaskDb(taskId, taskData);
+    if (!updatedTask) throw new Error("Failed to update task.");
+
+    return {
+      error: false,
+      message: "Triage answer processed successfully!",
     };
   } catch (error) {
     const errorMessage = isError(error) ? error.message : GENERAL_ERROR_MESSAGE;

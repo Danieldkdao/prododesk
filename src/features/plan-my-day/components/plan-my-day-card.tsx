@@ -1,12 +1,7 @@
 import { ErrorState } from "@/components/error-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import {
-  AlertCircleIcon,
-  CalendarCheckIcon,
-  InboxIcon,
-  WandSparklesIcon,
-} from "lucide-react";
+import { AlertCircleIcon, CalendarCheckIcon, InboxIcon } from "lucide-react";
 import { Suspense } from "react";
 import { readPlanMyDayDataAction } from "../actions/actions";
 import { formatPlannerCardState } from "../lib/formatters";
@@ -69,15 +64,9 @@ const PlanMyDayCardSuspense = async () => {
   );
 
   return (
-    <Card className="py-4 border-2 border-primary/60 bg-linear-to-br from-primary/5 to-card">
-      <CardContent className="flex items-center gap-x-8 gap-y-4 px-4 justify-between flex-wrap">
+    <Card className="py-6 border-2 border-primary/60 bg-linear-to-br from-primary/5 to-card">
+      <CardContent className="flex items-center gap-x-8 gap-y-4 px-6 justify-between flex-wrap">
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <WandSparklesIcon className="text-primary size-5" />
-            <span className="text-lg font-semibold text-primary">
-              Your daily guide
-            </span>
-          </div>
           <div className="flex flex-col gap-0.5">
             <h2 className="text-2xl font-semibold">{title}</h2>
             <p className="text-lg text-muted-foreground font-medium max-w-150">

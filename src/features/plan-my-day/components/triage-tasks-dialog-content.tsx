@@ -1,6 +1,8 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LoadingSwap } from "@/components/ui/loading-swap";
 import {
   Questionnaire,
   QuestionnaireActions,
@@ -11,25 +13,33 @@ import {
   QuestionnaireError,
   QuestionnaireItem,
   QuestionnaireNext,
-  QuestionnairePrevious,
   QuestionnaireProgress,
-  QuestionnaireSkip,
   QuestionnaireSubmit,
   QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
-import { cn } from "@/lib/utils";
+import { cn, isError } from "@/lib/utils";
 import { ListCheckIcon, SlidersHorizontalIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { SubmitEvent, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
+import {
+  processTriageAnswerAction,
+  readPlanMyDayDataAction,
+} from "../actions/actions";
+import { suggestionAnswerSchema } from "../actions/schemas";
 import { formatSuggestionToQuestionnaireItem } from "../lib/formatters";
-import { TriageSuggestion } from "../lib/types";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { PlannerCardOutcome, TriageSuggestion } from "../lib/types";
 import { TriageSuggestionEditor } from "./triage-suggestion-editor";
 
 export const TriageTasksDialogContent = ({
   triageSuggestions,
+  onEnd,
 }: {
   triageSuggestions: TriageSuggestion[];
+  onEnd: (state: PlannerCardOutcome) => void;
 }) => {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const questionnaireItems = triageSuggestions.map(
     formatSuggestionToQuestionnaireItem,
   );
@@ -38,9 +48,111 @@ export const TriageTasksDialogContent = ({
   const [currentItemName, setCurrentItemName] = useState(definitions[0]?.name);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
+  const [isProcessPending, startProcessTransition] = useTransition();
+
   const currentItem = questionnaireItems.find(
     (item) => item.definition.name === currentItemName,
   );
+
+  const processCurrentItem = async (): Promise<boolean> => {
+    const form = formRef.current;
+
+    if (!form || !currentItemName) return false;
+
+    const currentItem = questionnaireItems.find(
+      (item) => item.definition.name === currentItemName,
+    );
+    if (!currentItem) {
+      toast.error("Unable to find the current task.");
+      return false;
+    }
+
+    const formData = new FormData(form);
+    const unsafeAnswer = formData.get(currentItemName);
+
+    const { data: answer, success } = suggestionAnswerSchema.safeParse(
+      String(unsafeAnswer),
+    );
+    if (!success) {
+      toast.error("Invalid answer. Please select a valid option.");
+      return false;
+    }
+
+    try {
+      const response = await processTriageAnswerAction({
+        taskId: currentItem.suggestion.taskId,
+        answer,
+        suggestion: currentItem.suggestion,
+      });
+      if (response.error) throw new Error(response.message);
+
+      toast.success("Answer processed successfully!");
+      router.refresh();
+      return true;
+    } catch (error) {
+      const errorMessage = isError(error)
+        ? error.message
+        : "Unable to process this task.";
+      console.error(error);
+      toast.error(errorMessage);
+      return false;
+    }
+  };
+
+  const handleItemChange = async (nextItemName: string) => {
+    startProcessTransition(async () => {
+      const processed = await processCurrentItem();
+      if (!processed) return;
+
+      setCurrentItemName(nextItemName);
+      setEditingTaskId(null);
+    });
+  };
+
+  const handleSubmit = async (e?: SubmitEvent<HTMLFormElement>) => {
+    e?.preventDefault();
+
+    startProcessTransition(async () => {
+      if (e) {
+        const processed = await processCurrentItem();
+        if (!processed) return;
+      }
+
+      const response = await readPlanMyDayDataAction();
+      if (!response) {
+        toast.error("Failed to finish triage. Please try again.");
+        return;
+      }
+
+      onEnd(
+        response.state === "single"
+          ? {
+              state: response.state,
+              source: response.source,
+              taskId: response.singleTask.id,
+            }
+          : { state: response.state },
+      );
+    });
+  };
+
+  const moveToNextSuggestion = () => {
+    const currentIndex = questionnaireItems.findIndex(
+      (item) => item.definition.name === currentItemName,
+    );
+    if (currentIndex === questionnaireItems.length - 1) {
+      handleSubmit();
+      return;
+    }
+    if (currentIndex >= 0 && currentIndex < questionnaireItems.length - 1) {
+      const nextItem = questionnaireItems[currentIndex + 1];
+      if (nextItem) {
+        setCurrentItemName(nextItem.definition.name);
+        setEditingTaskId(null);
+        router.refresh();
+      }
+    }
+  };
 
   return (
     <>
@@ -48,12 +160,12 @@ export const TriageTasksDialogContent = ({
         <DialogTitle>Triage your tasks</DialogTitle>
       </DialogHeader>
       <Questionnaire
+        ref={formRef}
         className="flex flex-col gap-4 min-w-0"
         items={definitions}
-        onItemChange={(itemName) => {
-          setCurrentItemName(itemName);
-          setEditingTaskId(null);
-        }}
+        item={currentItemName}
+        onItemChange={handleItemChange}
+        onSubmit={handleSubmit}
         shortcuts="letters"
       >
         <QuestionnaireProgress
@@ -87,7 +199,7 @@ export const TriageTasksDialogContent = ({
                 {item.title}
               </QuestionnaireTitle>
               <QuestionnaireDescription className="text-muted-foreground text-lg">
-                {item.description}
+                {item.description || "Yes"}
               </QuestionnaireDescription>
             </div>
             <div className="bg-accent/60 p-4 flex items-start gap-3 min-w-0 border-2 border-dashed">
@@ -114,7 +226,12 @@ export const TriageTasksDialogContent = ({
               </div>
             </div>
             {editingTaskId == item.suggestion.taskId ? (
-              <TriageSuggestionEditor triageSuggestion={item.suggestion} />
+              <TriageSuggestionEditor
+                key={item.suggestion.taskId}
+                triageSuggestion={item.suggestion}
+                onDiscard={() => setEditingTaskId(null)}
+                onSave={moveToNextSuggestion}
+              />
             ) : (
               <QuestionnaireChoices>
                 {item.choices.map((choice) => (
@@ -134,33 +251,41 @@ export const TriageTasksDialogContent = ({
             <QuestionnaireError className="text-lg" />
           </QuestionnaireItem>
         ))}
-        <QuestionnaireActions>
-          <div className="col-start-1 row-start-1 flex items-center gap-2">
-            <QuestionnairePrevious />
-            {currentItem && (
-              <Button
-                variant={editingTaskId ? "ghost" : "outline"}
-                onClick={() =>
-                  setEditingTaskId((prev) =>
-                    prev === null ? currentItem.suggestion.taskId : null,
-                  )
-                }
-              >
-                {editingTaskId ? (
-                  "Discard edits"
-                ) : (
-                  <>
-                    <SlidersHorizontalIcon />
-                    Edit
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-          <QuestionnaireSkip variant="ghost" />
-          <QuestionnaireNext>Continue</QuestionnaireNext>
-          <QuestionnaireSubmit>Finish triage</QuestionnaireSubmit>
-        </QuestionnaireActions>
+        {editingTaskId === null && (
+          <QuestionnaireActions>
+            <div className="col-start-1 row-start-1">
+              {currentItem && (
+                <Button
+                  variant={editingTaskId ? "ghost" : "outline"}
+                  onClick={() =>
+                    setEditingTaskId(currentItem.suggestion.taskId ?? null)
+                  }
+                  disabled={isProcessPending}
+                >
+                  <SlidersHorizontalIcon />
+                  Edit
+                </Button>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              className="col-start-2 row-start-1 min-h-11 justify-self-end sm:min-h-0"
+              disabled={isProcessPending}
+              type="button"
+              onClick={moveToNextSuggestion}
+            >
+              Decide later
+            </Button>
+            <QuestionnaireNext disabled={isProcessPending}>
+              <LoadingSwap isLoading={isProcessPending}>Continue</LoadingSwap>
+            </QuestionnaireNext>
+            <QuestionnaireSubmit disabled={isProcessPending}>
+              <LoadingSwap isLoading={isProcessPending}>
+                Finish triage
+              </LoadingSwap>
+            </QuestionnaireSubmit>
+          </QuestionnaireActions>
+        )}
       </Questionnaire>
     </>
   );

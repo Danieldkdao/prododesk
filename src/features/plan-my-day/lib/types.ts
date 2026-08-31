@@ -34,3 +34,13 @@ export type TriageQuestionnaireItem = {
   choices: TriageQuestionnaireChoice[];
   suggestion: TriageSuggestion;
 };
+
+export type PlannerCardOutcome = {
+  [S in PlannerCardState]: S extends "single"
+    ? {
+        state: S;
+        source: SingleTaskSource;
+        taskId: string;
+      }
+    : { state: S; source?: never; taskId?: never };
+}[PlannerCardState];
