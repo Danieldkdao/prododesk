@@ -8,6 +8,7 @@ import {
   ProjectTable,
   TaskTable,
 } from "@/db/schema";
+import { taskPriorityRank } from "@/features/tasks/lib/helpers";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -19,7 +20,7 @@ import {
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds, isValidDate } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ne } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { cache } from "react";
 import { ProjectsFilters } from "../lib/projects-params";
@@ -108,22 +109,12 @@ const readCachedProjectAction = async (userId: string, projectId: string) => {
   "use cache";
   cacheTag(getProjectIdTag(projectId));
 
-  const priorityRank = sql`
-    CASE ${TaskTable.priority}
-      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      ELSE 5
-    END
-  `;
-
   const existingProject = await db.query.ProjectTable.findFirst({
     where: and(eq(ProjectTable.id, projectId), eq(ProjectTable.userId, userId)),
     with: {
       user: true,
       tasks: {
-        orderBy: [asc(priorityRank), asc(TaskTable.id)],
+        orderBy: [asc(taskPriorityRank), asc(TaskTable.id)],
         limit: 5,
       },
       documents: {

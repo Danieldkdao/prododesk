@@ -5,12 +5,21 @@ import {
   ProjectSelectType,
   ProjectTable,
   TaskInsertType,
+  taskPriorities,
+  TaskPriority,
   TaskSelectType,
+  TaskStatus,
+  taskStatuses,
   TaskTable,
 } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
 import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+import {
+  CalendarFilters,
+  CalendarViewOption,
+} from "@/features/calendar/lib/calendar-params";
 import { revalidateMilestoneCache } from "@/features/milestones/server/cache/milestones";
+import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
@@ -38,20 +47,10 @@ import {
   sql,
   SQL,
 } from "drizzle-orm";
+import { taskPriorityRank } from "../lib/helpers";
 import { DayTasksSortByOption, TasksFilters } from "../lib/tasks-params";
-import { revalidateTaskCache } from "./cache/tasks";
-import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
-import {
-  CalendarFilters,
-  CalendarViewOption,
-} from "@/features/calendar/lib/calendar-params";
-import {
-  taskPriorities,
-  TaskPriority,
-  taskStatuses,
-  TaskStatus,
-} from "@/db/schema";
 import { BoardProperty, PaginationCursor } from "../lib/types";
+import { revalidateTaskCache } from "./cache/tasks";
 
 type TaskBoardDbQuery = {
   property: BoardProperty;
@@ -136,16 +135,6 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
 
   const normalizedSearch = search?.trim();
 
-  const priorityRank = sql`
-    CASE ${TaskTable.priority}
-      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      ELSE 5
-    END
-  `;
-
   const searchFilter = normalizedSearch
     ? or(
         ilike(TaskTable.name, `%${normalizedSearch}%`),
@@ -163,7 +152,7 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
     name_a_z: [asc(sql`lower(${TaskTable.name})`), asc(TaskTable.id)],
     name_z_a: [desc(sql`lower(${TaskTable.name})`), desc(TaskTable.id)],
     oldest: [asc(TaskTable.createdAt), asc(TaskTable.id)],
-    priority: [asc(priorityRank), asc(TaskTable.id)],
+    priority: [asc(taskPriorityRank), asc(TaskTable.id)],
     recently_created: [desc(TaskTable.createdAt), desc(TaskTable.id)],
   };
 

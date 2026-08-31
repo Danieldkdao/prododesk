@@ -1,0 +1,2 @@
+export const TRIAGE_TASK_LIMIT = 5;
+export const MAX_PROJECT_PROMPT_INJECTION_LIMIT = 5;

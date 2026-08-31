@@ -5,11 +5,11 @@ import {
   ProjectInsertType,
   ProjectSelectType,
   ProjectTable,
-  TaskSelectType,
   TaskTable,
 } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
 import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+import { taskPriorityRank } from "@/features/tasks/lib/helpers";
 import { revalidateTaskCache } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
@@ -282,16 +282,6 @@ export const readProjectsDb = async (filterOptions: ReadProjectsDbFilters) => {
     projectsFilter,
   );
 
-  const priorityRank = sql`
-    CASE ${TaskTable.priority}
-      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      ELSE 5
-    END
-  `;
-
   const nextTaskQuery = db
     .select({
       ...getTableColumns(TaskTable),
@@ -303,7 +293,7 @@ export const readProjectsDb = async (filterOptions: ReadProjectsDbFilters) => {
         eq(TaskTable.projectId, ProjectTable.id),
       ),
     )
-    .orderBy(asc(priorityRank), asc(TaskTable.id))
+    .orderBy(asc(taskPriorityRank), asc(TaskTable.id))
     .limit(1)
     .as("next_task");
 

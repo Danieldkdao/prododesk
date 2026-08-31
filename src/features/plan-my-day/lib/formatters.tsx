@@ -10,7 +10,15 @@ import {
   SparklesIcon,
 } from "lucide-react";
 import { ReactNode } from "react";
-import { PlannerCardState, SingleTaskSource } from "./types";
+import {
+  PlannerCardState,
+  SingleTaskSource,
+  TriageQuestionnaireChoice,
+  TriageQuestionnaireItem,
+  TriageSuggestion,
+} from "./types";
+import { TriageTasksDialog } from "@/features/plan-my-day/components/triage-tasks-dialog";
+import { type QuestionnaireItemDefinition } from "@shadcn/react/questionnaire";
 
 export const formatPlannerCardState = ({
   state,
@@ -90,10 +98,12 @@ export const formatPlannerCardState = ({
         description:
           "You have a few tasks without a clear place or date. Sort a few first, then we can build a plan with better information.",
         actionButton: () => (
-          <Button size="lg">
-            <ListChecksIcon />
-            Triage my tasks
-          </Button>
+          <TriageTasksDialog>
+            <Button size="lg">
+              <ListChecksIcon />
+              Triage my tasks
+            </Button>
+          </TriageTasksDialog>
         ),
       };
     case "plan_ready":
@@ -111,4 +121,46 @@ export const formatPlannerCardState = ({
     default:
       throw new Error(`Unknown state: ${state satisfies never}`);
   }
+};
+
+export const formatSuggestionToQuestionnaireItem = (
+  suggestion: TriageSuggestion,
+): TriageQuestionnaireItem => {
+  const clarificationChoices: TriageQuestionnaireChoice[] =
+    suggestion.clarification?.choices.map((choice, index) => ({
+      value: `clarification:${index}`,
+      label: choice,
+    })) ?? [];
+
+  const choices: TriageQuestionnaireChoice[] =
+    clarificationChoices.length > 0
+      ? clarificationChoices
+      : [
+          {
+            value: "accept",
+            label: "Use our suggestion",
+            description:
+              "Apply the suggested project, dates, priority, and other changes.",
+          },
+          {
+            value: "someday",
+            label: "Move to someday",
+            description:
+              "Keep the task, but remove it from active planning for now.",
+          },
+        ];
+
+  return {
+    definition: {
+      name: `task:${suggestion.taskId}`,
+      required: false,
+      choices: choices.map(({ value }) => ({ value })),
+    },
+    title: suggestion.clarification?.question ?? "Where should this task go?",
+    description: suggestion.clarification
+      ? "Choose the answer that best matches what you intended."
+      : suggestion.reason,
+    choices,
+    suggestion,
+  };
 };
