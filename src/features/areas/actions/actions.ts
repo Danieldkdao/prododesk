@@ -39,7 +39,10 @@ import {
 } from "../server/areas";
 import { getAreaIdTag, getUserAreaTag } from "../server/cache/areas";
 import { areaSchema, AreaSchemaType } from "./schemas";
-import { taskPriorityRank } from "@/features/tasks/lib/helpers";
+import {
+  taskDueDateOrder,
+  taskPriorityRank,
+} from "@/features/tasks/lib/helpers";
 
 type ReadAreasFilters = AreasFilters & { page: number };
 
@@ -85,7 +88,8 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
       .innerJoin(ProjectTable, eq(TaskTable.projectId, ProjectTable.id))
       .where(and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)))
       .orderBy(
-        asc(taskPriorityRank),
+        asc(taskPriorityRank(TaskTable.priority)),
+        taskDueDateOrder(TaskTable.dueAt),
         desc(TaskTable.updatedAt),
         desc(TaskTable.id),
       )

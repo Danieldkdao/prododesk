@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { MoreHorizontalIcon, SquareArrowOutUpRightIcon } from "lucide-react";
 import Link from "next/link";
 import { ReadTasksActionReturnType } from "../actions/actions";
-import { useTaskDetailsDialog } from "../hooks/use-task-details-dialog";
+import { TaskDetailsTrigger } from "./task-details-trigger";
 import { TaskOptions } from "./task-options";
 import { TaskPriorityUpdater } from "./task-priority-updater";
 import { TaskStatusUpdater } from "./task-status-updater";
@@ -19,15 +19,13 @@ export const TaskTableRow = ({
   task: ReadTasksActionReturnType["tasks"][number];
   showProject?: boolean;
 }) => {
-  const { openTaskDetails } = useTaskDetailsDialog();
-
   return (
-    <TableRow
-      key={task.id}
-      className="cursor-pointer"
-      onClick={() => openTaskDetails(task.id)}
-    >
-      <TableCell className="font-medium text-base">{task.name}</TableCell>
+    <TableRow key={task.id}>
+      <TableCell className="font-medium text-base">
+        <TaskDetailsTrigger taskId={task.id} className="hover:underline">
+          {task.name}
+        </TaskDetailsTrigger>
+      </TableCell>
       <TableCell>
         <TaskStatusUpdater taskId={task.id} initialStatus={task.status} />
       </TableCell>
@@ -54,7 +52,6 @@ export const TaskTableRow = ({
               href={`/dashboard/projects/${task.project.id}`}
               target="_blank"
               className="flex items-center gap-2"
-              onClick={(e) => e.stopPropagation()}
             >
               <span>{task.project.name}</span>
               <SquareArrowOutUpRightIcon className="size-4" />
@@ -65,7 +62,7 @@ export const TaskTableRow = ({
         </TableCell>
       )}
       <TableCell>
-        <div onClick={(e) => e.stopPropagation()}>
+        <div>
           <TaskOptions task={task}>
             <Button variant="ghost" size="icon-sm">
               <MoreHorizontalIcon />

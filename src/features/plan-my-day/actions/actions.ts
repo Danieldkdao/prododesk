@@ -21,6 +21,10 @@ import {
   confirmUserTaskOwnership,
   updateTaskDb,
 } from "@/features/tasks/server/tasks";
+import {
+  taskSchema,
+  updateTaskSchema,
+} from "@/features/tasks/actions/schemas";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -40,7 +44,18 @@ import {
 import { tz, TZDate } from "@date-fns/tz";
 import { generateText, Output } from "ai";
 import { format, parse, parseISO, subDays } from "date-fns";
-import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  gte,
+  getTableColumns,
+  inArray,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import {
   dailyPlanDraftSchema,
@@ -84,6 +99,7 @@ export const readDayPlanAction = async () => {
     ),
     with: {
       items: {
+        orderBy: (items, { asc }) => [asc(items.position)],
         with: {
           task: true,
         },
@@ -119,9 +135,10 @@ const readCachedPlanMyDayDataAction = async (
   const { startUtc, endUtc } = getLocalDayBounds(dateToUse, timeZone);
   const threeDaysAgo = subDays(startUtc, 3);
 
+  const taskCount = sql<number>`count(*) over()`.mapWith(Number);
   const [todayTasks, tasksNeedAttention, unsortedTasks] = await Promise.all([
     db
-      .select()
+      .select({ ...getTableColumns(TaskTable), totalCount: taskCount })
       .from(TaskTable)
       .where(
         and(
@@ -133,10 +150,13 @@ const readCachedPlanMyDayDataAction = async (
             ),
             and(gte(TaskTable.dueAt, startUtc), lte(TaskTable.dueAt, endUtc)),
           ),
+          inArray(TaskTable.status, ["in_progress", "not_started"]),
         ),
-      ),
+      )
+      .orderBy(asc(TaskTable.id))
+      .limit(1),
     db
-      .select()
+      .select({ ...getTableColumns(TaskTable), totalCount: taskCount })
       .from(TaskTable)
       .where(
         and(
@@ -147,9 +167,11 @@ const readCachedPlanMyDayDataAction = async (
           ),
           inArray(TaskTable.status, ["in_progress", "not_started"]),
         ),
-      ),
+      )
+      .orderBy(asc(taskPriorityRank(TaskTable.priority)), asc(TaskTable.id))
+      .limit(1),
     db
-      .select()
+      .select({ ...getTableColumns(TaskTable), totalCount: taskCount })
       .from(TaskTable)
       .where(
         and(
@@ -161,12 +183,14 @@ const readCachedPlanMyDayDataAction = async (
           eq(TaskTable.userId, userId),
           inArray(TaskTable.status, ["in_progress", "not_started"]),
         ),
-      ),
+      )
+      .orderBy(asc(taskPriorityRank(TaskTable.priority)), asc(TaskTable.id))
+      .limit(1),
   ]);
 
-  const todayTaskCount = todayTasks.length;
-  const tasksNeedAttentionCount = tasksNeedAttention.length;
-  const unsortedTaskCount = unsortedTasks.length;
+  const todayTaskCount = todayTasks[0]?.totalCount ?? 0;
+  const tasksNeedAttentionCount = tasksNeedAttention[0]?.totalCount ?? 0;
+  const unsortedTaskCount = unsortedTasks[0]?.totalCount ?? 0;
 
   const counts = {
     todayTaskCount,
@@ -248,7 +272,11 @@ const readCachedTriageCandidatesAction = async (
         inArray(TaskTable.status, ["not_started", "in_progress"]),
       ),
     )
-    .orderBy(taskPriorityRank, asc(TaskTable.id))
+    .orderBy(
+      asc(taskPriorityRank(TaskTable.priority)),
+      asc(TaskTable.createdAt),
+      asc(TaskTable.id),
+    )
     .limit(TRIAGE_TASK_LIMIT);
 
   return unsortedTasks;
@@ -412,22 +440,57 @@ export const processTriageAnswerAction = async ({
     };
   }
 
+  const parsedSuggestion = triageSuggestionSchema.safeParse(suggestion);
+  if (!parsedSuggestion.success || parsedSuggestion.data.taskId !== taskId) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
+  const existingTask = await confirmUserTaskOwnership(taskId);
+  if (!existingTask) {
+    return {
+      error: true,
+      message: NOT_FOUND_ERROR_MESSAGE,
+    };
+  }
+
+  const validatedSuggestion = parsedSuggestion.data;
+  const [suggestedProject, suggestedMilestone] = await Promise.all([
+    validatedSuggestion.suggestedProjectId
+      ? confirmUserProjectOwnership(validatedSuggestion.suggestedProjectId)
+      : Promise.resolve(null),
+    validatedSuggestion.suggestedMilestoneId
+      ? confirmUserMilestoneOwnership(validatedSuggestion.suggestedMilestoneId)
+      : Promise.resolve(null),
+  ]);
+  if (
+    (validatedSuggestion.suggestedProjectId && !suggestedProject) ||
+    (validatedSuggestion.suggestedMilestoneId && !suggestedMilestone)
+  ) {
+    return {
+      error: true,
+      message: INVALID_DATA_ERROR_MESSAGE,
+    };
+  }
+
   let taskData: Partial<TaskSelectType> = {};
 
   try {
     switch (answer) {
       case "accept": {
         taskData = {
-          name: suggestion.suggestedName ?? undefined,
-          projectId: suggestion.suggestedProjectId ?? undefined,
-          milestoneId: suggestion.suggestedMilestoneId ?? undefined,
-          status: suggestion.suggestedStatus ?? undefined,
-          priority: suggestion.suggestedPriority ?? undefined,
-          scheduledAt: suggestion.suggestedScheduledAt
-            ? parseISO(suggestion.suggestedScheduledAt)
+          name: validatedSuggestion.suggestedName ?? undefined,
+          projectId: validatedSuggestion.suggestedProjectId ?? undefined,
+          milestoneId: validatedSuggestion.suggestedMilestoneId ?? undefined,
+          status: validatedSuggestion.suggestedStatus ?? undefined,
+          priority: validatedSuggestion.suggestedPriority ?? undefined,
+          scheduledAt: validatedSuggestion.suggestedScheduledAt
+            ? parseISO(validatedSuggestion.suggestedScheduledAt)
             : undefined,
-          dueAt: suggestion.suggestedDueAt
-            ? parseISO(suggestion.suggestedDueAt)
+          dueAt: validatedSuggestion.suggestedDueAt
+            ? parseISO(validatedSuggestion.suggestedDueAt)
             : undefined,
         };
         break;
@@ -444,7 +507,24 @@ export const processTriageAnswerAction = async ({
       }
     }
 
-    const updatedTask = await updateTaskDb(taskId, taskData);
+    const parsedUpdate = updateTaskSchema.safeParse(taskData);
+    if (!parsedUpdate.success) throw new Error(INVALID_DATA_ERROR_MESSAGE);
+
+    const completeTask = taskSchema.safeParse({
+      name: existingTask.name,
+      description: existingTask.description,
+      emoji: existingTask.emoji,
+      priority: existingTask.priority,
+      status: existingTask.status,
+      projectId: existingTask.projectId,
+      milestoneId: existingTask.milestoneId,
+      scheduledAt: existingTask.scheduledAt,
+      dueAt: existingTask.dueAt,
+      ...parsedUpdate.data,
+    });
+    if (!completeTask.success) throw new Error(INVALID_DATA_ERROR_MESSAGE);
+
+    const updatedTask = await updateTaskDb(taskId, parsedUpdate.data);
     if (!updatedTask) throw new Error("Failed to update task.");
 
     return {
@@ -501,16 +581,6 @@ const readDailyPlanCandidates = async ({
     END
   `;
 
-  const priorityRank = sql<number>`
-    CASE ${TaskTable.priority}
-      WHEN 'urgent' THEN 1
-      WHEN 'high' THEN 2
-      WHEN 'medium' THEN 3
-      WHEN 'low' THEN 4
-      ELSE 5
-    END
-  `;
-
   return db
     .select()
     .from(TaskTable)
@@ -527,7 +597,7 @@ const readDailyPlanCandidates = async ({
     )
     .orderBy(
       relevanceRank,
-      priorityRank,
+      taskPriorityRank(TaskTable.priority),
       asc(TaskTable.dueAt),
       asc(TaskTable.scheduledAt),
       asc(TaskTable.createdAt),

@@ -266,7 +266,7 @@ const TaskDialogDetailsSuspense = ({
           </div>
         </div>
       ) : (
-        <EmptyDetailsState text="No project" />
+        <EmptyDetailsState text="No milestone" />
       ),
     },
   ];

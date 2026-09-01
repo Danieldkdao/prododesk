@@ -64,6 +64,11 @@ export const TaskDetailsDialogProvider = ({
   const closeTaskDetails = useCallback(() => {
     setTaskId(null);
 
+    if (window.history.state?.taskDetailsDialog === true) {
+      window.history.back();
+      return;
+    }
+
     const url = new URL(window.location.href);
     url.searchParams.delete("taskId");
 

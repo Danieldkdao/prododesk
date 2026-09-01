@@ -43,7 +43,7 @@ export const formatPlannerCardState = ({
           </TaskDialog>
         ),
       };
-    case "single":
+    case "single": {
       let title = "";
       let description = "";
       let buttonIcon: ReactNode | null = null;
@@ -83,6 +83,7 @@ export const formatPlannerCardState = ({
           </TriggerTaskDetailsButton>
         ),
       };
+    }
     case "triage":
       return {
         title: "Your task inbox needs a quick cleanup",
@@ -119,29 +120,20 @@ export const formatPlannerCardState = ({
 export const formatSuggestionToQuestionnaireItem = (
   suggestion: TriageSuggestion,
 ): TriageQuestionnaireItem => {
-  const clarificationChoices: TriageQuestionnaireChoice[] =
-    suggestion.clarification?.choices.map((choice, index) => ({
-      value: `clarification:${index}`,
-      label: choice,
-    })) ?? [];
-
-  const choices: TriageQuestionnaireChoice[] =
-    clarificationChoices.length > 0
-      ? clarificationChoices
-      : [
-          {
-            value: "accept",
-            label: "Use our suggestion",
-            description:
-              "Apply the suggested project, dates, priority, and other changes.",
-          },
-          {
-            value: "someday",
-            label: "Move to someday",
-            description:
-              "Keep the task, but remove it from active planning for now.",
-          },
-        ];
+  const choices: TriageQuestionnaireChoice[] = [
+    {
+      value: "accept",
+      label: "Use our suggestion",
+      description:
+        "Apply the suggested project, dates, priority, and other changes.",
+    },
+    {
+      value: "someday",
+      label: "Move to someday",
+      description:
+        "Keep the task, but remove it from active planning for now.",
+    },
+  ];
 
   return {
     definition: {
@@ -149,10 +141,8 @@ export const formatSuggestionToQuestionnaireItem = (
       required: false,
       choices: choices.map(({ value }) => ({ value })),
     },
-    title: suggestion.clarification?.question ?? "Where should this task go?",
-    description: suggestion.clarification
-      ? "Choose the answer that best matches what you intended."
-      : suggestion.reason,
+    title: "Where should this task go?",
+    description: suggestion.reason,
     choices,
     suggestion,
   };

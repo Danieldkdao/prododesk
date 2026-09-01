@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { ClockIcon, DotIcon, MoreHorizontalIcon } from "lucide-react";
 import { Fragment, JSX, useState } from "react";
 import { ReadTasksActionReturnType } from "../actions/actions";
-import { useTaskDetailsDialog } from "../hooks/use-task-details-dialog";
+import { TaskDetailsTrigger } from "./task-details-trigger";
 import {
   formatTaskPriority,
   formatTaskStatus,
@@ -25,7 +25,6 @@ export const DashboardTask = ({
   variant?: "today" | "next-up";
 }) => {
   const [taskStatus, setTaskStatus] = useState(task.status);
-  const { openTaskDetails } = useTaskDetailsDialog();
 
   const {
     icon: StatusIcon,
@@ -79,9 +78,9 @@ export const DashboardTask = ({
               )}
             />
           </UpdateTaskStatusSelect>
-          <div
-            className="flex flex-col gap-px min-w-0 flex-1 cursor-pointer"
-            onClick={() => openTaskDetails(task.id)}
+          <TaskDetailsTrigger
+            taskId={task.id}
+            className="flex flex-col gap-px min-w-0 flex-1"
           >
             <span
               className={cn(
@@ -92,7 +91,7 @@ export const DashboardTask = ({
               {task.name}
             </span>
             <span>{formatTaskDates(task.scheduledAt, task.dueAt, true)}</span>
-          </div>
+          </TaskDetailsTrigger>
         </div>
         <div className="flex items-center gap-2">
           <Badge
@@ -114,9 +113,9 @@ export const DashboardTask = ({
     );
   } else if (variant === "next-up") {
     return (
-      <div
-        className="p-4 border-t border-b last:border-b-0 flex flex-col gap-4 cursor-pointer"
-        onClick={() => openTaskDetails(task.id)}
+      <TaskDetailsTrigger
+        taskId={task.id}
+        className="p-4 border-t border-b last:border-b-0 flex flex-col gap-4"
       >
         <div className="flex items-center gap-2">
           <ClockIcon className="size-4" />
@@ -141,7 +140,7 @@ export const DashboardTask = ({
             ))}
           </div>
         </div>
-      </div>
+      </TaskDetailsTrigger>
     );
   }
 };

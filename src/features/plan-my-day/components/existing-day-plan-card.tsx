@@ -17,7 +17,7 @@ import {
   formatTaskStatus,
 } from "@/features/tasks/lib/formatters";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { CheckIcon, ChevronDownIcon, ClockIcon, DotIcon } from "lucide-react";
 import { Fragment } from "react";
 
@@ -32,9 +32,10 @@ export const ExistingDayPlanCard = ({
   const completedTaskCount = dayPlan.items.filter(
     (item) => item.task.status === "completed",
   ).length;
-  const planProgress = Math.round(
-    (completedTaskCount / (totalTaskCount || 0)) * 100,
-  );
+  const planProgress =
+    totalTaskCount === 0
+      ? 0
+      : Math.round((completedTaskCount / totalTaskCount) * 100);
   const nextItem = dayPlan.items.find(
     (item) => item.task.status !== "completed",
   );
@@ -51,7 +52,7 @@ export const ExistingDayPlanCard = ({
             </span>
             <DotIcon className="text-muted-foreground/50" />
             <span className="text-muted-foreground font-medium text-lg">
-              {format(new Date(), "MMM M")}
+              {format(parseISO(dayPlan.planDate), "MMM d")}
             </span>
           </div>
         </div>

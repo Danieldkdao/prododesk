@@ -2,20 +2,19 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params";
 import { useConfetti } from "@/hooks/use-confetti";
 import { formatTaskDates } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { CheckIcon, ClockIcon } from "lucide-react";
 import { useState } from "react";
 import { ReadTasksActionReturnType } from "../actions/actions";
-import { useTaskDetailsDialog } from "../hooks/use-task-details-dialog";
 import {
   formatTaskPriority,
   getTaskPriorityBadgeClasses,
 } from "../lib/formatters";
 import { UpdateTaskStatusSelect } from "../update-task-status-select";
 import { TaskDialog } from "./task-dialog";
+import { TaskDetailsTrigger } from "./task-details-trigger";
 import { TaskOptions } from "./task-options";
 
 export const Task = ({
@@ -30,7 +29,6 @@ export const Task = ({
   const [taskStatus, setTaskStatus] = useState(task.status);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const { triggerConfetti } = useConfetti();
-  const { openTaskDetails } = useTaskDetailsDialog();
 
   const priorityBadgeClasses = getTaskPriorityBadgeClasses(task.priority);
   const isTaskComplete = taskStatus === "completed";
@@ -62,9 +60,9 @@ export const Task = ({
           outsideStatus={taskStatus}
           setOutsideStatus={setTaskStatus}
         />
-        <div
-          className="min-w-0 flex-1 flex flex-col gap-1.5 cursor-pointer"
-          onClick={() => openTaskDetails(task.id)}
+        <TaskDetailsTrigger
+          taskId={task.id}
+          className="min-w-0 flex-1 flex flex-col gap-1.5"
         >
           <div className="flex items-center gap-2 min-w-0">
             <Label
@@ -109,7 +107,7 @@ export const Task = ({
               </span>
             </div>
           )}
-        </div>
+        </TaskDetailsTrigger>
         <TaskOptions task={task} />
       </div>
     </>

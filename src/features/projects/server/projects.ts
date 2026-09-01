@@ -9,7 +9,10 @@ import {
 } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
 import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
-import { taskPriorityRank } from "@/features/tasks/lib/helpers";
+import {
+  taskDueDateOrder,
+  taskPriorityRank,
+} from "@/features/tasks/lib/helpers";
 import { revalidateTaskCache } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
@@ -293,7 +296,11 @@ export const readProjectsDb = async (filterOptions: ReadProjectsDbFilters) => {
         eq(TaskTable.projectId, ProjectTable.id),
       ),
     )
-    .orderBy(asc(taskPriorityRank), asc(TaskTable.id))
+    .orderBy(
+      asc(taskPriorityRank(TaskTable.priority)),
+      taskDueDateOrder(TaskTable.dueAt),
+      asc(TaskTable.id),
+    )
     .limit(1)
     .as("next_task");
 

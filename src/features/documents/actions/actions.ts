@@ -203,7 +203,7 @@ export const updateDocumentAction = async (
       {
         name: data?.name ?? undefined,
         content: data?.content ?? undefined,
-        projectId: data?.projectId ?? undefined,
+        projectId: data.projectId,
       },
       options,
     );

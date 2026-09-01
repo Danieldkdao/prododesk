@@ -51,7 +51,6 @@ export const DailyPlanDialog = ({ children }: { children: ReactElement }) => {
       toast.error(response.message, { id: toastId });
     } else {
       toast.success(response.message, { id: toastId });
-      console.log(response.draft);
       setDraft(response.draft);
     }
   };
@@ -117,6 +116,7 @@ export const DailyPlanDialog = ({ children }: { children: ReactElement }) => {
               <PlanDraftDisplay draft={draft} />
               <div className="flex items-center gap-4 justify-between">
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => handleOpen(false)}
                   disabled={isPending}

@@ -19,10 +19,16 @@ export const PlanDraftDisplay = ({
 }: {
   draft: EnrichedDailyPlanDraft;
 }) => {
-  const timeAvailable =
-    draft.availableMinutes < 60
-      ? `${draft.availableMinutes} minutes`
-      : `${Math.floor(draft.availableMinutes / 60)} hours`;
+  const hours = Math.floor(draft.availableMinutes / 60);
+  const minutes = draft.availableMinutes % 60;
+  const timeAvailable = [
+    hours > 0 ? `${hours} ${hours === 1 ? "hour" : "hours"}` : null,
+    minutes > 0
+      ? `${minutes} ${minutes === 1 ? "minute" : "minutes"}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const {
     label: energyLevel,
     icon: EnergyLevelIcon,

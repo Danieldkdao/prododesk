@@ -16,7 +16,6 @@ import { ReactElement, ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { PlannerCardOutcome } from "../lib/types";
 import { TriageTasksDialogContent } from "./triage-tasks-dialog-content";
-import { formatPlannerCardState } from "../lib/formatters";
 import { Button } from "@/components/ui/button";
 
 const TriageTasksLoading = () => {
@@ -64,11 +63,7 @@ const TriageTasksEndingState = ({
   closeDialog: () => void;
   handleRestart: () => void;
 }) => {
-  const {
-    title,
-    description,
-    actionButton: ActionButton,
-  } = formatPlannerCardState(endingState);
+  const needsMoreTriage = endingState.state === "triage";
 
   return (
     <>
@@ -79,23 +74,24 @@ const TriageTasksEndingState = ({
         <CheckCircle2Icon className="text-emerald-600 size-12" />
         <div className="flex flex-col gap-0.5 items-center max-w-150 w-full">
           <span className="text-center text-2xl @xl:text-3xl font-semibold">
-            {title}
+            {needsMoreTriage ? "A few tasks still need sorting" : "Triage complete"}
           </span>
           <p className="text-muted-foreground text-center text-lg">
-            {description}
+            {needsMoreTriage
+              ? "Continue with the remaining tasks, or return to the dashboard for now."
+              : "Your dashboard has been updated with the next best action."}
           </p>
         </div>
         <div className="grid grid-cols-1 @xl:grid-cols-2 gap-4">
           <Button variant="outline" size="lg" onClick={closeDialog}>
             Close
           </Button>
-          <div
-            onClick={
-              endingState.state === "triage" ? handleRestart : closeDialog
-            }
+          <Button
+            size="lg"
+            onClick={needsMoreTriage ? handleRestart : closeDialog}
           >
-            <ActionButton />
-          </div>
+            {needsMoreTriage ? "Continue triage" : "Done"}
+          </Button>
         </div>
       </div>
     </>
@@ -123,8 +119,6 @@ export const TriageTasksDialog = ({ children }: { children: ReactElement }) => {
       const result = await generateTriageSuggestionsAction();
 
       if (result.error) throw new Error(result.message);
-
-      console.log(result.output);
 
       return result.output;
     },

@@ -62,26 +62,26 @@ Guidelines:
 - Do not invent projects, milestones, or other entities that were not provided in the available context.
 - Recommend an existing project or milestone only when there is a clear semantic match.
 - If no project or milestone is a good match, return null for that field.
-- Suggest a scheduled date when the task appears read to be worked on.
+- Suggest a scheduled date when the task appears ready to be worked on.
 - Suggest a due date only when the task implies a real deadline. Do not fabricate urgency.
 - Never schedule a task in the past.
 - A due date must not occur before its scheduled date.
 - Use the user's current date and timezone when interpreting relative dates such as "today," "tomorrow," or "next week."
-- Suggest of priority based on urgency and impact:
+- Suggest a priority based on urgency and impact:
   - "urgent" for immediate, time-sensitive work with serious consequences.
   - "high" for important work that should be addressed soon.
   - "medium" for normal actionable work.
   - "low" for optional or low-impact work.
 - Suggest a clearer task name only when the existing name is vague, incomplete, or not action oriented.
 - Keep suggested task names concise, specific, and verb-led.
-- Do not add information to a task name that canno be inferred from the provided context.
+- Do not add information to a task name that cannot be inferred from the provided context.
 - Provide a short, plain-language explanation for each suggestion.
 - Express confidence honestly. Use lower confidence when context is incomplete or multiple choices are equally reasonable.
 - When confidence is low, prefer leaving uncertain fields null instead of guessing.
 - Treat each suggestion as a proposal requiring user confirmation.
 - Return exactly one suggestion for every requested task.
 - Preserve each task's original ID so suggestions can be matched reliably.
-- Do not return duplicate taks IDs.
+- Do not return duplicate task IDs.
 - Return only data matching the requested structured-output schema. Do not include Markdown or additional commentary.
 - You will have some tools that you can use to read projects or milestones. Do not be afraid to call them multiple times if it helps you create better suggestions.
 `;

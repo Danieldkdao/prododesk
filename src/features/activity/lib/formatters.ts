@@ -171,7 +171,7 @@ export const groupActivityBySubject = (artifacts: ArtifactActivityType[]) => {
     subjectGroups[artifact.activity?.subject].push(artifact);
   });
 
-  return Object.entries(subjectGroups).filter(([_, artifacts]) =>
+  return Object.entries(subjectGroups).filter(([, artifacts]) =>
     Boolean(artifacts.length),
   ) as [ActivitySubject, ArtifactActivityType[]][];
 };
@@ -181,11 +181,11 @@ export const formatActivityLink = (activity: ActivitySelectType) => {
 
   switch (activitySubject) {
     case "area":
-      return activity.subjectId
+      return activity.subjectId && activity.action !== "delete"
         ? `/dashboard/areas/${activity.subjectId}`
         : "/dashboard/areas";
     case "document":
-      return activity.subjectId
+      return activity.subjectId && activity.action !== "delete"
         ? `/dashboard/documents/${activity.subjectId}`
         : "/dashboard/documents";
     case "milestone":
@@ -193,7 +193,7 @@ export const formatActivityLink = (activity: ActivitySelectType) => {
         ? `/dashboard/projects/${activity.projectId}/milestones`
         : "/dashboard/projects";
     case "project":
-      return activity.projectId
+      return activity.projectId && activity.action !== "delete"
         ? `/dashboard/projects/${activity.projectId}`
         : "/dashboard/projects";
     case "task": {
@@ -201,7 +201,7 @@ export const formatActivityLink = (activity: ActivitySelectType) => {
         ? `/dashboard/projects/${activity.projectId}/tasks`
         : `/dashboard/tasks`;
 
-      return activity.subjectId
+      return activity.subjectId && activity.action !== "delete"
         ? `${basePath}?taskId=${encodeURIComponent(activity.subjectId)}`
         : basePath;
     }

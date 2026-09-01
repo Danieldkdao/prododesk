@@ -8,7 +8,10 @@ import {
   ProjectTable,
   TaskTable,
 } from "@/db/schema";
-import { taskPriorityRank } from "@/features/tasks/lib/helpers";
+import {
+  taskDueDateOrder,
+  taskPriorityRank,
+} from "@/features/tasks/lib/helpers";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -114,7 +117,11 @@ const readCachedProjectAction = async (userId: string, projectId: string) => {
     with: {
       user: true,
       tasks: {
-        orderBy: [asc(taskPriorityRank), asc(TaskTable.id)],
+        orderBy: (tasks, { asc }) => [
+          asc(taskPriorityRank(tasks.priority)),
+          taskDueDateOrder(tasks.dueAt),
+          asc(tasks.id),
+        ],
         limit: 5,
       },
       documents: {

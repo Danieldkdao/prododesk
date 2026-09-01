@@ -58,9 +58,9 @@ export const confirmUserMilestoneOwnership = async (
   if (userId) {
     userIdToUse = userId;
   } else {
-    const { userId } = await getCurrentUser();
-    if (!userId) return null;
-    userIdToUse = userId;
+    const currentUser = await getCurrentUser();
+    if (!currentUser.userId) return null;
+    userIdToUse = currentUser.userId;
   }
   if (!userIdToUse) return null;
 

@@ -36,9 +36,14 @@ export const TaskStatusUpdater = ({
     setCurrentStatus(newStatus);
 
     startStatusTransition(async () => {
-      const response = await updateTasksStatusAction(taskId, newStatus);
-      if (response.error) {
-        toast.error(response.message);
+      try {
+        const response = await updateTasksStatusAction(taskId, newStatus);
+        if (response.error) {
+          toast.error(response.message);
+          setCurrentStatus(prevStatus);
+        }
+      } catch {
+        toast.error("Unable to update the task status.");
         setCurrentStatus(prevStatus);
       }
     });

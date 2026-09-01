@@ -5,11 +5,9 @@ import { TaskSelectType } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { formatTaskStatus, formatTaskPriority } from "../lib/formatters";
-import { useTaskDetailsDialog } from "../hooks/use-task-details-dialog";
+import { TaskDetailsTrigger } from "./task-details-trigger";
 
 export const OverviewTasksTableRow = ({ task }: { task: TaskSelectType }) => {
-  const { openTaskDetails } = useTaskDetailsDialog();
-
   const {
     label: taskStatusLabel,
     icon: TaskStatusIcon,
@@ -22,12 +20,12 @@ export const OverviewTasksTableRow = ({ task }: { task: TaskSelectType }) => {
   } = formatTaskPriority(task.priority);
 
   return (
-    <TableRow
-      key={task.id}
-      className="cursor-pointer"
-      onClick={() => openTaskDetails(task.id)}
-    >
-      <TableCell className="font-medium text-base">{task.name}</TableCell>
+    <TableRow key={task.id}>
+      <TableCell className="font-medium text-base">
+        <TaskDetailsTrigger taskId={task.id} className="hover:underline">
+          {task.name}
+        </TaskDetailsTrigger>
+      </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <TaskStatusIcon className={cn("size-5", taskStatusTextColor)} />

@@ -29,6 +29,7 @@ export const EnergyLevelInput = ({
             <button
               key={energyLevel}
               type="button"
+              aria-pressed={isSelected}
               onClick={() => onValueChange(energyLevel)}
               className={cn(
                 "px-4 py-2 bg-accent/60 text-base font-medium cursor-pointer transition-colors duration-200 hover:bg-accent/90 flex flex-col items-center gap-0.5",

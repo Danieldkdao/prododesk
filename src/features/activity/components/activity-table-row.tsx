@@ -10,7 +10,7 @@ import {
 import { ClockIcon, SquareArrowOutUpRightIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
-import { useTaskDetailsDialog } from "@/features/tasks/hooks/use-task-details-dialog";
+import { TaskDetailsTrigger } from "@/features/tasks/components/task-details-trigger";
 
 export const ActivityTableRow = ({
   activity,
@@ -19,7 +19,6 @@ export const ActivityTableRow = ({
   activity: ReadActivityActionReturnType["activity"][number];
   showProject?: boolean;
 }) => {
-  const { openTaskDetails } = useTaskDetailsDialog();
   const { label: sourceLabel, icon: SourceIcon } = formatActivitySource(
     activity.source,
   );
@@ -35,18 +34,13 @@ export const ActivityTableRow = ({
     includeSeconds: true,
   });
 
-  const handleTaskDetails = () => {
-    if (
-      activity.subject === "task" &&
-      activity.subjectId &&
-      activity.action !== "delete"
-    ) {
-      openTaskDetails(activity.subjectId);
-    }
-  };
+  const canOpenTask =
+    activity.subject === "task" &&
+    activity.subjectId &&
+    activity.action !== "delete";
 
   return (
-    <TableRow className="cursor-pointer" onClick={handleTaskDetails}>
+    <TableRow>
       {showProject && (
         <TableCell className="text-base" onClick={(e) => e.stopPropagation()}>
           {activity.project ? (
@@ -64,7 +58,16 @@ export const ActivityTableRow = ({
         </TableCell>
       )}
       <TableCell className="font-medium text-base">
-        {activity.message}
+        {canOpenTask ? (
+          <TaskDetailsTrigger
+            taskId={activity.subjectId!}
+            className="hover:underline"
+          >
+            {activity.message}
+          </TaskDetailsTrigger>
+        ) : (
+          activity.message
+        )}
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
