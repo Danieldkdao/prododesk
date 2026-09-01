@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { readDayPlanAction, readPlanMyDayDataAction } from "../actions/actions";
 import { formatPlannerCardState } from "../lib/formatters";
 import { ExistingDayPlanCard } from "./existing-day-plan-card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const PlanMyDayCard = () => {
   return (
@@ -16,7 +17,34 @@ export const PlanMyDayCard = () => {
 };
 
 const PlanMyDayCardLoading = () => {
-  return <div>loading</div>;
+  return (
+    <Card
+      className="border-2 bg-linear-to-br from-primary/5 to-card py-6"
+      aria-label="Loading your daily plan"
+      aria-busy="true"
+    >
+      <CardContent className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 px-6">
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-8 w-44 max-w-full" />
+            <div className="flex max-w-150 flex-col gap-2">
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-4/5" />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <Skeleton className="size-5 shrink-0" />
+                <Skeleton className={index === 1 ? "h-5 w-28" : "h-5 w-24"} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <Skeleton className="h-10 w-28 shrink-0" />
+      </CardContent>
+    </Card>
+  );
 };
 
 const PlanMyDayCardSuspense = async () => {
