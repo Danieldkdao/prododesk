@@ -23,9 +23,7 @@ export const PlanDraftDisplay = ({
   const minutes = draft.availableMinutes % 60;
   const timeAvailable = [
     hours > 0 ? `${hours} ${hours === 1 ? "hour" : "hours"}` : null,
-    minutes > 0
-      ? `${minutes} ${minutes === 1 ? "minute" : "minutes"}`
-      : null,
+    minutes > 0 ? `${minutes} ${minutes === 1 ? "minute" : "minutes"}` : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -58,8 +56,8 @@ export const PlanDraftDisplay = ({
   ];
 
   return (
-    <div className="w-full min-w-0 flex flex-col gap-4 @container">
-      <div className="grid grid-cols-2 @xl:grid-cols-3 gap-4">
+    <div className="w-full min-w-0 flex flex-col gap-4 @container flex-1 overflow-hidden">
+      <div className="grid grid-cols-2 @xl:grid-cols-3 gap-4 shrink-0">
         {gridItems.map((item, index) => (
           <div key={index} className="bg-accent/60 p-4 flex items-center gap-2">
             <item.icon className={cn("size-4.5 shrink-0", item.iconColor)} />
@@ -72,62 +70,72 @@ export const PlanDraftDisplay = ({
           </div>
         ))}
       </div>
-      <div className="bg-primary/15 p-4 border-l-4 border-l-primary text-primary flex flex-col @xl:flex-row items-start gap-4">
+      <div className="bg-primary/15 p-4 border-l-4 border-l-primary text-primary flex flex-col @xl:flex-row items-start gap-4 shrink-0">
         <SparklesIcon className="shrink-0" />
         <span className="text-lg">{draft.summary}</span>
       </div>
-      {draft.items.map((item, index) => {
-        const {
-          icon: StatusIcon,
-          textColor: statusTextColor,
-          label: status,
-        } = formatTaskStatus(item.task.status);
-        const {
-          icon: PriorityIcon,
-          textColor: priorityTextColor,
-          label: priority,
-        } = formatTaskPriority(item.task.priority);
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2 scroll-fade">
+        <div className="flex flex-col gap-4">
+          {draft.items.map((item, index) => {
+            const {
+              icon: StatusIcon,
+              textColor: statusTextColor,
+              label: status,
+            } = formatTaskStatus(item.task.status);
+            const {
+              icon: PriorityIcon,
+              textColor: priorityTextColor,
+              label: priority,
+            } = formatTaskPriority(item.task.priority);
 
-        return (
-          <Fragment key={item.taskId}>
-            <div className="flex items-start gap-4 w-full min-w-0">
-              <div className="bg-accent border flex items-center justify-center size-10 shrink-0">
-                <span className="text-xl font-semibold">{index + 1}</span>
-              </div>
-              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                <span className="text-xl font-semibold block truncate">
-                  {item.task.name}
-                </span>
-                <p className="text-lg text-muted-foreground line-clamp-2 block">
-                  {item.reason}
-                </p>
-                <div className="flex items-center gap-1 flex-wrap">
-                  <div
-                    className={cn("flex items-center gap-2", priorityTextColor)}
-                  >
-                    <PriorityIcon className="size-4.5 shrink-0" />
-                    <span className="text-base">{priority}</span>
+            return (
+              <Fragment key={item.taskId}>
+                <div className="flex items-start gap-4 w-full min-w-0">
+                  <div className="bg-accent border flex items-center justify-center size-10 shrink-0">
+                    <span className="text-xl font-semibold">{index + 1}</span>
                   </div>
-                  <DotIcon className="text-muted-foreground/50" />
-                  <div
-                    className={cn("flex items-center gap-2", statusTextColor)}
-                  >
-                    <StatusIcon className="size-4.5 shrink-0" />
-                    <span className="text-base">{status}</span>
+                  <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <span className="text-xl font-semibold block truncate">
+                      {item.task.name}
+                    </span>
+                    <p className="text-lg text-muted-foreground line-clamp-2 block">
+                      {item.reason}
+                    </p>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <div
+                        className={cn(
+                          "flex items-center gap-2",
+                          priorityTextColor,
+                        )}
+                      >
+                        <PriorityIcon className="size-4.5 shrink-0" />
+                        <span className="text-base">{priority}</span>
+                      </div>
+                      <DotIcon className="text-muted-foreground/50" />
+                      <div
+                        className={cn(
+                          "flex items-center gap-2",
+                          statusTextColor,
+                        )}
+                      >
+                        <StatusIcon className="size-4.5 shrink-0" />
+                        <span className="text-base">{status}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-accent border flex items-center gap-2 shrink-0 px-2 py-1">
+                    <ClockIcon className="text-muted-foreground size-4.5" />
+                    <span className="text-base font-medium text-muted-foreground">
+                      {item.estimatedMinutes} min
+                    </span>
                   </div>
                 </div>
-              </div>
-              <div className="bg-accent border flex items-center gap-2 shrink-0 px-2 py-1">
-                <ClockIcon className="text-muted-foreground size-4.5" />
-                <span className="text-base font-medium text-muted-foreground">
-                  {item.estimatedMinutes} min
-                </span>
-              </div>
-            </div>
-            <Separator className="last:hidden" />
-          </Fragment>
-        );
-      })}
+                <Separator className="last:hidden" />
+              </Fragment>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

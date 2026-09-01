@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/questionnaire";
 import { cn, isError } from "@/lib/utils";
 import { ListCheckIcon, SlidersHorizontalIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { SubmitEvent, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -38,7 +37,6 @@ export const TriageTasksDialogContent = ({
   triageSuggestions: TriageSuggestion[];
   onEnd: (state: PlannerCardOutcome) => void;
 }) => {
-  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const questionnaireItems = triageSuggestions.map(
     formatSuggestionToQuestionnaireItem,
@@ -87,7 +85,6 @@ export const TriageTasksDialogContent = ({
       if (response.error) throw new Error(response.message);
 
       toast.success("Answer processed successfully!");
-      router.refresh();
       return true;
     } catch (error) {
       const errorMessage = isError(error)
@@ -109,30 +106,34 @@ export const TriageTasksDialogContent = ({
     });
   };
 
-  const handleSubmit = async (e?: SubmitEvent<HTMLFormElement>) => {
-    e?.preventDefault();
+  const finishTriage = async () => {
+    const response = await readPlanMyDayDataAction();
+    if (!response) {
+      toast.error("Failed to finish triage. Please try again.");
+      return false;
+    }
+
+    onEnd(
+      response.state === "single"
+        ? {
+            state: response.state,
+            source: response.source,
+            taskId: response.singleTask.id,
+          }
+        : { state: response.state },
+    );
+
+    return true;
+  };
+
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
     startProcessTransition(async () => {
-      if (e) {
-        const processed = await processCurrentItem();
-        if (!processed) return;
-      }
+      const processed = await processCurrentItem();
+      if (!processed) return;
 
-      const response = await readPlanMyDayDataAction();
-      if (!response) {
-        toast.error("Failed to finish triage. Please try again.");
-        return;
-      }
-
-      onEnd(
-        response.state === "single"
-          ? {
-              state: response.state,
-              source: response.source,
-              taskId: response.singleTask.id,
-            }
-          : { state: response.state },
-      );
+      await finishTriage();
     });
   };
 
@@ -141,7 +142,9 @@ export const TriageTasksDialogContent = ({
       (item) => item.definition.name === currentItemName,
     );
     if (currentIndex === questionnaireItems.length - 1) {
-      handleSubmit();
+      startProcessTransition(async () => {
+        await finishTriage();
+      });
       return;
     }
     if (currentIndex >= 0 && currentIndex < questionnaireItems.length - 1) {
@@ -149,7 +152,6 @@ export const TriageTasksDialogContent = ({
       if (nextItem) {
         setCurrentItemName(nextItem.definition.name);
         setEditingTaskId(null);
-        router.refresh();
       }
     }
   };

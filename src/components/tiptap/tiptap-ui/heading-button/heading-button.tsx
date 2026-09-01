@@ -7,12 +7,12 @@ import { parseShortcutKeys } from "@/components/tiptap/lib/tiptap-utils";
 
 // --- Tiptap UI ---
 import type {
-  Level,
-  UseHeadingConfig,
+    Level,
+    UseHeadingConfig,
 } from "@/components/tiptap/tiptap-ui/heading-button";
 import {
-  HEADING_SHORTCUT_KEYS,
-  useHeading,
+    HEADING_SHORTCUT_KEYS,
+    useHeading,
 } from "@/components/tiptap/tiptap-ui/heading-button";
 
 // --- UI Primitives ---

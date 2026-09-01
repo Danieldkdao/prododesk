@@ -3,15 +3,15 @@ import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { ActivityTable } from "./activity";
 import { AreaTable } from "./area";
 import { ChatTable } from "./chat";
+import { ChatAttachmentTable } from "./chat-attachment";
+import { DailyPlanTable } from "./daily-plan";
 import { DocumentTable } from "./document";
+import { DocumentAssetTable } from "./document-asset";
 import { MilestoneTable } from "./milestone";
 import { ProjectTable } from "./project";
 import { SettingsTable } from "./settings";
 import { TaskTable } from "./task";
-import { ChatAttachmentTable } from "./chat-attachment";
-import { DocumentAssetTable } from "./document-asset";
 import { UploadIntentTable } from "./upload-intent";
-import { DailyPlanTable } from "./daily-plan";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),

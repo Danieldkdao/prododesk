@@ -21,7 +21,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { Suspense } from "react";
 import { LinkButton } from "@/components/link-button";
-import { PlanMyDayCard } from "@/features/plan-my-day/components/plan-my-day-card";
+import {
+  PlanMyDayCard,
+  PlanMyDayCardLoading,
+} from "@/features/plan-my-day/components/plan-my-day-card";
 
 const DashboardPage = () => {
   return (
@@ -42,6 +45,7 @@ const DashboardLoading = () => {
         <Skeleton className="h-10 w-72 max-w-full" />
         <Skeleton className="h-7 w-96 max-w-full" />
       </div>
+      <PlanMyDayCardLoading />
       <StatsSectionSkeleton />
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
         <TodayTasksSectionSkeleton />

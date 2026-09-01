@@ -1,9 +1,9 @@
 import { relations } from "drizzle-orm";
 import { pgTable, primaryKey, uuid } from "drizzle-orm/pg-core";
 import { createSelectSchema } from "drizzle-zod";
+import { activitySubjectEnum } from "../shared";
 import { ActivityTable } from "./activity";
 import { ChatRunTable } from "./chat-run";
-import { activitySubjectEnum } from "../shared";
 
 export const ArtifactTable = pgTable(
   "artifacts",

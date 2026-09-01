@@ -1,27 +1,27 @@
 import { Button } from "@/components/ui/button";
+import { DailyPlanEnergyLevel } from "@/db/shared";
 import { TriageTasksDialog } from "@/features/plan-my-day/components/triage-tasks-dialog";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
 import { TriggerTaskDetailsButton } from "@/features/tasks/components/trigger-task-details-button";
 import {
-  BatteryFullIcon,
-  BatteryLowIcon,
-  BatteryMediumIcon,
-  FolderInputIcon,
-  ListChecksIcon,
-  PlayIcon,
-  PlusIcon,
-  SearchIcon,
-  SparklesIcon,
+    BatteryFullIcon,
+    BatteryLowIcon,
+    BatteryMediumIcon,
+    FolderInputIcon,
+    ListChecksIcon,
+    PlayIcon,
+    PlusIcon,
+    SearchIcon,
+    SparklesIcon,
 } from "lucide-react";
 import { ReactNode } from "react";
-import {
-  PlannerCardOutcome,
-  TriageQuestionnaireChoice,
-  TriageQuestionnaireItem,
-  TriageSuggestion,
-} from "./types";
 import { DailyPlanDialog } from "../components/daily-plan-dialog";
-import { DailyPlanEnergyLevel } from "@/db/shared";
+import {
+    PlannerCardOutcome,
+    TriageQuestionnaireChoice,
+    TriageQuestionnaireItem,
+    TriageSuggestion,
+} from "./types";
 
 export const formatPlannerCardState = ({
   state,

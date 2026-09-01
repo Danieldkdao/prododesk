@@ -16,7 +16,7 @@ export const PlanMyDayCard = () => {
   );
 };
 
-const PlanMyDayCardLoading = () => {
+export const PlanMyDayCardLoading = () => {
   return (
     <Card
       className="border-2 bg-linear-to-br from-primary/5 to-card py-6"

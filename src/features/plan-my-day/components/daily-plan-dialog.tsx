@@ -25,6 +25,7 @@ import { EnrichedDailyPlanDraft } from "../lib/types";
 import { EnergyLevelInput } from "./energy-level-input";
 import { PlanDraftDisplay } from "./plan-draft-display";
 import { TimeAvailableInput } from "./time-available-input";
+import { cn } from "@/lib/utils";
 
 export const DailyPlanDialog = ({ children }: { children: ReactElement }) => {
   const router = useRouter();
@@ -101,10 +102,14 @@ export const DailyPlanDialog = ({ children }: { children: ReactElement }) => {
       <Dialog open={dialogOpen} onOpenChange={handleOpen}>
         <DialogTrigger render={children} />
         <DialogContent
-          className="min-w-0 sm:max-w-3xl @container"
+          className={cn(
+            "min-w-0 sm:max-w-3xl @container",
+            draft &&
+              "flex h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:h-[95dvh]",
+          )}
           showCloseButton={false}
         >
-          <div className="flex flex-col gap-0.5">
+          <div className="flex shrink-0 flex-col gap-0.5">
             <span className="text-2xl font-semibold">Plan my day</span>
             <p className="text-lg text-muted-foreground max-w-150">
               Let us turn your priorities, deadlines, and available time into a
@@ -112,9 +117,9 @@ export const DailyPlanDialog = ({ children }: { children: ReactElement }) => {
             </p>
           </div>
           {draft ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 min-h-0 flex-1">
               <PlanDraftDisplay draft={draft} />
-              <div className="flex items-center gap-4 justify-between">
+              <div className="flex items-center gap-4 justify-between shrink-0">
                 <Button
                   type="button"
                   variant="outline"

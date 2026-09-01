@@ -10,12 +10,12 @@ import {
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { colorEnum, projectStatusEnum } from "../shared";
-import { AreaTable } from "./area";
-import { TaskTable } from "./task";
-import { user } from "./user";
 import { ActivityTable } from "./activity";
+import { AreaTable } from "./area";
 import { DocumentTable } from "./document";
 import { MilestoneTable } from "./milestone";
+import { TaskTable } from "./task";
+import { user } from "./user";
 
 export const ProjectTable = pgTable("projects", {
   id,

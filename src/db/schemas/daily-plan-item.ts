@@ -1,8 +1,8 @@
+import { relations } from "drizzle-orm";
 import { integer, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createdAt, id } from "../helpers";
 import { DailyPlanTable } from "./daily-plan";
 import { TaskTable } from "./task";
-import { relations } from "drizzle-orm";
 
 export const DailyPlanItemTable = pgTable(
   "daily_plan_items",

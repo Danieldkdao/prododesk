@@ -22,8 +22,9 @@ const outfitSans = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Prododesk",
-  description: "Prododesk - Simple AI Productivity Calendar",
+  title: "ProdoDesk",
+  description:
+    "Plan your day, organize projects, and move work forward with ProdoDesk's AI productivity workspace.",
 };
 
 export default function RootLayout({

@@ -21,10 +21,7 @@ import {
   confirmUserTaskOwnership,
   updateTaskDb,
 } from "@/features/tasks/server/tasks";
-import {
-  taskSchema,
-  updateTaskSchema,
-} from "@/features/tasks/actions/schemas";
+import { taskSchema, updateTaskSchema } from "@/features/tasks/actions/schemas";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -507,7 +504,11 @@ export const processTriageAnswerAction = async ({
       }
     }
 
-    const parsedUpdate = updateTaskSchema.safeParse(taskData);
+    const definedTaskData = Object.fromEntries(
+      Object.entries(taskData).filter(([, value]) => value !== undefined),
+    ) as Partial<TaskSelectType>;
+
+    const parsedUpdate = updateTaskSchema.safeParse(definedTaskData);
     if (!parsedUpdate.success) throw new Error(INVALID_DATA_ERROR_MESSAGE);
 
     const completeTask = taskSchema.safeParse({
