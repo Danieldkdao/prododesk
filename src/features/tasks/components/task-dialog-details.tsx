@@ -277,6 +277,11 @@ const TaskDialogDetailsSuspense = ({
     });
   };
 
+  const afterAction = async () => {
+    await invalidateTaskQuery();
+    closeTaskDetails();
+  };
+
   const isCompleted = task.status === "completed";
 
   return (
@@ -357,10 +362,7 @@ const TaskDialogDetailsSuspense = ({
         <DeleteTaskButton
           taskId={task.id}
           variant="destructive"
-          afterAction={async () => {
-            await invalidateTaskQuery();
-            closeTaskDetails();
-          }}
+          afterAction={afterAction}
           size={isMobile ? "sm" : "default"}
         >
           Delete
@@ -369,7 +371,7 @@ const TaskDialogDetailsSuspense = ({
           <TaskDialog
             existingTask={task}
             defaultValues={{ project, milestone }}
-            afterAction={invalidateTaskQuery}
+            afterAction={afterAction}
           >
             <Button variant="outline" size={isMobile ? "sm" : "default"}>
               Edit
@@ -378,7 +380,7 @@ const TaskDialogDetailsSuspense = ({
           <UpdateTaskStatusButton
             taskId={task.id}
             newStatus={isCompleted ? "not_started" : "completed"}
-            afterAction={invalidateTaskQuery}
+            afterAction={afterAction}
             variant={isCompleted ? "outline" : "default"}
             size={isMobile ? "sm" : "default"}
           >

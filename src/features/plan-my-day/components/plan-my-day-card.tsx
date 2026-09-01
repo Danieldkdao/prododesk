@@ -3,8 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AlertCircleIcon, CalendarCheckIcon, InboxIcon } from "lucide-react";
 import { Suspense } from "react";
-import { readPlanMyDayDataAction } from "../actions/actions";
+import { readDayPlanAction, readPlanMyDayDataAction } from "../actions/actions";
 import { formatPlannerCardState } from "../lib/formatters";
+import { ExistingDayPlanCard } from "./existing-day-plan-card";
 
 export const PlanMyDayCard = () => {
   return (
@@ -19,6 +20,10 @@ const PlanMyDayCardLoading = () => {
 };
 
 const PlanMyDayCardSuspense = async () => {
+  const existingDayPlan = await readDayPlanAction();
+  if (existingDayPlan) {
+    return <ExistingDayPlanCard dayPlan={existingDayPlan} />;
+  }
   const response = await readPlanMyDayDataAction();
   if (!response)
     return (
@@ -64,7 +69,7 @@ const PlanMyDayCardSuspense = async () => {
   );
 
   return (
-    <Card className="py-6 border-2 border-primary/60 bg-linear-to-br from-primary/5 to-card">
+    <Card className="py-6 border-2 bg-linear-to-br from-primary/5 to-card">
       <CardContent className="flex items-center gap-x-8 gap-y-4 px-6 justify-between flex-wrap">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-0.5">

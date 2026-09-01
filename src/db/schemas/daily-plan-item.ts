@@ -28,6 +28,8 @@ export const DailyPlanItemTable = pgTable(
   ],
 );
 
+export type DailyPlanItemSelectType = typeof DailyPlanItemTable.$inferSelect;
+
 export const dailyPlanItemRelations = relations(
   DailyPlanItemTable,
   ({ one }) => ({

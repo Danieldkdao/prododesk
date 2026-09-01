@@ -69,6 +69,31 @@ import {
   SuggestionAnswerSchemaType,
 } from "./schemas";
 
+export const readDayPlanAction = async () => {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) return null;
+
+  const currentDate = format(new Date(), "yyyy-MM-dd", {
+    in: tz(user.timeZone),
+  });
+
+  const todayPlan = await db.query.DailyPlanTable.findFirst({
+    where: and(
+      eq(DailyPlanTable.userId, userId),
+      eq(DailyPlanTable.planDate, currentDate),
+    ),
+    with: {
+      items: {
+        with: {
+          task: true,
+        },
+      },
+    },
+  });
+
+  return todayPlan ?? null;
+};
+
 const readCachedPlanMyDayDataAction = async (
   userId: string,
   timeZone: string,
@@ -824,7 +849,6 @@ export const acceptDailyPlanAction = async (
           planDate: draft.planDate,
           availableMinutes: draft.availableMinutes,
           energyLevel: draft.energyLevel,
-          status: "active",
           summary: draft.summary,
         })
         .onConflictDoUpdate({
@@ -832,7 +856,6 @@ export const acceptDailyPlanAction = async (
           set: {
             availableMinutes: draft.availableMinutes,
             energyLevel: draft.energyLevel,
-            status: "active",
             summary: draft.summary,
           },
         })
