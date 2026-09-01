@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "../ui/sidebar";
 import {
   LayoutDashboardIcon,
   CalendarIcon,
@@ -16,6 +21,7 @@ import {
 
 export const SidebarLinks = () => {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
 
   const sidebarLinks = [
     {
@@ -67,13 +73,13 @@ export const SidebarLinks = () => {
           <SidebarMenuButton
             tooltip={link.label}
             render={
-              <Link href={link.href}>
+              <Link href={link.href} onClick={() => setOpenMobile(false)}>
                 <link.icon className="size-5" />
                 <span className="text-lg font-medium">{link.label}</span>
               </Link>
             }
             isActive={pathname === link.href}
-          ></SidebarMenuButton>
+          />
         </SidebarMenuItem>
       ))}
     </SidebarMenu>

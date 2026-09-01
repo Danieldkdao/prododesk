@@ -1,3 +1,5 @@
+"use client";
+
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ReadActivityActionReturnType } from "../actions/actions";
 import {
@@ -8,6 +10,7 @@ import {
 import { ClockIcon, SquareArrowOutUpRightIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
+import { TaskDetailsTrigger } from "@/features/tasks/components/task-details-trigger";
 
 export const ActivityTableRow = ({
   activity,
@@ -31,10 +34,15 @@ export const ActivityTableRow = ({
     includeSeconds: true,
   });
 
+  const canOpenTask =
+    activity.subject === "task" &&
+    activity.subjectId &&
+    activity.action !== "delete";
+
   return (
     <TableRow>
       {showProject && (
-        <TableCell className="text-base">
+        <TableCell className="text-base" onClick={(e) => e.stopPropagation()}>
           {activity.project ? (
             <Link
               href={`/dashboard/projects/${activity.project.id}`}
@@ -50,7 +58,16 @@ export const ActivityTableRow = ({
         </TableCell>
       )}
       <TableCell className="font-medium text-base">
-        {activity.message}
+        {canOpenTask ? (
+          <TaskDetailsTrigger
+            taskId={activity.subjectId!}
+            className="hover:underline"
+          >
+            {activity.message}
+          </TaskDetailsTrigger>
+        ) : (
+          activity.message
+        )}
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">

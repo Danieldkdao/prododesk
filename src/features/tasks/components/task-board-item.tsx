@@ -1,6 +1,5 @@
 "use client";
 
-import { ProjectSelectType, TaskSelectType } from "@/db/schema";
 import { useDraggable } from "@dnd-kit/react";
 import { TaskOptions } from "./task-options";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import {
 import { BoardProperty } from "@/features/tasks/lib/types";
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import { ReadTasksActionReturnType } from "../actions/actions";
+import { TaskDetailsTrigger } from "./task-details-trigger";
 
 export const TaskBoardItem = ({
   task,
@@ -55,7 +55,7 @@ export const TaskBoardItem = ({
       )}
     >
       <div className="flex-1 min-w-0 p-2 flex flex-col gap-1">
-        <div className="min-w-0">
+        <TaskDetailsTrigger taskId={task.id} className="min-w-0">
           <div className="flex items-start gap-2 min-w-0 leading-7">
             {(property === "priority" || !property) && (
               <TooltipWrapper content={statusLabel}>
@@ -110,7 +110,7 @@ export const TaskBoardItem = ({
           >
             {task.description || "No description provided"}
           </p>
-        </div>
+        </TaskDetailsTrigger>
         <div
           className={cn(
             "flex items-start leading-6 gap-1 text-sm text-muted-foreground",

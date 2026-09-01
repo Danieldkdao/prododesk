@@ -1,20 +1,21 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatTaskDates } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { ClockIcon, DotIcon, MoreHorizontalIcon } from "lucide-react";
+import { Fragment, JSX, useState } from "react";
 import { ReadTasksActionReturnType } from "../actions/actions";
+import { TaskDetailsTrigger } from "./task-details-trigger";
 import {
   formatTaskPriority,
   formatTaskStatus,
   getTaskPriorityBadgeClasses,
 } from "../lib/formatters";
-import { formatTaskDates } from "@/lib/formatters";
-import { Badge } from "@/components/ui/badge";
-import { TaskOptions } from "./task-options";
-import { Button } from "@/components/ui/button";
-import { ClockIcon, DotIcon, MoreHorizontalIcon } from "lucide-react";
-import { Fragment, JSX, useState } from "react";
 import { UpdateTaskStatusSelect } from "../update-task-status-select";
-import { format } from "date-fns";
+import { TaskOptions } from "./task-options";
 
 export const DashboardTask = ({
   task,
@@ -24,7 +25,6 @@ export const DashboardTask = ({
   variant?: "today" | "next-up";
 }) => {
   const [taskStatus, setTaskStatus] = useState(task.status);
-  const [statusSelectOpen, setStatusSelectOpen] = useState(false);
 
   const {
     icon: StatusIcon,
@@ -69,8 +69,6 @@ export const DashboardTask = ({
             status={taskStatus}
             outsideStatus={taskStatus}
             setOutsideStatus={setTaskStatus}
-            outsideOpen={statusSelectOpen}
-            setOutsideOpen={setStatusSelectOpen}
           >
             <StatusIcon
               className={cn(
@@ -80,9 +78,9 @@ export const DashboardTask = ({
               )}
             />
           </UpdateTaskStatusSelect>
-          <div
-            className="flex flex-col gap-px min-w-0 flex-1 cursor-pointer"
-            onClick={() => setStatusSelectOpen(true)}
+          <TaskDetailsTrigger
+            taskId={task.id}
+            className="flex flex-col gap-px min-w-0 flex-1"
           >
             <span
               className={cn(
@@ -93,7 +91,7 @@ export const DashboardTask = ({
               {task.name}
             </span>
             <span>{formatTaskDates(task.scheduledAt, task.dueAt, true)}</span>
-          </div>
+          </TaskDetailsTrigger>
         </div>
         <div className="flex items-center gap-2">
           <Badge
@@ -115,7 +113,10 @@ export const DashboardTask = ({
     );
   } else if (variant === "next-up") {
     return (
-      <div className="p-4 border-t border-b last:border-b-0 flex flex-col gap-4">
+      <TaskDetailsTrigger
+        taskId={task.id}
+        className="p-4 border-t border-b last:border-b-0 flex flex-col gap-4"
+      >
         <div className="flex items-center gap-2">
           <ClockIcon className="size-4" />
           <span className="leading-none">
@@ -139,7 +140,7 @@ export const DashboardTask = ({
             ))}
           </div>
         </div>
-      </div>
+      </TaskDetailsTrigger>
     );
   }
 };

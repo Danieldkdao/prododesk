@@ -3,6 +3,7 @@
 import { TaskSelectType } from "@/db/schema";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { TaskCalendarItem } from "../tasks/components/task-calendar-item";
+import { TaskDetailsTrigger } from "../tasks/components/task-details-trigger";
 
 export const CalendarDayTasksResizeList = ({
   tasks,
@@ -78,9 +79,14 @@ export const CalendarDayTasksResizeList = ({
       className="w-full flex flex-col gap-1 overflow-hidden h-45 min-w-0"
     >
       {tasks.map((task) => (
-        <div key={task.id} data-calendar-task className="shrink-0">
+        <TaskDetailsTrigger
+          key={task.id}
+          taskId={task.id}
+          data-calendar-task
+          className="shrink-0"
+        >
           <TaskCalendarItem task={task} />
-        </div>
+        </TaskDetailsTrigger>
       ))}
       <div
         ref={counterRef}

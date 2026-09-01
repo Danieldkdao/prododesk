@@ -29,11 +29,13 @@ export const PopoverCalendar = ({
   id,
   fieldError,
   className,
+  triggerClassName,
   ...props
 }: {
   id?: string;
   fieldError?: boolean;
   withTime?: boolean;
+  triggerClassName?: string;
 } & Omit<
   ComponentProps<typeof Calendar>,
   "mode" | "selected" | "onSelect" | "required"
@@ -157,7 +159,10 @@ export const PopoverCalendar = ({
       <PopoverTrigger
         id={id}
         aria-invalid={!!fieldError}
-        className="flex items-start gap-2 cursor-pointer border-b py-2"
+        className={cn(
+          "flex items-start gap-2 cursor-pointer border-b py-2",
+          triggerClassName,
+        )}
       >
         <CalendarIcon className="size-4 mt-0.4" />
         <span>{formatCalendarValue(props.value, props.withTime)}</span>

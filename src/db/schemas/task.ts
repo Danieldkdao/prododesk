@@ -12,6 +12,7 @@ import { taskPriorityEnum, taskStatusEnum } from "../shared";
 import { MilestoneTable } from "./milestone";
 import { ProjectTable } from "./project";
 import { user } from "./user";
+import { DailyPlanItemTable } from "./daily-plan-item";
 
 export const TaskTable = pgTable(
   "tasks",
@@ -55,7 +56,7 @@ export const TaskTable = pgTable(
 export type TaskInsertType = typeof TaskTable.$inferInsert;
 export type TaskSelectType = typeof TaskTable.$inferSelect;
 
-export const taskRelations = relations(TaskTable, ({ one }) => ({
+export const taskRelations = relations(TaskTable, ({ one, many }) => ({
   user: one(user, {
     fields: [TaskTable.userId],
     references: [user.id],
@@ -68,4 +69,5 @@ export const taskRelations = relations(TaskTable, ({ one }) => ({
     fields: [TaskTable.milestoneId],
     references: [MilestoneTable.id],
   }),
+  planItems: many(DailyPlanItemTable),
 }));

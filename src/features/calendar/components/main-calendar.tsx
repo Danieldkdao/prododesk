@@ -70,7 +70,7 @@ export const MainCalendar = ({
               !fullScreen && "border-2",
             )}
           >
-            <CalendarIcon className="size-4" />
+            <CalendarIcon className="size-4 shrink-0" />
             <span className="text-base font-medium">
               {format(filters.month, "MMMM yyyy")}
             </span>

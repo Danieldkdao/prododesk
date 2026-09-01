@@ -39,6 +39,10 @@ import {
 } from "../server/areas";
 import { getAreaIdTag, getUserAreaTag } from "../server/cache/areas";
 import { areaSchema, AreaSchemaType } from "./schemas";
+import {
+  taskDueDateOrder,
+  taskPriorityRank,
+} from "@/features/tasks/lib/helpers";
 
 type ReadAreasFilters = AreasFilters & { page: number };
 
@@ -47,15 +51,6 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
   cacheTag(getAreaIdTag(areaId));
 
   const projectRank = sql`EXTRACT(EPOCH FROM ${ProjectTable.endAt})`;
-  const priorityRank = sql`
-    CASE ${TaskTable.priority}
-      WHEN 'urgent' THEN 1 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'high' THEN 2 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'medium' THEN 3 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      WHEN 'low' THEN 4 * EXTRACT(EPOCH FROM ${TaskTable.dueAt})
-      ELSE 5
-    END
-  `;
 
   const [
     area,
@@ -93,7 +88,8 @@ const readCachedAreaAction = async (userId: string, areaId: string) => {
       .innerJoin(ProjectTable, eq(TaskTable.projectId, ProjectTable.id))
       .where(and(eq(TaskTable.userId, userId), eq(ProjectTable.areaId, areaId)))
       .orderBy(
-        asc(priorityRank),
+        asc(taskPriorityRank(TaskTable.priority)),
+        taskDueDateOrder(TaskTable.dueAt),
         desc(TaskTable.updatedAt),
         desc(TaskTable.id),
       )

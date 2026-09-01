@@ -14,6 +14,7 @@ import {
 } from "../lib/formatters";
 import { UpdateTaskStatusSelect } from "../update-task-status-select";
 import { TaskDialog } from "./task-dialog";
+import { TaskDetailsTrigger } from "./task-details-trigger";
 import { TaskOptions } from "./task-options";
 
 export const Task = ({
@@ -26,7 +27,6 @@ export const Task = ({
   disabled?: boolean;
 }) => {
   const [taskStatus, setTaskStatus] = useState(task.status);
-  const [statusSelectOpen, setStatusSelectOpen] = useState(false);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const { triggerConfetti } = useConfetti();
 
@@ -59,12 +59,10 @@ export const Task = ({
           childrenClassName={cn(isTaskComplete && "text-emerald-600")}
           outsideStatus={taskStatus}
           setOutsideStatus={setTaskStatus}
-          outsideOpen={statusSelectOpen}
-          setOutsideOpen={setStatusSelectOpen}
         />
-        <div
-          className="min-w-0 flex-1 flex flex-col gap-1.5 cursor-pointer"
-          onClick={() => setStatusSelectOpen((prev) => !prev)}
+        <TaskDetailsTrigger
+          taskId={task.id}
+          className="min-w-0 flex-1 flex flex-col gap-1.5"
         >
           <div className="flex items-center gap-2 min-w-0">
             <Label
@@ -109,7 +107,7 @@ export const Task = ({
               </span>
             </div>
           )}
-        </div>
+        </TaskDetailsTrigger>
         <TaskOptions task={task} />
       </div>
     </>

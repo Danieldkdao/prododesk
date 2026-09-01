@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { TaskOptions } from "./task-options";
 import { Button } from "@/components/ui/button";
 import { EllipsisIcon } from "lucide-react";
+import { TaskDetailsTrigger } from "./task-details-trigger";
 
 export const TaskMilestoneItem = ({
   task,
@@ -37,7 +38,7 @@ export const TaskMilestoneItem = ({
       ref={ref}
       className="bg-background border cursor-pointer flex items-center justify-between w-full min-w-0"
     >
-      <div className="min-w-0 p-2 w-full">
+      <TaskDetailsTrigger taskId={task.id} className="min-w-0 p-2 w-full">
         <div className="flex items-center gap-2 min-w-0">
           <StatusIcon className={cn("size-4 shrink-0", textColor)} />
           <span className="text-base font-medium">{task.name}</span>
@@ -59,7 +60,7 @@ export const TaskMilestoneItem = ({
         >
           {task.description || "No description provided"}
         </p>
-      </div>
+      </TaskDetailsTrigger>
       <TaskOptions task={task}>
         <Button variant="ghost" size="icon-sm">
           <EllipsisIcon />

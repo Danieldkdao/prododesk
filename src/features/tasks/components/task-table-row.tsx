@@ -1,33 +1,16 @@
 "use client";
 
-import { TableCell, TableRow } from "@/components/ui/table";
-import {
-  ReadTasksActionReturnType,
-  updateTasksPriorityAction,
-  updateTasksStatusAction,
-} from "../actions/actions";
-import { format } from "date-fns";
-import { formatTaskPriority, formatTaskStatus } from "../lib/formatters";
-import { cn } from "@/lib/utils";
-import { TaskOptions } from "./task-options";
 import { Button } from "@/components/ui/button";
+import { TableCell, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import { MoreHorizontalIcon, SquareArrowOutUpRightIcon } from "lucide-react";
-import { useState, useTransition } from "react";
-import {
-  taskPriorities,
-  TaskPriority,
-  TaskStatus,
-  taskStatuses,
-} from "@/db/shared";
-import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import Link from "next/link";
+import { ReadTasksActionReturnType } from "../actions/actions";
+import { TaskDetailsTrigger } from "./task-details-trigger";
+import { TaskOptions } from "./task-options";
+import { TaskPriorityUpdater } from "./task-priority-updater";
+import { TaskStatusUpdater } from "./task-status-updater";
 
 export const TaskTableRow = ({
   task,
@@ -36,121 +19,18 @@ export const TaskTableRow = ({
   task: ReadTasksActionReturnType["tasks"][number];
   showProject?: boolean;
 }) => {
-  const [currentStatus, setCurrentStatus] = useState(task.status);
-  const [currentPriority, setCurrentPriority] = useState(task.priority);
-
-  const [isStatusPending, startStatusTransition] = useTransition();
-  const [isPriorityPending, startPriorityTransition] = useTransition();
-
-  const {
-    label: statusLabel,
-    icon: StatusIcon,
-    textColor: statusTextColor,
-  } = formatTaskStatus(currentStatus);
-  const {
-    label: priorityLabel,
-    icon: PriorityIcon,
-    textColor: priorityTextColor,
-  } = formatTaskPriority(currentPriority);
-
-  const handleStatusUpdate = (newStatus: TaskStatus) => {
-    const prevStatus = currentStatus;
-    setCurrentStatus(newStatus);
-
-    startStatusTransition(async () => {
-      const response = await updateTasksStatusAction(task.id, newStatus);
-      if (response.error) {
-        toast.error(response.message);
-        setCurrentStatus(prevStatus);
-      }
-    });
-  };
-
-  const handlePriorityUpdate = (newPriority: TaskPriority) => {
-    const prevPriority = currentPriority;
-    setCurrentPriority(newPriority);
-
-    startPriorityTransition(async () => {
-      const response = await updateTasksPriorityAction(task.id, newPriority);
-      if (response.error) {
-        toast.error(response.message);
-        setCurrentPriority(prevPriority);
-      }
-    });
-  };
-
   return (
     <TableRow key={task.id}>
-      <TableCell className="font-medium text-base">{task.name}</TableCell>
-      <TableCell>
-        <Select
-          value={currentStatus}
-          onValueChange={(status) => handleStatusUpdate(status as TaskStatus)}
-        >
-          <SelectTrigger
-            className="w-fit border-none"
-            disabled={isStatusPending}
-          >
-            <SelectValue placeholder="Select a status">
-              <div className="flex items-center gap-2">
-                <StatusIcon className={cn("size-5", statusTextColor)} />
-                <span className="text-base">{statusLabel}</span>
-              </div>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {taskStatuses.map((status) => {
-              const { label, icon: Icon, textColor } = formatTaskStatus(status);
-
-              return (
-                <SelectItem key={status} value={status}>
-                  <div className="flex items-center gap-2">
-                    <Icon className={cn("size-5", textColor)} />
-                    <span className="text-base">{label}</span>
-                  </div>
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
+      <TableCell className="font-medium text-base">
+        <TaskDetailsTrigger taskId={task.id} className="hover:underline">
+          {task.name}
+        </TaskDetailsTrigger>
       </TableCell>
       <TableCell>
-        <Select
-          value={currentPriority}
-          onValueChange={(priority) =>
-            handlePriorityUpdate(priority as TaskPriority)
-          }
-        >
-          <SelectTrigger
-            className="w-fit border-none"
-            disabled={isPriorityPending}
-          >
-            <SelectValue>
-              <div className="flex items-center gap-2">
-                <PriorityIcon className={cn("size-5", priorityTextColor)} />
-                <span className="text-base">{priorityLabel}</span>
-              </div>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {taskPriorities.map((priority) => {
-              const {
-                label,
-                icon: Icon,
-                textColor,
-              } = formatTaskPriority(priority);
-
-              return (
-                <SelectItem key={priority} value={priority}>
-                  <div className="flex items-center gap-2">
-                    <Icon className={cn("size-5", textColor)} />
-                    <span className="text-base">{label}</span>
-                  </div>
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
+        <TaskStatusUpdater taskId={task.id} initialStatus={task.status} />
+      </TableCell>
+      <TableCell>
+        <TaskPriorityUpdater taskId={task.id} initialPriority={task.priority} />
       </TableCell>
       <TableCell>
         <span className={cn("text-base", !task.description && "italic")}>
@@ -182,11 +62,13 @@ export const TaskTableRow = ({
         </TableCell>
       )}
       <TableCell>
-        <TaskOptions task={task}>
-          <Button variant="ghost" size="icon-sm">
-            <MoreHorizontalIcon />
-          </Button>
-        </TaskOptions>
+        <div>
+          <TaskOptions task={task}>
+            <Button variant="ghost" size="icon-sm">
+              <MoreHorizontalIcon />
+            </Button>
+          </TaskOptions>
+        </div>
       </TableCell>
     </TableRow>
   );

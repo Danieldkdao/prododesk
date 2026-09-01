@@ -198,7 +198,15 @@ export const updateDocumentAction = async (
   }
 
   try {
-    const updatedDocument = await updateDocumentDb(documentId, data, options);
+    const updatedDocument = await updateDocumentDb(
+      documentId,
+      {
+        name: data?.name ?? undefined,
+        content: data?.content ?? undefined,
+        projectId: data.projectId,
+      },
+      options,
+    );
     if (!updatedDocument) throw new Error("Failed to update document.");
 
     return {

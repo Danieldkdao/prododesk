@@ -13,15 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import { PopoverCalendar } from "@/components/ui/popover-calendar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { taskPriorities, TaskSelectType, taskStatuses } from "@/db/schema";
+import { TaskSelectType } from "@/db/schema";
+import { MilestoneCommandSelect } from "@/features/milestones/components/milestone-command-select";
 import { ProjectCommandSelect } from "@/features/projects/components/project-command-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addDays, subDays } from "date-fns";
@@ -31,9 +25,9 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { createTaskAction, updateTaskAction } from "../actions/actions";
 import { taskSchema, TaskSchemaType } from "../actions/schemas";
-import { formatTaskPriority, formatTaskStatus } from "../lib/formatters";
 import { TaskFormDefaultValues } from "../lib/types";
-import { MilestoneCommandSelect } from "@/features/milestones/components/milestone-command-select";
+import { TaskPrioritySelect } from "./task-priority-select";
+import { TaskStatusSelect } from "./task-status-select";
 
 export const TaskForm = ({
   defaultValues,
@@ -42,7 +36,7 @@ export const TaskForm = ({
 }: {
   defaultValues?: TaskFormDefaultValues;
   existingTask?: TaskSelectType;
-  afterAction?: () => void;
+  afterAction?: () => void | Promise<void>;
 }) => {
   const router = useRouter();
   const form = useForm<TaskSchemaType>({
@@ -74,8 +68,8 @@ export const TaskForm = ({
     } else {
       toast.success(response.message);
       form.reset();
+      await afterAction?.();
       router.refresh();
-      afterAction?.();
     }
   };
 
@@ -89,9 +83,7 @@ export const TaskForm = ({
         name="name"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel htmlFor="task-name-input">
-              Name
-            </FieldLabel>
+            <FieldLabel htmlFor="task-name-input">Name</FieldLabel>
             <FieldContent>
               <div className="w-full flex items-center gap-2">
                 <Controller
@@ -134,49 +126,23 @@ export const TaskForm = ({
       <Controller
         control={form.control}
         name="priority"
-        render={({ field: { value, onChange, ...props }, fieldState }) => {
-          const { label, icon: Icon } = formatTaskPriority(value);
-
-          return (
-            <Field data-invalid={!!fieldState.error}>
-              <FieldLabel htmlFor="task-priority-input">
-                Priority
-              </FieldLabel>
-              <FieldContent>
-                <Select value={value} onValueChange={onChange} {...props}>
-                  <SelectTrigger
-                    id="task-priority-input"
-                    aria-invalid={!!fieldState.error}
-                    className="w-full"
-                  >
-                    <SelectValue placeholder="Select task priority">
-                      <div className="flex items-center gap-2">
-                        <Icon />
-                        <span>{label}</span>
-                      </div>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {taskPriorities.map((priority) => {
-                      const { label, icon: Icon } =
-                        formatTaskPriority(priority);
-
-                      return (
-                        <SelectItem key={priority} value={priority}>
-                          <div className="flex items-center gap-2">
-                            <Icon />
-                            <span>{label}</span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </FieldContent>
-              {fieldState.error && <FieldError errors={[fieldState.error]} />}
-            </Field>
-          );
-        }}
+        render={({ field: { value, onChange, ...props }, fieldState }) => (
+          <Field data-invalid={!!fieldState.error}>
+            <FieldLabel htmlFor="task-priority-input">Priority</FieldLabel>
+            <FieldContent>
+              <TaskPrioritySelect
+                value={value}
+                onValueChange={onChange}
+                {...props}
+                triggerProps={{
+                  id: "task-priority-input",
+                  "aria-invalid": !!fieldState.error,
+                }}
+              />
+            </FieldContent>
+            {fieldState.error && <FieldError errors={[fieldState.error]} />}
+          </Field>
+        )}
       />
       <Controller
         control={form.control}
@@ -202,45 +168,22 @@ export const TaskForm = ({
       <Controller
         control={form.control}
         name="status"
-        render={({ field: { value, onChange, ...props }, fieldState }) => {
-          const { label, icon: Icon } = formatTaskStatus(value);
-
-          return (
-            <Field data-invalid={!!fieldState.error}>
-              <FieldLabel htmlFor="task-status-input">Status</FieldLabel>
-              <FieldContent>
-                <Select value={value} onValueChange={onChange} {...props}>
-                  <SelectTrigger
-                    id="task-status-input"
-                    aria-invalid={!!fieldState.error}
-                    className="w-full"
-                  >
-                    <SelectValue placeholder="Select a status">
-                      <div className="flex items-center gap-2">
-                        <Icon />
-                        {label}
-                      </div>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {taskStatuses.map((status) => {
-                      const { label, icon: Icon } = formatTaskStatus(status);
-
-                      return (
-                        <SelectItem key={status} value={status}>
-                          <div className="flex items-center gap-2">
-                            <Icon />
-                            <span>{label}</span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </FieldContent>
-            </Field>
-          );
-        }}
+        render={({ field: { value, onChange, ...props }, fieldState }) => (
+          <Field data-invalid={!!fieldState.error}>
+            <FieldLabel htmlFor="task-status-input">Status</FieldLabel>
+            <FieldContent>
+              <TaskStatusSelect
+                value={value}
+                onValueChange={onChange}
+                {...props}
+                triggerProps={{
+                  id: "task-status-input",
+                  "aria-invalid": !!fieldState.error,
+                }}
+              />
+            </FieldContent>
+          </Field>
+        )}
       />
       <Controller
         control={form.control}

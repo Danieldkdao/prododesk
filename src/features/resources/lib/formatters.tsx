@@ -1,23 +1,20 @@
 import { CommandItem } from "@/components/ui/command";
+import { formatMilestoneStatus } from "@/features/milestones/lib/formatters";
 import { formatProjectStatus } from "@/features/projects/lib/formatters";
+import { formatTaskStatus } from "@/features/tasks/lib/formatters";
 import { formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { format, parse } from "date-fns";
 import {
+  ClockIcon,
   FileTextIcon,
   FolderKanbanIcon,
   ListCheckIcon,
   MessageSquareMoreIcon,
   MilestoneIcon,
   ShapesIcon,
-  ClockIcon,
 } from "lucide-react";
 import { ResourceData, ResourceType } from "./types";
-import {
-  formatTaskPriority,
-  formatTaskStatus,
-} from "@/features/tasks/lib/formatters";
-import { formatMilestoneStatus } from "@/features/milestones/lib/formatters";
-import { parse, format } from "date-fns";
 
 export const formatResource = (resource: ResourceType) => {
   switch (resource) {
@@ -134,8 +131,6 @@ export const getResourceListElement = ({
     case "tasks": {
       const { icon: TaskStatusIcon, textColor: taskStatusTextColor } =
         formatTaskStatus(item.status);
-      const { icon: TaskPriorityIcon, textColor: taskPriorityTextColor } =
-        formatTaskPriority(item.priority);
 
       return (
         <CommandItem
@@ -151,17 +146,17 @@ export const getResourceListElement = ({
               <FolderKanbanIcon className="size-6" />
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1 min-w-0">
-              <TaskPriorityIcon
-                className={cn("size-5", taskPriorityTextColor)}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-base">{item.name}</p>
-              </div>
-            </div>
-            <p className="truncate text-sm text-muted-foreground">
-              {item.description}
+          <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+            <span className="truncate font-semibold text-base block leading-snug">
+              {item.name}
+            </span>
+            <p
+              className={cn(
+                "truncate text-sm text-muted-foreground",
+                !item.description && "italic",
+              )}
+            >
+              {item.description || "No description provided."}
             </p>
           </div>
           <TaskStatusIcon className={cn("size-5", taskStatusTextColor)} />

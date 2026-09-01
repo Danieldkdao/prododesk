@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { Suspense } from "react";
 import { LinkButton } from "@/components/link-button";
+import { PlanMyDayCard } from "@/features/plan-my-day/components/plan-my-day-card";
 
 const DashboardPage = () => {
   return (
@@ -76,6 +77,7 @@ const DashboardSuspense = async () => {
           What would you like to work on today?
         </p>
       </div>
+      <PlanMyDayCard />
       <StatsSection />
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
         <TodayTasksSection />
