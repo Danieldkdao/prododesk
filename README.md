@@ -53,6 +53,7 @@ If you would rather run this locally, I have instructions below.
 - React Hook Form handles easy form input field management and Zod handles form validation and input validation
 - Tiptap for rich-text document editing experience
 - Vercel AI SDK and OpenRouter for structured AI generation, streamed responses, tool calling, and AI features
+- Firecrawl and Exa AI for web search and page scraping functionality
 - TanStack Query for client-side data fetching
 - date-fns for date/timezone handling
 - dnd-kit for drag and drop interactions
