@@ -1,12 +1,8 @@
 "use client";
 
+import { VerifyAccount } from "@/components/auth/verify-account";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { FaGoogle, FaGithub } from "react-icons/fa6";
-import z from "zod";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Field,
   FieldContent,
@@ -14,16 +10,20 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingSwap } from "@/components/ui/loading-swap";
-import { useEffect, useState } from "react";
-import { authClient } from "@/lib/auth/auth-client";
-import { toast } from "sonner";
-import { GENERAL_ERROR_MESSAGE } from "@/lib/constants";
-import Link from "next/link";
-import { useAuthSession } from "@/hooks/use-auth-session";
-import { VerifyAccount } from "@/components/auth/verify-account";
+import { PasswordInput } from "@/components/ui/password-input";
+import { Separator } from "@/components/ui/separator";
 import { SocialProvider } from "@/features/settings/lib/constants";
+import { useAuthSession } from "@/hooks/use-auth-session";
+import { authClient } from "@/lib/auth/auth-client";
+import { GENERAL_ERROR_MESSAGE } from "@/lib/constants";
+import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { FaGithub, FaGoogle } from "react-icons/fa6";
+import { toast } from "sonner";
+import z from "zod";
 
 const formSchema = z.object({
   email: z.email({ error: "Please enter a valid email." }),
@@ -90,12 +90,6 @@ const SignInPage = () => {
       provider,
       callbackURL: "/dashboard",
       fetchOptions: {
-        onSuccess: async () => {
-          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          await authClient.updateUser({
-            timeZone,
-          });
-        },
         onError: (error) => {
           setIsSocialSignIn(false);
           toast.error(error.error.message || GENERAL_ERROR_MESSAGE);
@@ -158,9 +152,7 @@ const SignInPage = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={!!fieldState.error}>
-                <FieldLabel htmlFor="sign-in-email-input">
-                  Email
-                </FieldLabel>
+                <FieldLabel htmlFor="sign-in-email-input">Email</FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}

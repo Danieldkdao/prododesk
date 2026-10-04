@@ -28,10 +28,7 @@ export const MainCalendar = ({
 
   const { weekDays } = calculateCalendarValues(filters.month);
 
-  if (
-    format(monthDaysTasks.month, "yyyy-MM-dd") !==
-    format(filters.month, "yyyy-MM-dd")
-  ) {
+  if (monthDaysTasks.monthKey !== format(filters.month, "yyyy-MM-dd")) {
     return (
       <MainCalendarSkeleton fixedHeight={!fullScreen} fullScreen={fullScreen} />
     );

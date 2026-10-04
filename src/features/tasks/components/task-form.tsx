@@ -40,7 +40,7 @@ export const TaskForm = ({
 }) => {
   const router = useRouter();
   const form = useForm<TaskSchemaType>({
-    resolver: zodResolver(taskSchema),
+    resolver: zodResolver(taskSchema(existingTask)),
     defaultValues: existingTask ?? {
       name: "",
       priority: defaultValues?.priority ?? "low",
@@ -197,7 +197,10 @@ export const TaskForm = ({
                 fieldError={!!fieldState.error}
                 initialProject={defaultValues?.project}
                 value={field.value}
-                onValueChange={field.onChange}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  form.setValue("milestoneId", null);
+                }}
               />
             </FieldContent>
             {fieldState.error && <FieldError errors={[fieldState.error]} />}
@@ -216,6 +219,7 @@ export const TaskForm = ({
               <FieldContent>
                 <MilestoneCommandSelect
                   id="task-milestone-input"
+                  key={projectIdValue}
                   fieldError={!!fieldState.error}
                   initialValue={defaultValues?.milestone}
                   value={field.value}
@@ -250,7 +254,7 @@ export const TaskForm = ({
                   withTime
                   disabled={{
                     before: today,
-                    after: dueAtValue ? subDays(dueAtValue, 1) : undefined,
+                    after: dueAtValue ?? undefined,
                   }}
                   {...props}
                 />
@@ -273,9 +277,7 @@ export const TaskForm = ({
                   value={value}
                   onValueChange={onChange}
                   disabled={{
-                    before: scheduledAtValue
-                      ? addDays(scheduledAtValue, 1)
-                      : today,
+                    before: scheduledAtValue ?? today,
                   }}
                   withTime
                   {...props}

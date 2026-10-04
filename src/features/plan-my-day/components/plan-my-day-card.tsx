@@ -7,6 +7,8 @@ import { readDayPlanAction, readPlanMyDayDataAction } from "../actions/actions";
 import { formatPlannerCardState } from "../lib/formatters";
 import { ExistingDayPlanCard } from "./existing-day-plan-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { DailyPlanDialog } from "./daily-plan-dialog";
 
 export const PlanMyDayCard = () => {
   return (
@@ -117,7 +119,17 @@ const PlanMyDayCardSuspense = async () => {
             ))}
           </div>
         </div>
-        <ActionButton />
+        <div className="flex items-center gap-2 flex-wrap">
+          <ActionButton />
+          {response.eligibleTaskCount > 0 &&
+            response.state !== "plan_ready" && (
+              <DailyPlanDialog>
+                <Button size="lg" variant="outline">
+                  Plan my day
+                </Button>
+              </DailyPlanDialog>
+            )}
+        </div>
       </CardContent>
     </Card>
   );

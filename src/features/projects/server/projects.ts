@@ -2,6 +2,7 @@ import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import {
   AreaSelectType,
   AreaTable,
+  MilestoneTable,
   ProjectInsertType,
   ProjectSelectType,
   ProjectTable,
@@ -68,6 +69,26 @@ export const confirmUserProjectOwnership = async (
     );
 
   return existingProject ?? null;
+};
+
+export const confirmProjectMilestoneOwnership = async (
+  projectId: string,
+  milestoneId: string,
+  options: { tx?: DbTransaction } = {},
+) => {
+  const { tx } = options;
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+
+  const existingMilestone = await (tx ?? db).query.MilestoneTable.findFirst({
+    where: and(
+      eq(MilestoneTable.id, milestoneId),
+      eq(MilestoneTable.userId, userId),
+      eq(MilestoneTable.projectId, projectId),
+    ),
+  });
+
+  return existingMilestone ?? null;
 };
 
 export const parseProjectData = (
@@ -393,7 +414,7 @@ export const insertProjectDb = async (
       ? await insertProject(tx)
       : await db.transaction(insertProject);
 
-    if (!tx) {
+    if (!tx || source === "ai") {
       await revalidateProjectMutationCache({
         source,
         userId: insertedProject.userId,
@@ -462,7 +483,7 @@ export const updateProjectDb = async (
       ? await updateProject(tx)
       : await db.transaction(updateProject);
 
-    if (!tx) {
+    if (!tx || source === "ai") {
       await revalidateProjectMutationCache({
         source,
         userId: updatedProject.userId,
@@ -525,7 +546,7 @@ export const deleteProjectDb = async (
       ? await deleteProject(tx)
       : await db.transaction(deleteProject);
 
-    if (!tx) {
+    if (!tx || source === "ai") {
       await revalidateProjectMutationCache({
         source,
         userId: deletedProject.userId,

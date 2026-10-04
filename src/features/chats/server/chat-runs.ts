@@ -8,9 +8,15 @@ import {
   ChatTable,
 } from "@/db/schema";
 import { SQLMap } from "@/lib/types";
-import { and, eq, getTableColumns, inArray } from "drizzle-orm";
+import { and, eq, getTableColumns, inArray, isNull, sql } from "drizzle-orm";
 import { confirmUserChatOwnership } from "./chats";
 import { revalidateChatCache } from "./cache/chats";
+import {
+  ACTIVE_CHAT_RUN_STATUSES,
+  CHAT_RUN_LEASE_MS,
+  canClaimChatRun,
+  nextAttemptStartedAt,
+} from "../lib/run-attempt";
 import { getCurrentUser } from "@/lib/auth/helpers";
 
 export const findChatRunDb = async (
@@ -38,6 +44,68 @@ export const findChatRunDb = async (
       .innerJoin(ChatTable, eq(ChatTable.id, ChatRunTable.chatId))
       .where(and(whereQuery, eq(ChatTable.userId, userId)))) ?? null;
   return existingChatRun;
+};
+
+export const claimChatRunDb = async (
+  run: ChatRunSelectType & { chat: { userId: string } },
+  options: { isNew: boolean; isRegenerating: boolean },
+) => {
+  const now = new Date();
+  if (!canClaimChatRun(run, { ...options, now })) return null;
+  if (!(await confirmUserChatOwnership(run.chatId))) return null;
+  const startedAt = nextAttemptStartedAt(run.startedAt, now);
+  const previousAttempt = run.startedAt
+    ? sql`date_trunc('milliseconds', ${ChatRunTable.startedAt}) = ${run.startedAt.toISOString()}::timestamptz`
+    : isNull(ChatRunTable.startedAt);
+  const expiredLease =
+    !options.isNew && ACTIVE_CHAT_RUN_STATUSES.includes(run.status)
+      ? sql`(${ChatRunTable.startedAt} IS NULL OR ${ChatRunTable.startedAt} <= NOW() - (${CHAT_RUN_LEASE_MS} * interval '1 millisecond'))`
+      : undefined;
+  const [claimedChatRun] = await db
+    .update(ChatRunTable)
+    .set({
+      status: "streaming",
+      startedAt,
+      finishedAt: null,
+      error: null,
+    })
+    .where(
+      and(
+        eq(ChatRunTable.id, run.id),
+        eq(ChatRunTable.status, run.status),
+        previousAttempt,
+        expiredLease,
+      ),
+    )
+    .returning();
+  if (claimedChatRun) revalidateChatCache(run.chat.userId, run.chatId);
+  return claimedChatRun ?? null;
+};
+
+export const withChatRunAttemptDb = async <T>(
+  runId: string,
+  startedAt: Date,
+  execute: (tx: DbTransaction) => Promise<T>,
+): Promise<{ value: T } | null> => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return null;
+  return db.transaction(async (tx) => {
+    const [ownedChatRun] = await tx
+      .select({ id: ChatRunTable.id })
+      .from(ChatRunTable)
+      .innerJoin(ChatTable, eq(ChatTable.id, ChatRunTable.chatId))
+      .where(
+        and(
+          eq(ChatRunTable.id, runId),
+          eq(ChatRunTable.startedAt, startedAt),
+          eq(ChatTable.userId, userId),
+          inArray(ChatRunTable.status, ACTIVE_CHAT_RUN_STATUSES),
+        ),
+      )
+      .for("no key update", { of: ChatRunTable });
+    if (!ownedChatRun) return null;
+    return { value: await execute(tx) };
+  });
 };
 
 export const insertChatRunDb = async (
@@ -103,9 +171,9 @@ export const updateChatRunDb = async (
       >
     >
   >,
-  options?: DbMutationOptions,
+  options?: DbMutationOptions & { attemptStartedAt?: Date },
 ) => {
-  const { tx } = options ?? {};
+  const { tx, attemptStartedAt } = options ?? {};
   const existingChatRun = await findChatRunDb({ id: runId }, tx);
   if (!existingChatRun) return null;
 
@@ -119,7 +187,17 @@ export const updateChatRunDb = async (
   const [updatedChatRun] = await (tx ?? db)
     .update(ChatRunTable)
     .set(chatRun)
-    .where(eq(ChatRunTable.id, existingChatRun.id))
+    .where(
+      and(
+        eq(ChatRunTable.id, existingChatRun.id),
+        attemptStartedAt
+          ? eq(ChatRunTable.startedAt, attemptStartedAt)
+          : undefined,
+        attemptStartedAt
+          ? inArray(ChatRunTable.status, ACTIVE_CHAT_RUN_STATUSES)
+          : undefined,
+      ),
+    )
     .returning();
 
   revalidateChatCache(existingChat.userId, existingChat.id);

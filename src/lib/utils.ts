@@ -2,13 +2,13 @@ import { envClient } from "@/data/env/client";
 import { tz } from "@date-fns/tz";
 import { clsx, type ClassValue } from "clsx";
 import {
-    format,
-    endOfDay as getEndOfDay,
-    endOfMonth as getEndOfMonth,
-    endOfWeek as getEndOfWeek,
-    startOfDay as getStartOfDay,
-    startOfMonth as getStartOfMonth,
-    startOfWeek as getStartOfWeek,
+  format,
+  endOfDay as getEndOfDay,
+  endOfMonth as getEndOfMonth,
+  endOfWeek as getEndOfWeek,
+  startOfDay as getStartOfDay,
+  startOfMonth as getStartOfMonth,
+  startOfWeek as getStartOfWeek,
 } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import z from "zod";
@@ -89,6 +89,21 @@ export const getLocalMonthBounds = (day: Date, timeZone: string) => {
     in: tz(timeZone),
   });
   const endUtc = getEndOfMonth(day, {
+    in: tz(timeZone),
+  });
+
+  return {
+    startUtc,
+    endUtc,
+  };
+};
+
+export const getLocalDatesBounds = (dates: [Date, Date], timeZone: string) => {
+  const startUtc = getStartOfDay(dates[0], {
+    in: tz(timeZone),
+  });
+
+  const endUtc = getEndOfDay(dates[1], {
     in: tz(timeZone),
   });
 

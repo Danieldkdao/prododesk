@@ -24,7 +24,7 @@ export const user = pgTable("user", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-  timeZone: text("time_zone").notNull(),
+  timeZone: text("time_zone").notNull().default("UTC"),
   profileImageKey: text("profile_image_key"),
 });
 

@@ -4,6 +4,7 @@ import {
   AreaTable,
   ChatAttachmentTable,
   ChatTable,
+  DailyPlanTable,
   DocumentAssetTable,
   DocumentTable,
   MilestoneTable,
@@ -98,6 +99,10 @@ export const resetAccountDataDb = async () => {
         .where(eq(AreaTable.userId, userId))
         .returning();
 
+      const deletedPlans = await tx
+        .delete(DailyPlanTable)
+        .where(eq(DailyPlanTable.userId, userId));
+
       const updatedSettings = await tx
         .insert(SettingsTable)
         .values({
@@ -120,6 +125,7 @@ export const resetAccountDataDb = async () => {
         deletedMilestones,
         deletedProjects,
         deletedAreas,
+        deletedPlans,
         updatedSettings,
         storageKeys: [...attachmentKeys, ...documentAssetKeys],
       };

@@ -88,15 +88,36 @@ export const ChatContextProvider = ({ children }: { children: ReactNode }) => {
       chatRef.current?.setMessages(messages);
     },
     onError: (error) => {
-      chatRef.current?.setMessages([
-        ...(chatRef.current.messages ?? []),
-        {
-          id: generateId(),
-          parts: [],
-          role: "assistant",
-          metadata: { runStatus: "failed", runError: error.message },
-        },
-      ]);
+      const lastMessage = chatRef.current?.messages?.at(-1);
+      if (!lastMessage) return;
+
+      if (lastMessage.role === "assistant") {
+        chatRef.current?.setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === lastMessage.id) {
+              return {
+                ...msg,
+                metadata: {
+                  ...msg.metadata,
+                  runStatus: "failed",
+                  runError: error.message,
+                },
+              };
+            }
+            return msg;
+          }),
+        );
+      } else {
+        chatRef.current?.setMessages([
+          ...(chatRef.current.messages ?? []),
+          {
+            id: generateId(),
+            parts: [],
+            role: "assistant",
+            metadata: { runStatus: "failed", runError: error.message },
+          },
+        ]);
+      }
     },
     onFinish: ({ message, isAbort }) => {
       if (!isAbort) return;

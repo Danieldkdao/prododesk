@@ -18,17 +18,21 @@ import {
   CalendarFilters,
   CalendarViewOption,
 } from "@/features/calendar/lib/calendar-params";
+import { calendarDayBounds } from "@/features/calendar/lib/calendar-dates";
+import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 import { revalidateMilestoneCache } from "@/features/milestones/server/cache/milestones";
-import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
-import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
+import {
+  confirmProjectMilestoneOwnership,
+  confirmUserProjectOwnership,
+} from "@/features/projects/server/projects";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
 import { runMutationCacheInvalidation } from "@/lib/data-cache";
 import {
   areValidIds,
+  getLocalDatesBounds,
   getLocalDayBounds,
-  getLocalMonthBounds,
   isValidDate,
 } from "@/lib/utils";
 import {
@@ -62,8 +66,8 @@ type ReadTasksDbFilters = Partial<TasksFilters> & {
   page?: number;
   unassignedOnly?: boolean;
   allTasks?: boolean;
-  selectedDay?: CalendarFilters["day"];
-  selectedMonth?: CalendarFilters["month"] | null;
+  selectedDay?: CalendarFilters["day"] | string;
+  selectedMonth?: CalendarFilters["month"] | string | null;
   view?: CalendarFilters["view"] | null;
   projectIds?: string[];
   areaIds?: string[];
@@ -265,7 +269,7 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
   let dayFilter;
 
   if (selectedDay && timeZone) {
-    const { startUtc, endUtc } = getLocalDayBounds(selectedDay, timeZone);
+    const { startUtc, endUtc } = calendarDayBounds(selectedDay, timeZone);
 
     dayFilter = view
       ? viewMap[view](startUtc, endUtc)
@@ -274,11 +278,22 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
 
   let monthFilter;
   if (selectedMonth && timeZone) {
-    const { startUtc, endUtc } = getLocalMonthBounds(selectedMonth, timeZone);
+    const { monthDays } = calculateCalendarValues(selectedMonth, timeZone);
+    const firstDay = monthDays.at(0);
+    const lastDay = monthDays.at(-1);
 
-    monthFilter = view
-      ? viewMap[view](startUtc, endUtc)
-      : defaultScheduledDueFilter(startUtc, endUtc);
+    if (!firstDay || !lastDay) {
+      monthFilter = undefined;
+    } else {
+      const { startUtc, endUtc } = getLocalDatesBounds(
+        [firstDay, lastDay],
+        timeZone,
+      );
+
+      monthFilter = view
+        ? viewMap[view](startUtc, endUtc)
+        : defaultScheduledDueFilter(startUtc, endUtc);
+    }
   }
 
   const milestoneFilter = unassignedOnly
@@ -348,6 +363,18 @@ export const insertTaskDb = async (
       : null;
     if (taskData.projectId && !existingProject)
       throw new Error("No existing project found.");
+
+    if (taskData.milestoneId && !taskData.projectId) {
+      throw new Error("Cannot assign a milestone without a project.");
+    }
+    if (taskData.milestoneId && taskData.projectId) {
+      const existingMilestone = await confirmProjectMilestoneOwnership(
+        taskData.projectId,
+        taskData.milestoneId,
+        { tx },
+      );
+      if (!existingMilestone) throw new Error("No existing milestone found.");
+    }
 
     const insertTask = async (pgtx: DbTransaction) => {
       const [insertedTask] = await pgtx
@@ -422,16 +449,23 @@ export const updateTaskDb = async (
 
     if (nextProjectId && !newProject) throw new Error("Project not found.");
 
-    const newMilestone = taskData.milestoneId
-      ? await confirmUserMilestoneOwnership(
-          taskData.milestoneId,
-          undefined,
-          undefined,
-          tx,
-        )
-      : null;
-    if (taskData.milestoneId && !newMilestone)
-      throw new Error("Milestone not found.");
+    const projectIdToCheck = nextProjectId;
+    const milestoneIdToCheck =
+      taskData.milestoneId === undefined
+        ? existingTask.milestoneId
+        : taskData.milestoneId;
+
+    if (!projectIdToCheck && milestoneIdToCheck)
+      throw new Error("Cannot assign a milestone without a project.");
+
+    if (projectIdToCheck && milestoneIdToCheck) {
+      const existingMilestone = await confirmProjectMilestoneOwnership(
+        projectIdToCheck,
+        milestoneIdToCheck,
+        { tx },
+      );
+      if (!existingMilestone) throw new Error("No existing milestone found.");
+    }
 
     const updateTask = async (pgtx: DbTransaction) => {
       const [updatedTask] = await pgtx

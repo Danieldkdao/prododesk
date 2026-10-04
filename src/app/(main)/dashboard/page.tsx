@@ -25,10 +25,12 @@ import {
   PlanMyDayCard,
   PlanMyDayCardLoading,
 } from "@/features/plan-my-day/components/plan-my-day-card";
+import { UpdateTimezone } from "@/components/update-timezone";
 
 const DashboardPage = () => {
   return (
     <div className="w-full h-full overflow-y-auto">
+      <UpdateTimezone />
       <div className="flex flex-col gap-4 p-10 max-w-384 mx-auto">
         <Suspense fallback={<DashboardLoading />}>
           <DashboardSuspense />

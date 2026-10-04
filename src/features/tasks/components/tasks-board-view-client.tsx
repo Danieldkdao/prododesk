@@ -9,9 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { taskPriorities, taskStatuses } from "@/db/shared";
-import { BoardProperty } from "@/features/tasks/lib/types";
 import {
-  ReadTasksActionReturnType,
   TaskBoardData,
   TaskBoardFilters,
   updateTasksPriorityAction,
@@ -22,9 +20,10 @@ import {
   formatTaskPriority,
   formatTaskStatus,
 } from "@/features/tasks/lib/formatters";
+import { BoardProperty } from "@/features/tasks/lib/types";
 import { CircleIcon, FlagIcon } from "lucide-react";
-import { useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTransition } from "react";
 
 export const TasksBoardViewClient = ({
   response,

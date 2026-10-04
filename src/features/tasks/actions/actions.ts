@@ -12,7 +12,10 @@ import {
   taskStatuses,
   TaskTable,
 } from "@/db/schema";
+import { calendarDateKey } from "@/features/calendar/lib/calendar-dates";
+import { CalendarFilters } from "@/features/calendar/lib/calendar-params";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
+import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -23,10 +26,17 @@ import {
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
 import { areValidIds, getLocalDayBounds } from "@/lib/utils";
+import { tz } from "@date-fns/tz";
 import { format, isValid } from "date-fns";
 import { and, count, eq, gte, lte, ne } from "drizzle-orm";
 import { cacheTag } from "next/cache";
+import { TASK_BOARD_PAGE_SIZE } from "../lib/constants";
 import { TasksFilters } from "../lib/tasks-params";
+import {
+  BoardProperty,
+  PaginationCursor,
+  TaskBoardColumnValue,
+} from "../lib/types";
 import { getTaskIdTag, getUserTaskTag } from "../server/cache/tasks";
 import {
   confirmUserTaskOwnership,
@@ -41,15 +51,6 @@ import {
   updateTaskSchema,
   UpdateTaskSchemaType,
 } from "./schemas";
-import { confirmUserMilestoneOwnership } from "@/features/milestones/server/milestones";
-import { CalendarFilters } from "@/features/calendar/lib/calendar-params";
-import { tz } from "@date-fns/tz";
-import {
-  BoardProperty,
-  TaskBoardColumnValue,
-  PaginationCursor,
-} from "../lib/types";
-import { TASK_BOARD_PAGE_SIZE } from "../lib/constants";
 
 type ReadCalendarTasksFilters = Pick<CalendarFilters, "view"> & {
   month: CalendarFilters["month"];
@@ -63,7 +64,7 @@ type ReadTasksFilters = TasksFilters & {
   page: number;
   unassignedOnly?: boolean;
   allTasks?: boolean;
-  selectedDay?: CalendarFilters["day"];
+  selectedDay?: CalendarFilters["day"] | string;
   projectIds?: string[];
   areaIds?: string[];
 };
@@ -112,7 +113,7 @@ export const createTaskAction = async (
     };
   }
 
-  const { data, success, error } = taskSchema.safeParse(unsafeData);
+  const { data, success, error } = taskSchema().safeParse(unsafeData);
   if (!success) {
     return {
       error: true,
@@ -166,7 +167,10 @@ export const updateTaskAction = async (
     };
   }
 
-  const existingResult = taskSchema.safeParse({
+  const existingResult = taskSchema({
+    scheduledAt: existingTask.scheduledAt ?? null,
+    dueAt: existingTask.dueAt ?? null,
+  }).safeParse({
     name: existingTask.name,
     description: existingTask.description,
     emoji: existingTask.emoji,
@@ -307,11 +311,12 @@ const readCachedCalendarTasks = async (
 
   if (!isValid(month)) return null;
 
-  const { monthDays } = calculateCalendarValues(month);
+  const monthKey = calendarDateKey(month);
+  const { monthDays } = calculateCalendarValues(monthKey, timeZone);
 
   const response = await readTasksDb({
     userId,
-    selectedMonth: month,
+    selectedMonth: monthKey,
     timeZone,
     allTasks: true,
     ...rest,
@@ -356,17 +361,17 @@ const readCachedCalendarTasks = async (
   }
 
   const monthDaysWithTasks = monthDays.map((day) => {
-    const key = format(day, "yyyy-MM-dd");
+    const key = format(day, "yyyy-MM-dd", { in: timeZoneContext });
 
     return {
-      day,
+      dayKey: key,
       tasks:
         tasksByDay.get(key) ?? ({ scheduled: [], due: [] } satisfies DayBucket),
     };
   });
 
   return {
-    month,
+    monthKey,
     monthDaysTasks: monthDaysWithTasks,
   };
 };
@@ -446,7 +451,7 @@ const readCachedTasksAction = async (
       hasPrevPage,
       hasNextPage,
       allTasksCompleted,
-      day: selectedDay ? format(selectedDay, "yyyy-MM-dd") : null,
+      day: selectedDay ? calendarDateKey(selectedDay) : null,
       projects,
       clientKey,
     },

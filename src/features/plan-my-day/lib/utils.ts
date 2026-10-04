@@ -13,15 +13,23 @@ export const getPlannerCardState = ({
   todayTaskCount,
   tasksNeedAttentionCount,
   unsortedTaskCount,
+  eligibleTaskCount,
 }: PlannerCounts): GetPlannerCardStateReturnType => {
   const actionableTaskCount = todayTaskCount + tasksNeedAttentionCount;
-
   const totalCandidateCount = actionableTaskCount + unsortedTaskCount;
 
-  if (totalCandidateCount === 0)
-    return {
-      state: "clear" as const,
-    };
+  if (totalCandidateCount === 0) {
+    if (eligibleTaskCount > 0) {
+      return {
+        state: "plan_ready" as const,
+      };
+    } else {
+      return {
+        state: "clear" as const,
+      };
+    }
+  }
+
   if (totalCandidateCount === 1) {
     let singleTaskSource: SingleTaskSource = "today";
     switch (true) {

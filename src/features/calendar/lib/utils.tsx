@@ -1,3 +1,4 @@
+import { calendarDateInTimeZone } from "./calendar-dates";
 import { TaskSelectType } from "@/db/schema";
 import {
   addDays,
@@ -14,7 +15,13 @@ import {
   subDays,
 } from "date-fns";
 
-export const calculateCalendarValues = (dateToUse: Date) => {
+export const calculateCalendarValues = (
+  date: Date | string,
+  timeZone?: string,
+) => {
+  const dateToUse = timeZone
+    ? calendarDateInTimeZone(date, timeZone)
+    : (date as Date);
   const startOfMonth = getStartOfMonth(dateToUse);
   const endOfMonth = getEndOfMonth(dateToUse);
   const weekDays = getEachDayOfInterval({

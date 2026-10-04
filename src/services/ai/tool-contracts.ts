@@ -35,38 +35,110 @@ export const toolNames = [
 ] as const;
 export type ToolName = (typeof toolNames)[number];
 
-export const toolApprovalMap: Record<ToolName, boolean> = {
-  searchWeb: false,
-  scrapeWebpage: false,
-  readTasks: false,
-  createTasks: true,
-  updateTask: true,
-  updateTasksStatus: true,
-  updateTasksPriority: true,
-  assignTasksToMilestone: true,
-  deleteTask: true,
-  getCurrentTime: false,
-  readAreas: false,
-  createArea: true,
-  updateArea: true,
-  setAreaArchived: true,
-  deleteArea: true,
-  readProjects: false,
-  createProject: true,
-  updateProject: true,
-  setProjectArchived: true,
-  deleteProject: true,
-  readDocuments: false,
-  readDocument: false,
-  createDocument: true,
-  updateDocument: true,
-  deleteDocument: true,
-  readMilestones: false,
-  createMilestones: true,
-  updateMilestone: true,
-  updateMilestonesStatus: true,
-  moveMilestone: true,
-  deleteMilestone: true,
-  readActivity: false,
-  readUserProfile: false,
+export const toolContextMap: Record<
+  ToolName,
+  {
+    requiresApproval: boolean;
+  }
+> = {
+  searchWeb: {
+    requiresApproval: false,
+  },
+  scrapeWebpage: {
+    requiresApproval: false,
+  },
+  readTasks: {
+    requiresApproval: false,
+  },
+  createTasks: {
+    requiresApproval: true,
+  },
+  updateTask: {
+    requiresApproval: true,
+  },
+  updateTasksStatus: {
+    requiresApproval: true,
+  },
+  updateTasksPriority: {
+    requiresApproval: true,
+  },
+  assignTasksToMilestone: {
+    requiresApproval: true,
+  },
+  deleteTask: {
+    requiresApproval: true,
+  },
+  getCurrentTime: {
+    requiresApproval: false,
+  },
+  readAreas: {
+    requiresApproval: false,
+  },
+  createArea: {
+    requiresApproval: true,
+  },
+  updateArea: {
+    requiresApproval: true,
+  },
+  setAreaArchived: {
+    requiresApproval: true,
+  },
+  deleteArea: {
+    requiresApproval: true,
+  },
+  readProjects: {
+    requiresApproval: false,
+  },
+  createProject: {
+    requiresApproval: true,
+  },
+  updateProject: {
+    requiresApproval: true,
+  },
+  setProjectArchived: {
+    requiresApproval: true,
+  },
+  deleteProject: {
+    requiresApproval: true,
+  },
+  readDocuments: {
+    requiresApproval: false,
+  },
+  readDocument: {
+    requiresApproval: false,
+  },
+  createDocument: {
+    requiresApproval: true,
+  },
+  updateDocument: {
+    requiresApproval: true,
+  },
+  deleteDocument: {
+    requiresApproval: true,
+  },
+  readMilestones: {
+    requiresApproval: false,
+  },
+  createMilestones: {
+    requiresApproval: true,
+  },
+  updateMilestone: {
+    requiresApproval: true,
+  },
+  updateMilestonesStatus: {
+    requiresApproval: true,
+  },
+  moveMilestone: {
+    requiresApproval: true,
+  },
+  deleteMilestone: {
+    requiresApproval: true,
+  },
+  readActivity: {
+    requiresApproval: false,
+  },
+  readUserProfile: {
+    requiresApproval: false,
+  },
 };
+export type ToolsContext = (typeof toolContextMap)[ToolName];

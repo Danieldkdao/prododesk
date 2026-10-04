@@ -8,13 +8,8 @@ import {
   updateAreaToolSchema,
 } from "./schemas";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
-import {
-  findToolExecutionDb,
-  updateToolExecutionDb,
-  upsertToolExecutionDb,
-} from "@/features/chats/server/tool-executions";
+import { executeMutationToolDb } from "@/features/chats/server/tool-executions";
 import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
-import { isError } from "@/lib/utils";
 import {
   createAreaAction,
   deleteAreaAction,
@@ -52,54 +47,21 @@ const createAreaTool = tool({
   inputSchema: createAreaToolSchema,
   contextSchema: runIdContextSchema,
   execute: async (areaDetails, { context, toolCallId, abortSignal }) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "createArea",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      abortSignal?.throwIfAborted();
-      const response = await createAreaAction(areaDetails, {
-        source: "ai",
-        chatRunId: context.runId,
-      });
-
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "createArea",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
-    }
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "createArea" },
+      async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await createAreaAction(areaDetails, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
+        const isSuccess = !response.error;
+        const output = response.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 
@@ -111,54 +73,21 @@ const updateAreaTool = tool({
     { areaId, changes },
     { context, toolCallId, abortSignal },
   ) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "updateArea",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      abortSignal?.throwIfAborted();
-
-      const response = await updateAreaAction(areaId, changes, {
-        source: "ai",
-        chatRunId: context.runId,
-      });
-
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "updateArea",
-        output: errorMessage,
-        status: "failed",
-      });
-    }
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "updateArea" },
+      async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await updateAreaAction(areaId, changes, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
+        const isSuccess = !response.error;
+        const output = response.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 
@@ -171,55 +100,21 @@ const setAreaArchivedTool = tool({
     { areaId, archived },
     { context, toolCallId, abortSignal },
   ) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "setAreaArchived",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      abortSignal?.throwIfAborted();
-      const response = await toggleAreaArchiveStatusAction(
-        areaId,
-        archived,
-        { source: "ai", chatRunId: context.runId },
-      );
-
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "setAreaArchived",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
-    }
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "setAreaArchived" },
+      async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await toggleAreaArchiveStatusAction(areaId, archived, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
+        const isSuccess = !response.error;
+        const output = response.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 
@@ -228,52 +123,21 @@ const deleteAreaTool = tool({
   inputSchema: deleteAreaToolSchema,
   contextSchema: runIdContextSchema,
   execute: async ({ areaId }, { context, toolCallId, abortSignal }) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "deleteArea",
-      });
-      if (!insertedToolExecution) throw new Error("Failed to execute tool.");
-
-      abortSignal?.throwIfAborted();
-      const response = await deleteAreaAction(areaId, {
-        source: "ai",
-        chatRunId: context.runId,
-      });
-
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "deleteArea",
-        output: errorMessage,
-        status: "failed",
-      });
-    }
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "deleteArea" },
+      async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await deleteAreaAction(areaId, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
+        const isSuccess = !response.error;
+        const output = response.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 

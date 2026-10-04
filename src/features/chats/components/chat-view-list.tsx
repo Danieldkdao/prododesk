@@ -94,7 +94,7 @@ export const ChatViewList = ({
                   key={msg.id}
                   msg={msg}
                   messages={messages}
-                  currentModelInfo={currentModelInfo}
+                  selectedModel={selectedModel}
                 />
               ))}
               {status === "submitted" && (

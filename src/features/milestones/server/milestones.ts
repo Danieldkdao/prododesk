@@ -255,7 +255,7 @@ export const insertMilestoneDb = async (
       ? await insertMilestone(tx)
       : await db.transaction(insertMilestone);
 
-    if (!tx) {
+    if (!tx || source === "ai") {
       await revalidateMilestoneMutationCache({
         source,
         userId: insertedMilestone.userId,
@@ -332,7 +332,7 @@ export const updateMilestoneDb = async (
       ? await updateMilestone(tx)
       : await db.transaction(updateMilestone);
 
-    if (!tx) {
+    if (!tx || source === "ai") {
       await revalidateMilestoneMutationCache({
         source,
         userId: updatedMilestone.userId,
@@ -404,7 +404,7 @@ export const deleteMilestoneDb = async (
       ? await deleteMilestone(tx)
       : await db.transaction(deleteMilestone);
 
-    if (!tx) {
+    if (!tx || source === "ai") {
       await revalidateMilestoneMutationCache({
         source,
         userId: deletedMilestone.userId,

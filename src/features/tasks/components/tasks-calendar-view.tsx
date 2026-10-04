@@ -4,6 +4,7 @@ import { MainCalendarSkeleton } from "@/features/calendar/components/main-calend
 import { loadCalendarSearchParams } from "@/features/calendar/lib/calendar-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { ParamsId, SearchParamsType } from "@/lib/types";
+import { format } from "date-fns";
 import { Suspense } from "react";
 import { readCalendarTasksAction, readTasksAction } from "../actions/actions";
 import { loadTasksSearchParams } from "../lib/tasks-params";
@@ -64,7 +65,7 @@ const TasksCalendarViewSuspense = async ({
       ? readTasksAction({
           ...dayTasksFilters,
           page: DEFAULT_PAGE,
-          selectedDay: calendarFilters.day,
+          selectedDay: format(calendarFilters.day, "yyyy-MM-dd"),
           ...readOptions,
         })
       : Promise.resolve(null),

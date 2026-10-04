@@ -1,11 +1,18 @@
 "use client";
 
-import { ProjectSelectType, TaskSelectType } from "@/db/schema";
+import { ProjectSelectType } from "@/db/schema";
 import { BoardProperty, PaginationCursor } from "@/features/tasks/lib/types";
 import { DragDropProvider } from "@dnd-kit/react";
 import { LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { useRouter } from "next/navigation";
+import { createBoardStore } from "../lib/board-store";
 import { toast } from "sonner";
 import {
   readTaskBoardColumnAction,
@@ -57,7 +64,7 @@ const getInitialPagination = (
 
 export const TaskBoard = <
   Property extends BoardProperty,
-  PropertyOption extends TaskSelectType[Property],
+  PropertyOption extends TaskBoardTask[Property],
 >({
   initialData,
   filters,
@@ -82,67 +89,27 @@ export const TaskBoard = <
     textColor: string;
   };
 }) => {
-  const savesQueuesRef = useRef(new Map<string, Promise<void>>());
+  const router = useRouter();
   const loadingColumnsRef = useRef(new Set<string>());
-  const localPropertyOverridesRef = useRef(new Map<string, PropertyOption>());
-  const previousInitialDataRef = useRef(initialData);
-
-  const [tasks, setTasks] = useState(getInitialTasks(initialData));
-  const [pagination, setPagination] = useState(() =>
-    getInitialPagination(initialData, propertyOptions),
+  const snapshotGenerationRef = useRef(0);
+  const [store] = useState(() =>
+    createBoardStore(
+      getInitialTasks(initialData),
+      property,
+      getInitialPagination(initialData, propertyOptions),
+      (error) => {
+        console.error(error);
+        toast.error("Unable to save task properties.");
+      },
+      () => router.refresh(),
+    ),
   );
-
-  const mergeTasks = useCallback(
-    (currentTasks: TaskBoardTask[], incomingTasks: TaskBoardTask[]) => {
-      const tasksById = new Map(currentTasks.map((task) => [task.id, task]));
-
-      for (const task of incomingTasks) {
-        const localProperty = localPropertyOverridesRef.current.get(task.id);
-
-        tasksById.set(
-          task.id,
-          localProperty === undefined
-            ? task
-            : ({
-                ...task,
-                [property]: localProperty,
-              } as TaskBoardTask),
-        );
-      }
-
-      return [...tasksById.values()];
-    },
-    [property],
+  const { tasks, metadata: pagination } = useSyncExternalStore(
+    store.subscribe,
+    store.getSnapshot,
+    store.getSnapshot,
   );
-
-  const queueTaskPropertySave = useCallback(
-    (taskId: string, newProperty: PropertyOption) => {
-      const prevSave = savesQueuesRef.current.get(taskId) ?? Promise.resolve();
-
-      const nextSave = prevSave
-        .catch(() => {})
-        .then(async () => {
-          const response = await saveOnMoveEnd(taskId, newProperty);
-
-          if (response.error)
-            throw new Error("Failed to update task properties.");
-        });
-
-      savesQueuesRef.current.set(taskId, nextSave);
-
-      void nextSave
-        .catch((error) => {
-          console.error(error);
-          toast.error("Unable to save task properties.");
-        })
-        .finally(() => {
-          if (savesQueuesRef.current.get(taskId) === nextSave) {
-            savesQueuesRef.current.delete(taskId);
-          }
-        });
-    },
-    [saveOnMoveEnd],
-  );
+  const setPagination = store.setMetadata;
 
   const loadMore = useCallback(
     async (column: PropertyOption) => {
@@ -156,6 +123,7 @@ export const TaskBoard = <
       )
         return;
 
+      const generation = snapshotGenerationRef.current;
       loadingColumnsRef.current.add(columnKey);
 
       setPagination((current) => ({
@@ -176,7 +144,8 @@ export const TaskBoard = <
         });
         if (!page) throw new Error("Failed to load more tasks.");
 
-        setTasks((currentTasks) => mergeTasks(currentTasks, page.tasks));
+        if (generation !== snapshotGenerationRef.current) return;
+        store.appendPage(page.tasks);
         setPagination((current) => ({
           ...current,
           [columnKey]: {
@@ -188,6 +157,7 @@ export const TaskBoard = <
           },
         }));
       } catch (error) {
+        if (generation !== snapshotGenerationRef.current) return;
         console.error(error);
         toast.error("Unable to load more tasks.");
         setPagination((current) => ({
@@ -199,21 +169,25 @@ export const TaskBoard = <
           },
         }));
       } finally {
-        loadingColumnsRef.current.delete(columnKey);
+        if (generation === snapshotGenerationRef.current) {
+          loadingColumnsRef.current.delete(columnKey);
+        }
       }
     },
-    [filters, mergeTasks, pagination, property],
+    [filters, store, pagination, property, setPagination],
   );
 
   useEffect(() => {
-    if (previousInitialDataRef.current === initialData) return;
-
-    previousInitialDataRef.current = initialData;
-
-    setTasks((currentTasks) =>
-      mergeTasks(currentTasks, getInitialTasks(initialData)),
-    );
-  }, [initialData, mergeTasks]);
+    if (
+      !store.replaceSnapshot(
+        getInitialTasks(initialData),
+        getInitialPagination(initialData, propertyOptions),
+      )
+    )
+      return;
+    snapshotGenerationRef.current++;
+    loadingColumnsRef.current.clear();
+  }, [initialData, propertyOptions, store]);
 
   return (
     <DragDropProvider
@@ -225,23 +199,14 @@ export const TaskBoard = <
         if (!source?.id || !target?.id) return;
 
         const sourceTask = tasks.find((task) => task.id === source.id);
-        if (!sourceTask || sourceTask[property] === target.id) return;
+        const previousProperty = sourceTask?.[property] as
+          PropertyOption | undefined;
+        if (!sourceTask || !previousProperty || previousProperty === target.id)
+          return;
 
         const nextProperty = target.id as PropertyOption;
 
-        localPropertyOverridesRef.current.set(sourceTask.id, nextProperty);
-
-        flushSync(() =>
-          setTasks((prev) =>
-            prev.map((task) => {
-              if (task.id === source.id && task[property] !== target.id)
-                return { ...task, [property]: nextProperty };
-              return task;
-            }),
-          ),
-        );
-
-        queueTaskPropertySave(sourceTask.id, nextProperty);
+        void store.move(sourceTask.id, nextProperty, saveOnMoveEnd);
       }}
     >
       <div className="overflow-auto min-w-0 w-full">
