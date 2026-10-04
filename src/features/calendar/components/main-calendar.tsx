@@ -1,7 +1,7 @@
 "use client";
 
 import { ReadCalendarTasksActionReturnType } from "@/features/tasks/actions/actions";
-import { addMonths, format } from "date-fns";
+import { addMonths, format, parseISO } from "date-fns";
 import { ArrowLeftIcon, ArrowRightIcon, CalendarIcon } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { useCalendarParams } from "../hooks/use-calendar-params";
@@ -26,16 +26,17 @@ export const MainCalendar = ({
 }) => {
   const [filters, setFilters] = useCalendarParams();
 
-  const { weekDays } = calculateCalendarValues(filters.month);
+  const month = filters.month ?? parseISO(monthDaysTasks.monthKey);
+  const { weekDays } = calculateCalendarValues(month);
 
-  if (monthDaysTasks.monthKey !== format(filters.month, "yyyy-MM-dd")) {
+  if (monthDaysTasks.monthKey !== format(month, "yyyy-MM-dd")) {
     return (
       <MainCalendarSkeleton fixedHeight={!fullScreen} fullScreen={fullScreen} />
     );
   }
 
   const changeDateToUse = (amount: 1 | -1) =>
-    setFilters({ month: addMonths(filters.month, amount) });
+    setFilters({ month: addMonths(month, amount) });
 
   return (
     <div
@@ -69,7 +70,7 @@ export const MainCalendar = ({
           >
             <CalendarIcon className="size-4 shrink-0" />
             <span className="text-base font-medium">
-              {format(filters.month, "MMMM yyyy")}
+              {format(month, "MMMM yyyy")}
             </span>
           </div>
           {fullScreen && <Separator orientation="vertical" />}

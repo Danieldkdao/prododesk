@@ -151,6 +151,7 @@ OPENROUTER_API_KEY=
 
 # Search the web
 FIRECRAWL_API_KEY=
+EXA_API_KEY=
 
 # Image and file uploads
 TIGRIS_STORAGE_SECRET_ACCESS_KEY=

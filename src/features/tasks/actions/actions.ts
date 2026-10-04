@@ -302,16 +302,12 @@ export const deleteTaskAction = async (
 const readCachedCalendarTasks = async (
   userId: string,
   timeZone: string,
-  options: ReadCalendarTasksFilters,
+  options: Omit<ReadCalendarTasksFilters, "month"> & { month: string },
 ) => {
   "use cache";
   cacheTag(getUserTaskTag(userId));
 
-  const { month, ...rest } = options;
-
-  if (!isValid(month)) return null;
-
-  const monthKey = calendarDateKey(month);
+  const { month: monthKey, ...rest } = options;
   const { monthDays } = calculateCalendarValues(monthKey, timeZone);
 
   const response = await readTasksDb({
@@ -381,7 +377,16 @@ export const readCalendarTasksAction = async (
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) return null;
 
-  return readCachedCalendarTasks(userId, user.timeZone, options);
+  if (options.month && !isValid(options.month)) return null;
+
+  const monthKey = options.month
+    ? calendarDateKey(options.month)
+    : format(new Date(), "yyyy-MM-dd", { in: tz(user.timeZone) });
+
+  return readCachedCalendarTasks(userId, user.timeZone, {
+    ...options,
+    month: monthKey,
+  });
 };
 export type ReadCalendarTasksActionReturnType = UnwrapAsync<
   typeof readCalendarTasksAction

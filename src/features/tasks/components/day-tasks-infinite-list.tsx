@@ -72,7 +72,7 @@ export const DayTasksInfiniteList = ({
   if (!calendarFilters.day) return null;
 
   const { isPastDay, isToday } = calculateCalendarDayTasksValues(
-    calendarFilters.month,
+    calendarFilters.month ?? calendarFilters.day,
     calendarFilters.day,
     dayTasks,
   );
