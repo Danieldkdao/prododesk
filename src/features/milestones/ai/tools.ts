@@ -9,19 +9,13 @@ import {
 } from "./schemas";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
-import { isError } from "@/lib/utils";
 import {
   getMaxMilestonePositionDb,
   readMilestonesDb,
-  revalidateMilestoneMutationCache,
 } from "../server/milestones";
 import { parseISO } from "date-fns";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
-import {
-  findToolExecutionDb,
-  updateToolExecutionDb,
-  upsertToolExecutionDb,
-} from "@/features/chats/server/tool-executions";
+import { executeMutationToolDb } from "@/features/chats/server/tool-executions";
 import {
   createMilestoneAction,
   deleteMilestoneAction,
@@ -29,7 +23,6 @@ import {
   updateMilestoneAction,
   updateMilestoneStatusAction,
 } from "../actions/actions";
-import { db } from "@/db/db";
 import { confirmUserProjectOwnership } from "@/features/projects/server/projects";
 
 const readMilestonesTool = tool({
@@ -60,44 +53,25 @@ const createMilestonesTool = tool({
   inputSchema: createMilestonesToolSchema,
   contextSchema: runIdContextSchema,
   execute: async ({ milestones }, { context, toolCallId, abortSignal }) => {
-    try {
-      if (
-        new Set(milestones.map((milestone) => milestone.projectId)).size !== 1
-      )
-        throw new Error(
-          "You cannot insert milestones from across different projects in the same query.",
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "createMilestones" },
+      async (tx) => {
+        if (
+          new Set(milestones.map((milestone) => milestone.projectId)).size !== 1
+        )
+          throw new Error(
+            "You cannot insert milestones from across different projects in the same query.",
+          );
+        const projectId = milestones[0]?.projectId;
+        if (!projectId) throw new Error("No project ID.");
+        const { userId } = await getCurrentUser();
+        if (!userId) throw new Error(UNAUTHED_ERROR_MESSAGE);
+        const existingProject = await confirmUserProjectOwnership(
+          projectId,
+          userId,
         );
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "createMilestones",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      const projectId = milestones[0]?.projectId;
-      if (!projectId) throw new Error("No project ID.");
-
-      const { userId } = await getCurrentUser();
-      if (!userId) throw new Error(UNAUTHED_ERROR_MESSAGE);
-      const existingProject = await confirmUserProjectOwnership(
-        projectId,
-        userId,
-      );
-      if (!existingProject) throw new Error(GENERAL_ERROR_MESSAGE);
-
-      const maxPosition = await getMaxMilestonePositionDb(projectId);
-
-      const responses = await db.transaction(async (tx) => {
+        if (!existingProject) throw new Error(GENERAL_ERROR_MESSAGE);
+        const maxPosition = await getMaxMilestonePositionDb(projectId);
         const responses = await Promise.all(
           milestones.map((milestone, index) => {
             abortSignal?.throwIfAborted();
@@ -116,43 +90,15 @@ const createMilestonesTool = tool({
           responses.filter((res) => !res.error).length !== milestones.length
         )
           throw new Error("Failed to insert milestones.");
-
-        return responses;
-      });
-
-      await revalidateMilestoneMutationCache({
-        source: "ai",
-        userId,
-        projectId,
-        areaId: existingProject.areaId,
-      });
-
-      const isSuccess =
-        responses.filter((res) => !res.error).length === milestones.length;
-      const output =
-        responses.find((res) => res.error)?.message ?? responses.at(0)?.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "createMilestones",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
-    }
+        const isSuccess =
+          responses.filter((res) => !res.error).length === milestones.length;
+        const output =
+          responses.find((res) => res.error)?.message ??
+          responses.at(0)?.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 
@@ -164,61 +110,27 @@ const updateMilestoneTool = tool({
     { milestoneId, changes },
     { context, toolCallId, abortSignal },
   ) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "updateMilestone",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      abortSignal?.throwIfAborted();
-      const response = await updateMilestoneAction(
-        milestoneId,
-        {
-          ...changes,
-          dueAt:
-            typeof changes.dueAt === "string"
-              ? parseISO(changes.dueAt)
-              : changes.dueAt,
-        },
-        { source: "ai", chatRunId: context.runId },
-      );
-
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "updateMilestone",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
-    }
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "updateMilestone" },
+      async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await updateMilestoneAction(
+          milestoneId,
+          {
+            ...changes,
+            dueAt:
+              typeof changes.dueAt === "string"
+                ? parseISO(changes.dueAt)
+                : changes.dueAt,
+          },
+          { source: "ai", chatRunId: context.runId, tx },
+        );
+        const isSuccess = !response.error;
+        const output = response.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 
@@ -230,60 +142,28 @@ const updateMilestonesStatusTool = tool({
     { milestoneIds, status },
     { context, toolCallId, abortSignal },
   ) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output);
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "updateMilestonesStatus",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      const responses = await Promise.all(
-        milestoneIds.map((milestoneId) => {
-          abortSignal?.throwIfAborted();
-          return updateMilestoneStatusAction(milestoneId, status, {
-            source: "ai",
-            chatRunId: context.runId,
-          });
-        }),
-      );
-
-      const isSuccess =
-        responses.filter((res) => !res.error).length === milestoneIds.length;
-      const output =
-        responses.find((res) => res.error)?.message ?? responses.at(0)?.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "updateMilestonesStatus",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
-    }
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "updateMilestonesStatus" },
+      async (tx) => {
+        const responses = await Promise.all(
+          milestoneIds.map((milestoneId) => {
+            abortSignal?.throwIfAborted();
+            return updateMilestoneStatusAction(milestoneId, status, {
+              source: "ai",
+              chatRunId: context.runId,
+              tx,
+            });
+          }),
+        );
+        const isSuccess =
+          responses.filter((res) => !res.error).length === milestoneIds.length;
+        const output =
+          responses.find((res) => res.error)?.message ??
+          responses.at(0)?.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 
@@ -296,55 +176,22 @@ const moveMilestoneTool = tool({
     { milestoneId, projectId, position },
     { context, toolCallId, abortSignal },
   ) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "moveMilestone",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      abortSignal?.throwIfAborted();
-      const response = await moveMilestoneAction(
-        projectId,
-        milestoneId,
-        position,
-        { source: "ai", chatRunId: context.runId },
-      );
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "moveMilestone",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
-    }
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "moveMilestone" },
+      async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await moveMilestoneAction(
+          projectId,
+          milestoneId,
+          position,
+          { source: "ai", chatRunId: context.runId, tx },
+        );
+        const isSuccess = !response.error;
+        const output = response.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 
@@ -353,54 +200,21 @@ const deleteMilestoneTool = tool({
   inputSchema: deleteMilestoneToolSchema,
   contextSchema: runIdContextSchema,
   execute: async ({ milestoneId }, { context, toolCallId, abortSignal }) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "deleteMilestone",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      abortSignal?.throwIfAborted();
-      const response = await deleteMilestoneAction(milestoneId, {
-        source: "ai",
-        chatRunId: context.runId,
-      });
-
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "deleteMilestone",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
-    }
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "deleteMilestone" },
+      async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await deleteMilestoneAction(milestoneId, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
+        const isSuccess = !response.error;
+        const output = response.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 

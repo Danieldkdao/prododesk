@@ -24,9 +24,7 @@ export const calendarViewOptions = ["all", "scheduled", "due"] as const;
 export type CalendarViewOption = (typeof calendarViewOptions)[number];
 
 export const calendarSearchParams = {
-  month: parseAsLocalDate
-    .withDefault(new Date())
-    .withOptions({ clearOnDefault: true }),
+  month: parseAsLocalDate.withOptions({ clearOnDefault: true }),
   day: parseAsLocalDate.withOptions({ clearOnDefault: true }),
   view: parseAsStringEnum([...calendarViewOptions])
     .withDefault("all")

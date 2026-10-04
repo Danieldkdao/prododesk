@@ -13,9 +13,11 @@ import { calculateCalendarDayTasksValues } from "../lib/utils";
 import { CalendarViewOption } from "../lib/calendar-params";
 
 export const MainCalendarDay = ({
+  month,
   date,
   tasks,
 }: {
+  month: Date;
   date: Date;
   tasks: {
     scheduled: TaskSelectType[];
@@ -32,7 +34,7 @@ export const MainCalendarDay = ({
   );
 
   const { isToday, isPastDay, isSameMonth } = calculateCalendarDayTasksValues(
-    calendarFilters.month,
+    month,
     date,
     allTasks,
   );

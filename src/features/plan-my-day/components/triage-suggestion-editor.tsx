@@ -17,7 +17,7 @@ import { taskSchema, TaskSchemaType } from "@/features/tasks/actions/schemas";
 import { TaskPrioritySelect } from "@/features/tasks/components/task-priority-select";
 import { TaskStatusSelect } from "@/features/tasks/components/task-status-select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { addDays, parseISO, subDays } from "date-fns";
+import { parseISO } from "date-fns";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { TriageSuggestion } from "../lib/types";
@@ -34,7 +34,7 @@ export const TriageSuggestionEditor = ({
   const today = new Date();
 
   const form = useForm<TaskSchemaType>({
-    resolver: zodResolver(taskSchema),
+    resolver: zodResolver(taskSchema(task)),
     defaultValues: {
       name: suggestion.suggestedName ?? task.name,
       status: suggestion.suggestedStatus ?? task.status,
@@ -161,7 +161,10 @@ export const TriageSuggestionEditor = ({
                   fieldError={!!fieldState.error}
                   initialProject={suggestion.project}
                   value={field.value}
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    form.setValue("milestoneId", null);
+                  }}
                   className="text-base! [&_svg]:size-4.5!"
                 />
               </FieldContent>
@@ -186,6 +189,7 @@ export const TriageSuggestionEditor = ({
                 <FieldContent>
                   <MilestoneCommandSelect
                     id="suggested-milestone-id-input"
+                    key={projectIdValue}
                     fieldError={!!fieldState.error}
                     initialValue={suggestion.milestone}
                     value={field.value}
@@ -220,7 +224,7 @@ export const TriageSuggestionEditor = ({
                   withTime
                   disabled={{
                     before: today,
-                    after: dueAtValue ? subDays(dueAtValue, 1) : undefined,
+                    after: dueAtValue ?? undefined,
                   }}
                   triggerClassName="text-base! [&_svg]:size-4.5! flex items-center"
                   {...props}
@@ -246,9 +250,7 @@ export const TriageSuggestionEditor = ({
                   value={value}
                   onValueChange={onChange}
                   disabled={{
-                    before: scheduledAtValue
-                      ? addDays(scheduledAtValue, 1)
-                      : today,
+                    before: scheduledAtValue ?? today,
                   }}
                   withTime
                   triggerClassName="text-base! [&_svg]:size-4.5! flex items-center"

@@ -13,6 +13,7 @@ export type PlannerCounts = {
   todayTaskCount: number;
   tasksNeedAttentionCount: number;
   unsortedTaskCount: number;
+  eligibleTaskCount: number;
 };
 
 export type PlannerCardState = "clear" | "single" | "triage" | "plan_ready";

@@ -24,16 +24,16 @@ type LLMModel = {
 
 const models = [
   {
-    name: "GPT-5.6 Sol",
-    id: "openai/gpt-5.6-sol" as const,
+    name: "GPT-6.1 Sol",
+    id: "openai/gpt-6.1-sol" as const,
     kind: "most-powerful" as const,
     logo: OpenAI,
     logoColor: OpenAI.colorPrimary,
     survivesDarkMode: false,
   },
   {
-    name: "Claude Opus 5",
-    id: "anthropic/claude-opus-5" as const,
+    name: "Claude Opus 5.5",
+    id: "anthropic/claude-opus-5.5" as const,
     kind: "most-powerful" as const,
     logo: Claude,
     logoColor: Claude.colorPrimary,
@@ -47,16 +47,16 @@ const models = [
     survivesDarkMode: true,
   },
   {
-    name: "Grok 4.5",
-    id: "x-ai/grok-4.5" as const,
+    name: "Grok 4.7",
+    id: "x-ai/grok-4.7" as const,
     kind: "most-powerful" as const,
     logo: Grok,
     logoColor: Grok.colorPrimary,
     survivesDarkMode: false,
   },
   {
-    name: "DeepSeek V4 Flash",
-    id: "deepseek/deepseek-v4-flash-0731" as const,
+    name: "DeepSeek V4.1 Flash",
+    id: "deepseek/deepseek-v4.1-flash" as const,
     logo: DeepSeek.Color,
     kind: "fast-cost-efficient",
     survivesDarkMode: true,

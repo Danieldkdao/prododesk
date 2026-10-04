@@ -39,7 +39,7 @@ Go to the [ProdoDesk](https://prododesk.vercel.app) website, hosted on Vercel.
 
 ## How to Use
 
-The application has many features you can explore. First go to the [ProdoDesk](https://prododesk.vercel.app) website and create an account (note that the platform DOES send an email verification OTP when you sign in with email-password). You can create some tasks, play around with the numerous features the platform has to offer. Note that the AI features directly depend on HackClub AI so they might not work if HackClub AI is down.
+The application has many features you can explore. First go to the [ProdoDesk](https://prododesk.vercel.app) website and create an account (note that the platform DOES send an email verification OTP when you sign in with email-password). You can create some tasks, play around with the numerous features the platform has to offer.
 
 If you would rather run this locally, I have instructions below.
 
@@ -52,7 +52,7 @@ If you would rather run this locally, I have instructions below.
 - Tailwind CSS for styling and Shadcn UI for easy-to-edit and reusable components
 - React Hook Form handles easy form input field management and Zod handles form validation and input validation
 - Tiptap for rich-text document editing experience
-- Vercel AI SDK and OpenRouter (through HackClub AI) for structured AI generation, streamed responses, tool calling, and AI features
+- Vercel AI SDK and OpenRouter for structured AI generation, streamed responses, tool calling, and AI features
 - TanStack Query for client-side data fetching
 - date-fns for date/timezone handling
 - dnd-kit for drag and drop interactions
@@ -147,10 +147,11 @@ MAILJET_API_SECRET=
 SENDER_EMAIL=
 
 # AI
-HACK_CLUB_AI_API_KEY=
+OPENROUTER_API_KEY=
 
 # Search the web
 FIRECRAWL_API_KEY=
+EXA_API_KEY=
 
 # Image and file uploads
 TIGRIS_STORAGE_SECRET_ACCESS_KEY=
@@ -178,12 +179,6 @@ pnpm build
 ```
 
 See the package.json for more information.
-
-## Troubleshooting
-
-There are a few bottlenecks that might impact the experience of using the website:
-
-- Hackclub AI is used for some features. If the service is down, some AI features might not work.
 
 #### For local development
 

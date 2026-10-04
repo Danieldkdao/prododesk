@@ -21,6 +21,8 @@ const validateTaskDates = (
     dueAt?: Date | null;
   },
   ctx: z.RefinementCtx,
+  existingDates?:
+    { scheduledAt?: Date | null; dueAt?: Date | null } | undefined,
 ) => {
   if (data.scheduledAt && data.dueAt && data.scheduledAt >= data.dueAt) {
     ctx.addIssue({
@@ -32,7 +34,11 @@ const validateTaskDates = (
 
   const today = new Date();
 
-  if (data.scheduledAt && data.scheduledAt < today) {
+  if (
+    data.scheduledAt &&
+    data.scheduledAt < today &&
+    data.scheduledAt.getTime() !== existingDates?.scheduledAt?.getTime()
+  ) {
     ctx.addIssue({
       code: "custom",
       path: ["scheduledAt"],
@@ -40,7 +46,11 @@ const validateTaskDates = (
     });
   }
 
-  if (data.dueAt && data.dueAt < today) {
+  if (
+    data.dueAt &&
+    data.dueAt < today &&
+    data.dueAt.getTime() !== existingDates?.dueAt?.getTime()
+  ) {
     ctx.addIssue({
       code: "custom",
       path: ["dueAt"],
@@ -49,8 +59,15 @@ const validateTaskDates = (
   }
 };
 
-export const taskSchema = taskBaseSchema.superRefine(validateTaskDates);
+export const taskSchema = (existingDates?: {
+  scheduledAt?: Date | null;
+  dueAt?: Date | null;
+}) => {
+  return taskBaseSchema.superRefine((data, ctx) =>
+    validateTaskDates(data, ctx, existingDates),
+  );
+};
 export const updateTaskSchema = taskBaseSchema.partial();
 
-export type TaskSchemaType = z.infer<typeof taskSchema>;
+export type TaskSchemaType = z.infer<ReturnType<typeof taskSchema>>;
 export type UpdateTaskSchemaType = z.infer<typeof updateTaskSchema>;

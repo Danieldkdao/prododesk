@@ -1,9 +1,9 @@
 export const modelIds = [
-  "openai/gpt-5.6-sol",
-  "anthropic/claude-opus-5",
+  "openai/gpt-6.1-sol",
+  "anthropic/claude-opus-5.5",
   "google/gemini-3.1-pro-preview",
-  "x-ai/grok-4.5",
-  "deepseek/deepseek-v4-flash-0731",
+  "x-ai/grok-4.7",
+  "deepseek/deepseek-v4.1-flash",
   "qwen/qwen3.8-flash",
   "z-ai/glm-5.3-flash",
   "minimax/minimax-m3",

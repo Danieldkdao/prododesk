@@ -1,18 +1,20 @@
-import { db } from "@/db/db";
+import { DbTransaction } from "@/db/db";
 import { ChatMessageTable, MessagePartTable } from "@/db/schema";
 import { ArtifactActivityType } from "@/features/activity/lib/types";
 import { insertChatAttachmentDb } from "@/features/chat-attachments/server/chat-attachments";
+import { CHAT_GENERATION_TIMEOUT_MS } from "@/features/chats/lib/run-attempt";
 import {
   findChatMessageDb,
   insertChatMessageDb,
   upsertChatMessageDb,
 } from "@/features/chats/server/chat-messages";
 import {
+  claimChatRunDb,
   findChatRunDb,
   getRunArtifacts,
   insertChatRunDb,
   updateChatRunDb,
-  upsertChatRunDb,
+  withChatRunAttemptDb,
 } from "@/features/chats/server/chat-runs";
 import { confirmUserChatOwnership } from "@/features/chats/server/chats";
 import { insertMessagePartDb } from "@/features/chats/server/message-parts";
@@ -29,11 +31,12 @@ import {
 } from "@/lib/constants";
 import { APIError } from "@/lib/errors";
 import { areValidIds, isError } from "@/lib/utils";
+import { guardToolExecutions } from "@/services/ai/guard-tool-executions";
 import { COMPACT_AFTER_TOKENS, estimateTokens } from "@/services/ai/helpers";
 import { ModelId } from "@/services/ai/model-ids";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { CHAT_INSTRUCTIONS } from "@/services/ai/prompts";
-import { toolApprovalMap, ToolName } from "@/services/ai/tool-contracts";
+import { toolContextMap, ToolName } from "@/services/ai/tool-contracts";
 import { tools } from "@/services/ai/tools";
 import { CustomUIMessage, FileAttachment } from "@/services/ai/types";
 import {
@@ -43,15 +46,18 @@ import {
   createUIMessageStreamResponse,
   isToolUIPart,
   pruneMessages,
+  TextStreamPart,
   ToolLoopAgent,
 } from "ai";
-import { and, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export const POST = async (req: Request) => {
   let runId: string | null = null;
   let responseTimeMs = 0;
   let streamedArtifacts: ArtifactActivityType[] = [];
+  let generationError: string | null = null;
+  let attemptStartedAt: Date | null = null;
 
   const data: {
     id: string;
@@ -102,101 +108,125 @@ export const POST = async (req: Request) => {
 
     if (insertedChatRun) {
       runId = insertedChatRun.id;
+      const claim = await claimChatRunDb(
+        { ...insertedChatRun, chat: confirmation },
+        { isNew: true, isRegenerating },
+      );
+      if (!claim?.startedAt)
+        return NextResponse.json("This message is already being processed.", {
+          status: 409,
+        });
+      attemptStartedAt = claim.startedAt;
 
       const latestMessage = latestUserMessage.parts
         .filter((part) => part.type === "text")
         .map((part) => part.text)
         .join(" ");
 
-      await db.transaction(async (tx) => {
-        const insertedMessage = await insertChatMessageDb(
-          {
-            chatId,
-            modelId: selectedModel,
-            role: "user",
-            clientMessageId: latestUserMessage.id,
-          },
-          { tx },
-        );
-
-        if (!insertedMessage)
-          throw new APIError("Failed to insert user chat message.");
-
-        const insertedPart = await insertMessagePartDb(
-          {
-            messageId: insertedMessage.id,
-            part: {
-              type: "text",
-              text: latestMessage,
+      const persisted = await withChatRunAttemptDb(
+        runId,
+        attemptStartedAt,
+        async (tx) => {
+          const insertedMessage = await insertChatMessageDb(
+            {
+              chatId,
+              modelId: selectedModel,
+              role: "user",
+              clientMessageId: latestUserMessage.id,
             },
-            order: 0,
-          },
-          { tx },
-        );
-
-        if (!insertedPart) throw new APIError("Failed to insert message part.");
-
-        const userFileParts = latestUserMessage.parts.filter(
-          (part): part is FileAttachment =>
-            part.type === "file" &&
-            Boolean(part.providerMetadata?.prododesk.uploadId),
-        );
-        const uploadIds = userFileParts.map(
-          (part) => part.providerMetadata.prododesk.uploadId,
-        );
-        if (!areValidIds(uploadIds))
-          throw new APIError("One or more file attachments are invalid.", 400);
-
-        const existingUploadIntents = (
-          await Promise.all(
-            userFileParts.map((part) =>
-              confirmUserUploadIntentOwnership(
-                part.providerMetadata.prododesk.uploadId,
-              ).then((intent) => (intent ? { ...intent, part } : null)),
-            ),
-          )
-        ).filter((intent): intent is NonNullable<typeof intent> =>
-          Boolean(intent),
-        );
-
-        if (existingUploadIntents.length !== userFileParts.length)
-          throw new APIError("One or more file attachments are invalid.", 400);
-
-        if (existingUploadIntents.length) {
-          const filePartsInsertions = await Promise.all(
-            existingUploadIntents.map((intent) =>
-              insertChatAttachmentDb(
-                {
-                  userId,
-                  storageKey: intent.storageKey,
-                  messageId: insertedMessage.id,
-                  fileName: intent.part.filename,
-                  fileType: intent.part.mediaType,
-                },
-                tx,
-              ),
-            ),
+            { tx },
           );
-          if (
-            filePartsInsertions.filter(Boolean).length !==
-            existingUploadIntents.length
-          ) {
+
+          if (!insertedMessage)
+            throw new APIError("Failed to insert user chat message.");
+
+          const insertedPart = await insertMessagePartDb(
+            {
+              messageId: insertedMessage.id,
+              part: {
+                type: "text",
+                text: latestMessage,
+              },
+              order: 0,
+            },
+            { tx },
+          );
+
+          if (!insertedPart)
+            throw new APIError("Failed to insert message part.");
+
+          const userFileParts = latestUserMessage.parts.filter(
+            (part): part is FileAttachment =>
+              part.type === "file" &&
+              Boolean(part.providerMetadata?.prododesk.uploadId),
+          );
+          const uploadIds = userFileParts.map(
+            (part) => part.providerMetadata.prododesk.uploadId,
+          );
+          if (!areValidIds(uploadIds))
             throw new APIError(
-              "Failed to insert one or more file attachments.",
+              "One or more file attachments are invalid.",
+              400,
             );
-          }
-          const deletedUploadIntents = await Promise.all(
-            existingUploadIntents.map((intent) =>
-              deleteUploadIntentDb(intent.id, tx),
-            ),
+
+          const existingUploadIntents = (
+            await Promise.all(
+              userFileParts.map((part) =>
+                confirmUserUploadIntentOwnership(
+                  part.providerMetadata.prododesk.uploadId,
+                ).then((intent) => (intent ? { ...intent, part } : null)),
+              ),
+            )
+          ).filter((intent): intent is NonNullable<typeof intent> =>
+            Boolean(intent),
           );
-          if (
-            deletedUploadIntents.filter(Boolean).length !==
-            existingUploadIntents.length
-          )
-            throw new APIError("Failed to delete one or more uploads.");
-        }
-      });
+
+          if (existingUploadIntents.length !== userFileParts.length)
+            throw new APIError(
+              "One or more file attachments are invalid.",
+              400,
+            );
+
+          if (existingUploadIntents.length) {
+            const filePartsInsertions = await Promise.all(
+              existingUploadIntents.map((intent) =>
+                insertChatAttachmentDb(
+                  {
+                    userId,
+                    storageKey: intent.storageKey,
+                    messageId: insertedMessage.id,
+                    fileName: intent.part.filename,
+                    fileType: intent.part.mediaType,
+                  },
+                  tx,
+                ),
+              ),
+            );
+            if (
+              filePartsInsertions.filter(Boolean).length !==
+              existingUploadIntents.length
+            ) {
+              throw new APIError(
+                "Failed to insert one or more file attachments.",
+              );
+            }
+            const deletedUploadIntents = await Promise.all(
+              existingUploadIntents.map((intent) =>
+                deleteUploadIntentDb(intent.id, tx),
+              ),
+            );
+            if (
+              deletedUploadIntents.filter(Boolean).length !==
+              existingUploadIntents.length
+            )
+              throw new APIError("Failed to delete one or more uploads.");
+          }
+        },
+      );
+      if (!persisted)
+        return NextResponse.json("This chat attempt is no longer active.", {
+          status: 409,
+        });
     } else {
       const existingChatRun = await findChatRunDb({
         chatId,
@@ -212,7 +242,7 @@ export const POST = async (req: Request) => {
         case "pending":
         case "streaming":
         case "running-tool":
-          throw new APIError("This message is already being processed.", 409);
+          break;
         case "awaiting-approval":
           runId = existingChatRun.id;
           responseTimeMs = existingChatRun.responseTimeMs;
@@ -264,29 +294,150 @@ export const POST = async (req: Request) => {
             `Unknown chat run status: ${existingChatRun.status satisfies never}`,
           );
       }
+      const claim = await claimChatRunDb(existingChatRun, {
+        isNew: false,
+        isRegenerating,
+      });
+      if (!claim?.startedAt)
+        return NextResponse.json("This message is already being processed.", {
+          status: 409,
+        });
+      attemptStartedAt = claim.startedAt;
     }
 
-    if (!runId) {
+    if (!runId || !attemptStartedAt) {
       throw new APIError("Failed to log chat run.");
     }
 
+    let webSearchToolCount = 0;
+    let scrapeWebpageToolCount = 0;
+
+    const ownedRunId = runId;
+    const ownedAttemptStartedAt = attemptStartedAt;
+    const remainingGenerationMs = Math.max(
+      1,
+      CHAT_GENERATION_TIMEOUT_MS - (Date.now() - attemptStartedAt.getTime()),
+    );
+    const attemptSignal = AbortSignal.any([
+      req.signal,
+      AbortSignal.timeout(remainingGenerationMs),
+    ]);
+    const attemptTools = guardToolExecutions(
+      tools,
+      (name) => toolContextMap[name as ToolName].requiresApproval,
+      async (execute) => {
+        const owned = await withChatRunAttemptDb(
+          ownedRunId,
+          ownedAttemptStartedAt,
+          async () => execute(),
+        );
+        if (!owned)
+          throw new APIError("This chat attempt is no longer active.", 409);
+        return owned.value;
+      },
+    );
     const chatAgent = new ToolLoopAgent({
       model: openrouter(selectedModel),
       instructions: CHAT_INSTRUCTIONS(selectedModel),
       temperature: 0.4,
-      tools,
-      toolsContext: Object.fromEntries(
-        Object.entries(toolApprovalMap)
-          .filter(([, requiresApproval]) => requiresApproval)
-          .map(([toolName]) => [toolName, { runId }]),
-      ) as Record<ToolName, { runId: string }>,
+      tools: attemptTools,
+      toolsContext: {
+        searchWeb: {
+          limit: 2,
+          reserveCall() {
+            if (webSearchToolCount >= this.limit) {
+              return false;
+            }
+
+            webSearchToolCount++;
+            return true;
+          },
+        },
+        scrapeWebpage: {
+          limit: 2,
+          reserveCall() {
+            if (scrapeWebpageToolCount >= this.limit) {
+              return false;
+            }
+
+            scrapeWebpageToolCount++;
+            return true;
+          },
+        },
+        createTasks: {
+          runId,
+        },
+        updateTask: {
+          runId,
+        },
+        updateTasksStatus: {
+          runId,
+        },
+        updateTasksPriority: {
+          runId,
+        },
+        assignTasksToMilestone: {
+          runId,
+        },
+        deleteTask: {
+          runId,
+        },
+        createArea: {
+          runId,
+        },
+        updateArea: {
+          runId,
+        },
+        setAreaArchived: {
+          runId,
+        },
+        deleteArea: {
+          runId,
+        },
+        createProject: {
+          runId,
+        },
+        updateProject: {
+          runId,
+        },
+        setProjectArchived: {
+          runId,
+        },
+        deleteProject: {
+          runId,
+        },
+        createDocument: {
+          runId,
+        },
+        updateDocument: {
+          runId,
+        },
+        deleteDocument: {
+          runId,
+        },
+        createMilestones: {
+          runId,
+        },
+        updateMilestone: {
+          runId,
+        },
+        updateMilestonesStatus: {
+          runId,
+        },
+        moveMilestone: {
+          runId,
+        },
+        deleteMilestone: {
+          runId,
+        },
+      },
       toolApproval: Object.fromEntries(
-        Object.entries(toolApprovalMap)
-          .filter(([, requiresApproval]) => requiresApproval)
+        Object.entries(toolContextMap)
+          .filter(([, context]) => context.requiresApproval)
           .map(([toolName]) => [toolName, "user-approval"]),
       ),
       timeout: {
-        totalMs: 120_000,
+        totalMs: remainingGenerationMs,
         stepMs: 60_000,
         chunkMs: 30_000,
         toolMs: 15_000,
@@ -305,9 +456,11 @@ export const POST = async (req: Request) => {
       },
       onToolExecutionEnd: async () => {
         if (runId) {
-          await updateChatRunDb(runId, {
-            status: "running-tool",
-          });
+          await updateChatRunDb(
+            runId,
+            { status: "running-tool" },
+            { attemptStartedAt: ownedAttemptStartedAt },
+          );
         }
       },
       onStepEnd: async ({ performance }) => {
@@ -318,10 +471,10 @@ export const POST = async (req: Request) => {
       },
     });
 
-    return createAgentUIStreamResponse({
+    return await createAgentUIStreamResponse({
       agent: chatAgent,
       uiMessages: messages,
-      abortSignal: req.signal,
+      abortSignal: attemptSignal,
       generateMessageId: () => crypto.randomUUID(),
       messageMetadata: ({ part }) => {
         if (part.type === "finish") {
@@ -339,27 +492,67 @@ export const POST = async (req: Request) => {
         const errorMessage = isError(error)
           ? error.message
           : "Something went wrong during generation. Please try again.";
+
+        generationError = errorMessage;
         return errorMessage;
       },
-      onEnd: async ({ responseMessage, isAborted }) => {
-        if (!runId || !responseMessage?.id) return;
+      experimental_transform: () => {
+        const finalizedInputs = new Set<string>();
 
-        const hasPendingApproval = responseMessage.parts.some(
+        return new TransformStream<
+          TextStreamPart<typeof tools>,
+          TextStreamPart<typeof tools>
+        >({
+          transform(part, controller) {
+            if (part.type === "tool-call") {
+              finalizedInputs.add(part.toolCallId);
+            }
+
+            if (
+              part.type === "tool-input-delta" &&
+              finalizedInputs.has(part.id) &&
+              part.delta.trim() === ""
+            )
+              return;
+
+            controller.enqueue(part);
+          },
+        });
+      },
+      onEnd: async ({ responseMessage, isAborted }) => {
+        if (!runId || !attemptStartedAt || !responseMessage?.id) return;
+
+        const pendingApprovalParts = responseMessage.parts.filter(
           (part) => isToolUIPart(part) && part.state === "approval-requested",
         );
+        const hasPendingApproval = pendingApprovalParts.length > 0;
 
         const roundedRTM = Math.round(responseTimeMs);
 
-        if (hasPendingApproval) {
-          await updateChatRunDb(runId, {
-            status: "awaiting-approval",
-            responseTimeMs: roundedRTM,
-          });
+        const updateAssistantChatMessage = async (tx: DbTransaction) => {
+          const existingLastAssistantMessage =
+            await tx.query.ChatMessageTable.findFirst({
+              where: and(
+                eq(ChatMessageTable.chatId, chatId),
+                eq(ChatMessageTable.role, "assistant"),
+                eq(ChatMessageTable.responseToClientId, latestUserMessage.id),
+              ),
+              orderBy: desc(ChatMessageTable.createdAt),
+            });
 
-          return;
-        }
+          if (existingLastAssistantMessage) {
+            if (existingLastAssistantMessage.modelId !== selectedModel) {
+              await tx
+                .update(ChatMessageTable)
+                .set({ modelId: selectedModel })
+                .where(
+                  eq(ChatMessageTable.id, existingLastAssistantMessage.id),
+                );
+            }
 
-        await db.transaction(async (tx) => {
+            return existingLastAssistantMessage;
+          }
+
           const insertedMessage = await upsertChatMessageDb(
             {
               chatId,
@@ -374,9 +567,28 @@ export const POST = async (req: Request) => {
           if (!insertedMessage)
             throw new APIError("Failed to insert assistant message.");
 
-          await tx
+          return insertedMessage;
+        };
+
+        const handlePartsUpdate = async (tx: DbTransaction) => {
+          const insertedMessage = await updateAssistantChatMessage(tx);
+
+          const existingParts = await tx
+            .select({
+              count: count(),
+            })
+            .from(MessagePartTable)
+            .where(eq(MessagePartTable.messageId, insertedMessage.id))
+            .limit(1);
+
+          const existingPartsCount = existingParts?.[0]?.count ?? 0;
+
+          const insertedParts = await tx
             .delete(MessagePartTable)
-            .where(eq(MessagePartTable.messageId, insertedMessage.id));
+            .where(eq(MessagePartTable.messageId, insertedMessage.id))
+            .returning();
+          if (insertedParts.length !== existingPartsCount)
+            throw new Error("Failed to delete all previous parts.");
 
           if (responseMessage.parts.length > 0) {
             await tx.insert(MessagePartTable).values(
@@ -388,20 +600,63 @@ export const POST = async (req: Request) => {
             );
           }
 
-          if (runId) {
-            await updateChatRunDb(
-              runId,
-              {
-                status: isAborted ? "cancelled" : "completed",
-                assistantMessageId: insertedMessage.id,
-                finishedAt: isAborted ? null : new Date(),
-                responseTimeMs: roundedRTM,
-              },
-              { tx },
-            );
-          }
-          responseTimeMs = 0;
-        });
+          return insertedMessage;
+        };
+
+        if (hasPendingApproval && !generationError && !isAborted) {
+          await withChatRunAttemptDb(
+            ownedRunId,
+            ownedAttemptStartedAt,
+            async (tx) => {
+              const insertedMessage = await handlePartsUpdate(tx);
+
+              if (runId) {
+                await updateChatRunDb(
+                  runId,
+                  {
+                    status: "awaiting-approval",
+                    responseTimeMs: roundedRTM,
+                    assistantMessageId: insertedMessage.id,
+                  },
+                  { tx, attemptStartedAt: ownedAttemptStartedAt },
+                );
+              }
+            },
+          );
+
+          return;
+        }
+
+        await withChatRunAttemptDb(
+          ownedRunId,
+          ownedAttemptStartedAt,
+          async (tx) => {
+            const insertedMessage = await handlePartsUpdate(tx);
+
+            if (runId) {
+              await updateChatRunDb(
+                runId,
+                {
+                  status: generationError
+                    ? "failed"
+                    : isAborted
+                      ? "cancelled"
+                      : "completed",
+                  assistantMessageId: insertedMessage.id,
+                  finishedAt: generationError
+                    ? new Date()
+                    : isAborted
+                      ? null
+                      : new Date(),
+                  responseTimeMs: roundedRTM,
+                  error: generationError,
+                },
+                { tx, attemptStartedAt: ownedAttemptStartedAt },
+              );
+            }
+            responseTimeMs = 0;
+          },
+        );
       },
       consumeSseStream: consumeStream,
     });
@@ -417,66 +672,99 @@ export const POST = async (req: Request) => {
 
     const response = NextResponse.json(errorMessage, { status });
 
+    if (!runId || !attemptStartedAt) return response;
+
+    const failedRunId = runId;
+    const failedAttemptStartedAt = attemptStartedAt;
     const userMessageClientId = latestUserMessage?.id;
     let assistantMessageClientId: string | null = null;
 
-    await db.transaction(async (tx) => {
-      if (userMessageClientId) {
-        const userMessageId = (
-          await upsertChatMessageDb(
-            {
-              chatId: chatId,
-              clientMessageId: userMessageClientId,
-              modelId: selectedModel,
-              role: "user",
-            },
-            { tx },
-          )
-        )?.id;
-        if (!userMessageId) return response;
+    try {
+      await withChatRunAttemptDb(
+        failedRunId,
+        failedAttemptStartedAt,
+        async (tx) => {
+          if (userMessageClientId) {
+            const userMessageId = (
+              await upsertChatMessageDb(
+                {
+                  chatId: chatId,
+                  clientMessageId: userMessageClientId,
+                  modelId: selectedModel,
+                  role: "user",
+                },
+                { tx },
+              )
+            )?.id;
+            if (!userMessageId) return response;
 
-        await insertMessagePartDb(
-          {
-            messageId: userMessageId,
-            order: 0,
-            part: {
-              type: "text",
-              text:
-                latestUserMessage?.parts
-                  .filter((part) => part.type === "text")
-                  .map((part) => part.text)
-                  .join(" ") ?? "",
-            },
-          },
-          { tx },
-        );
+            const insertedChatMessagePart =
+              await tx.query.MessagePartTable.findFirst({
+                where: and(
+                  eq(MessagePartTable.messageId, userMessageId),
+                  eq(MessagePartTable.order, 0),
+                ),
+              });
+            if (!insertedChatMessagePart) {
+              await insertMessagePartDb(
+                {
+                  messageId: userMessageId,
+                  order: 0,
+                  part: {
+                    type: "text",
+                    text:
+                      latestUserMessage?.parts
+                        .filter((part) => part.type === "text")
+                        .map((part) => part.text)
+                        .join(" ") ?? "",
+                  },
+                },
+                { tx },
+              );
+            }
 
-        const existingAssistantResponse =
-          await tx.query.ChatMessageTable.findFirst({
-            where: and(
-              eq(ChatMessageTable.role, "assistant"),
-              eq(ChatMessageTable.chatId, chatId),
-              eq(ChatMessageTable.responseToClientId, userMessageClientId),
-              eq(ChatMessageTable.modelId, selectedModel),
-            ),
-          });
-        if (existingAssistantResponse) {
-          assistantMessageClientId = existingAssistantResponse.id;
-        } else {
-          const insertedChatMessage = await insertChatMessageDb(
+            const existingAssistantResponse =
+              await tx.query.ChatMessageTable.findFirst({
+                where: and(
+                  eq(ChatMessageTable.role, "assistant"),
+                  eq(ChatMessageTable.chatId, chatId),
+                  eq(ChatMessageTable.responseToClientId, userMessageClientId),
+                ),
+              });
+            if (existingAssistantResponse) {
+              assistantMessageClientId = existingAssistantResponse.id;
+            } else {
+              const insertedChatMessage = await insertChatMessageDb(
+                {
+                  chatId: chatId,
+                  clientMessageId: crypto.randomUUID(),
+                  modelId: selectedModel,
+                  role: "assistant",
+                  responseToClientId: userMessageClientId,
+                },
+                { tx },
+              );
+              assistantMessageClientId = insertedChatMessage?.id ?? null;
+            }
+          }
+          await updateChatRunDb(
+            failedRunId,
             {
-              chatId: chatId,
-              clientMessageId: crypto.randomUUID(),
-              modelId: selectedModel,
-              role: "assistant",
-              responseToClientId: userMessageClientId,
+              assistantMessageId: assistantMessageClientId,
+              status: "failed",
+              error: errorMessage,
+              finishedAt: new Date(),
             },
-            { tx },
+            { tx, attemptStartedAt: failedAttemptStartedAt },
           );
-          assistantMessageClientId = insertedChatMessage?.id ?? null;
-        }
-      }
-      if (runId) {
+        },
+      );
+    } catch (error) {
+      console.error(error);
+    }
+
+    if (runId) {
+      try {
         await updateChatRunDb(
           runId,
           {
@@ -484,23 +772,12 @@ export const POST = async (req: Request) => {
             error: errorMessage,
             finishedAt: new Date(),
           },
-          { tx },
+          { attemptStartedAt: failedAttemptStartedAt },
         );
+      } catch (error) {
+        console.error("Failed to record chat failure: ", error);
       }
-      if (userMessageClientId) {
-        await upsertChatRunDb(
-          {
-            chatId: chatId,
-            userMessageClientId: userMessageClientId,
-            assistantMessageId: assistantMessageClientId,
-            status: "failed",
-            error: errorMessage,
-            finishedAt: new Date(),
-          },
-          { tx },
-        );
-      }
-    });
+    }
 
     return response;
   }

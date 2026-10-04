@@ -10,6 +10,7 @@ import { DayTasksDialog } from "@/features/tasks/components/day-tasks-dialog";
 import { loadTasksSearchParams } from "@/features/tasks/lib/tasks-params";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { SearchParamsType } from "@/lib/types";
+import { format } from "date-fns";
 import { Suspense } from "react";
 
 const DashboardCalendarPage = (props: SearchParamsType) => {
@@ -45,7 +46,7 @@ const DashboardCalendarSuspense = async ({
       ? readTasksAction({
           ...dayTasksFilters,
           page: DEFAULT_PAGE,
-          selectedDay: calendarFilters.day,
+          selectedDay: format(calendarFilters.day, "yyyy-MM-dd"),
         })
       : Promise.resolve(null),
   ]);

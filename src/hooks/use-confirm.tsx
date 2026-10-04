@@ -36,6 +36,8 @@ export const useConfirm = (
   const handleConfirm = () => {
     if (!canAction) return;
 
+    setConfirmInputValue("");
+
     promise?.resolve(true);
     handleClose();
   };

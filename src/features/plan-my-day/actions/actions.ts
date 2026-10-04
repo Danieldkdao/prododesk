@@ -39,7 +39,7 @@ import {
   GENERATE_TRIAGE_SUGGESTIONS_PROMPT,
 } from "@/services/ai/prompts";
 import { tz, TZDate } from "@date-fns/tz";
-import { generateText, Output } from "ai";
+import { generateText, Output, stepCountIs } from "ai";
 import { format, parse, parseISO, subDays } from "date-fns";
 import {
   and,
@@ -60,6 +60,7 @@ import {
   generatedDailyPlanSchema,
   GeneratedDailyPlanSchemaType,
   triageSuggestionSchema,
+  TriageSuggestionSchemaType,
 } from "../ai/schemas";
 import {
   MAX_PLAN_CANDIDATES,
@@ -80,6 +81,7 @@ import {
   suggestionAnswerSchema,
   SuggestionAnswerSchemaType,
 } from "./schemas";
+import z from "zod";
 
 export const readDayPlanAction = async () => {
   const { userId, user } = await getCurrentUser();
@@ -133,66 +135,86 @@ const readCachedPlanMyDayDataAction = async (
   const threeDaysAgo = subDays(startUtc, 3);
 
   const taskCount = sql<number>`count(*) over()`.mapWith(Number);
-  const [todayTasks, tasksNeedAttention, unsortedTasks] = await Promise.all([
-    db
-      .select({ ...getTableColumns(TaskTable), totalCount: taskCount })
-      .from(TaskTable)
-      .where(
-        and(
-          eq(TaskTable.userId, userId),
-          or(
-            and(
-              gte(TaskTable.scheduledAt, startUtc),
-              lte(TaskTable.scheduledAt, endUtc),
+  const [todayTasks, tasksNeedAttention, unsortedTasks, eligibleTasks] =
+    await Promise.all([
+      db
+        .select({ ...getTableColumns(TaskTable), totalCount: taskCount })
+        .from(TaskTable)
+        .where(
+          and(
+            eq(TaskTable.userId, userId),
+            or(
+              and(
+                gte(TaskTable.scheduledAt, startUtc),
+                lte(TaskTable.scheduledAt, endUtc),
+              ),
+              and(gte(TaskTable.dueAt, startUtc), lte(TaskTable.dueAt, endUtc)),
             ),
-            and(gte(TaskTable.dueAt, startUtc), lte(TaskTable.dueAt, endUtc)),
+            inArray(TaskTable.status, ["in_progress", "not_started"]),
           ),
-          inArray(TaskTable.status, ["in_progress", "not_started"]),
-        ),
-      )
-      .orderBy(asc(TaskTable.id))
-      .limit(1),
-    db
-      .select({ ...getTableColumns(TaskTable), totalCount: taskCount })
-      .from(TaskTable)
-      .where(
-        and(
-          eq(TaskTable.userId, userId),
-          or(
-            lte(TaskTable.scheduledAt, startUtc),
-            lte(TaskTable.dueAt, startUtc),
+        )
+        .orderBy(asc(TaskTable.id))
+        .limit(1),
+      db
+        .select({ ...getTableColumns(TaskTable), totalCount: taskCount })
+        .from(TaskTable)
+        .where(
+          and(
+            eq(TaskTable.userId, userId),
+            or(
+              lte(TaskTable.scheduledAt, startUtc),
+              lte(TaskTable.dueAt, startUtc),
+            ),
+            inArray(TaskTable.status, ["in_progress", "not_started"]),
           ),
-          inArray(TaskTable.status, ["in_progress", "not_started"]),
-        ),
-      )
-      .orderBy(asc(taskPriorityRank(TaskTable.priority)), asc(TaskTable.id))
-      .limit(1),
-    db
-      .select({ ...getTableColumns(TaskTable), totalCount: taskCount })
-      .from(TaskTable)
-      .where(
-        and(
-          isNull(TaskTable.scheduledAt),
-          isNull(TaskTable.dueAt),
-          isNull(TaskTable.projectId),
-          isNull(TaskTable.milestoneId),
-          lte(TaskTable.createdAt, threeDaysAgo),
-          eq(TaskTable.userId, userId),
-          inArray(TaskTable.status, ["in_progress", "not_started"]),
-        ),
-      )
-      .orderBy(asc(taskPriorityRank(TaskTable.priority)), asc(TaskTable.id))
-      .limit(1),
-  ]);
+        )
+        .orderBy(asc(taskPriorityRank(TaskTable.priority)), asc(TaskTable.id))
+        .limit(1),
+      db
+        .select({ ...getTableColumns(TaskTable), totalCount: taskCount })
+        .from(TaskTable)
+        .where(
+          and(
+            isNull(TaskTable.scheduledAt),
+            isNull(TaskTable.dueAt),
+            isNull(TaskTable.projectId),
+            isNull(TaskTable.milestoneId),
+            lte(TaskTable.createdAt, threeDaysAgo),
+            eq(TaskTable.userId, userId),
+            inArray(TaskTable.status, ["in_progress", "not_started"]),
+          ),
+        )
+        .orderBy(asc(taskPriorityRank(TaskTable.priority)), asc(TaskTable.id))
+        .limit(1),
+      db
+        .select({
+          totalCount: taskCount,
+        })
+        .from(TaskTable)
+        .where(
+          and(
+            eq(TaskTable.userId, userId),
+            inArray(TaskTable.status, ["not_started", "in_progress"]),
+            or(
+              lte(TaskTable.scheduledAt, endUtc),
+              lte(TaskTable.dueAt, endUtc),
+              and(isNull(TaskTable.scheduledAt), isNull(TaskTable.dueAt)),
+            ),
+          ),
+        )
+        .limit(1),
+    ]);
 
   const todayTaskCount = todayTasks[0]?.totalCount ?? 0;
   const tasksNeedAttentionCount = tasksNeedAttention[0]?.totalCount ?? 0;
   const unsortedTaskCount = unsortedTasks[0]?.totalCount ?? 0;
+  const eligibleTaskCount = eligibleTasks[0]?.totalCount ?? 0;
 
   const counts = {
     todayTaskCount,
     tasksNeedAttentionCount,
     unsortedTaskCount,
+    eligibleTaskCount,
   };
 
   const plannerState = getPlannerCardState(counts);
@@ -278,7 +300,7 @@ const readCachedTriageCandidatesAction = async (
 
   return unsortedTasks;
 };
-export const readTriageCandidatesAction = async () => {
+const readTriageCandidatesAction = async () => {
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) return null;
 
@@ -340,6 +362,7 @@ export const generateTriageSuggestionsAction = async () => {
       output: Output.array({
         element: triageSuggestionSchema,
       }),
+      stopWhen: stepCountIs(10),
       prompt: GENERATE_TRIAGE_SUGGESTIONS_PROMPT({
         tasks: existingTasks,
         projects:
@@ -353,11 +376,51 @@ export const generateTriageSuggestionsAction = async () => {
         readProjects: projectTools.readProjects,
         readMilestones: milestoneTools.readMilestones,
       },
+      timeout: {
+        totalMs: 60_000,
+        stepMs: 30_000,
+        toolMs: 10_000,
+      },
+      maxRetries: 1,
     });
+
+    const { success: outputSuccess, data: parsedOutput } = z
+      .array(triageSuggestionSchema)
+      .safeParse(output);
+
+    let outputToUse: TriageSuggestionSchemaType[] = [];
+
+    if (
+      !outputSuccess ||
+      parsedOutput.length !== existingTasks.length ||
+      new Set(parsedOutput.map((suggestion) => suggestion.taskId)).size !==
+        existingTasks.length ||
+      parsedOutput.some((suggestion) => !taskIds.includes(suggestion.taskId))
+    ) {
+      console.warn(
+        "AI output validation failed or length mismatch. Using fallback suggestions.",
+      );
+      outputToUse = existingTasks.map((task) => ({
+        taskId: task.id,
+        suggestedName: task.name,
+        suggestedProjectId: task.projectId ?? null,
+        suggestedMilestoneId: task.milestoneId ?? null,
+        suggestedStatus: task.status,
+        suggestedPriority: task.priority,
+        suggestedScheduledAt: task.scheduledAt
+          ? task.scheduledAt.toISOString()
+          : null,
+        suggestedDueAt: task.dueAt ? task.dueAt.toISOString() : null,
+        confidence: "medium",
+        reason: "Fallback suggestion based on existing task data.",
+      }));
+    } else {
+      outputToUse = parsedOutput;
+    }
 
     const outputWithExtras = (
       await Promise.all(
-        output.map(async (suggestion) => {
+        outputToUse.map(async (suggestion) => {
           const [project, milestone] = await Promise.all([
             suggestion.suggestedProjectId
               ? confirmUserProjectOwnership(suggestion.suggestedProjectId)
@@ -382,12 +445,10 @@ export const generateTriageSuggestionsAction = async () => {
     ).filter((suggestion): suggestion is TriageSuggestion =>
       Boolean(suggestion.task),
     );
-    if (outputWithExtras.length !== output.length)
+    if (outputWithExtras.length !== outputToUse.length)
       throw new Error(GENERAL_ERROR_MESSAGE);
 
-    const outputTaskIds = new Set(
-      outputWithExtras.map((suggestion) => suggestion.taskId),
-    );
+    const outputTaskIds = new Set(outputWithExtras.map((s) => s.taskId));
 
     const hasEveryCandidate =
       outputWithExtras.length === triageCandidates.length &&
@@ -511,7 +572,7 @@ export const processTriageAnswerAction = async ({
     const parsedUpdate = updateTaskSchema.safeParse(definedTaskData);
     if (!parsedUpdate.success) throw new Error(INVALID_DATA_ERROR_MESSAGE);
 
-    const completeTask = taskSchema.safeParse({
+    const completeTask = taskSchema(existingTask).safeParse({
       name: existingTask.name,
       description: existingTask.description,
       emoji: existingTask.emoji,

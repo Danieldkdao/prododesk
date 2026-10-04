@@ -14,6 +14,7 @@ export const auth = betterAuth({
         type: "string",
         required: true,
         input: true,
+        defaultValue: "UTC",
       },
       profileImageKey: {
         type: "string",

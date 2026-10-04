@@ -1,5 +1,7 @@
 "use client";
 
+import { format } from "date-fns";
+
 import { NotFound } from "@/components/not-found";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -43,7 +45,9 @@ export const DayTasksInfiniteList = ({
       return readTasksAction({
         ...dayTasksFilters,
         page: nextPage,
-        selectedDay: calendarFilters.day,
+        selectedDay: calendarFilters.day
+          ? format(calendarFilters.day, "yyyy-MM-dd")
+          : null,
         ...readOptions,
       });
     },
@@ -68,7 +72,7 @@ export const DayTasksInfiniteList = ({
   if (!calendarFilters.day) return null;
 
   const { isPastDay, isToday } = calculateCalendarDayTasksValues(
-    calendarFilters.month,
+    calendarFilters.month ?? calendarFilters.day,
     calendarFilters.day,
     dayTasks,
   );

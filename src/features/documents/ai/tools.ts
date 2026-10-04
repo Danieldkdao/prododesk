@@ -1,15 +1,13 @@
-import {
-  findToolExecutionDb,
-  updateToolExecutionDb,
-  upsertToolExecutionDb,
-} from "@/features/chats/server/tool-executions";
+import { DocumentAssetTable } from "@/db/schema";
+import { deleteFilesFromStorage } from "@/features/uploads/lib/delete-files";
+import { eq } from "drizzle-orm";
+import { executeMutationToolDb } from "@/features/chats/server/tool-executions";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
   NOT_FOUND_ERROR_MESSAGE,
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
-import { isError } from "@/lib/utils";
 import { runIdContextSchema } from "@/services/ai/tools/helpers";
 import { tool } from "ai";
 import {
@@ -71,58 +69,24 @@ const createDocumentTool = tool({
     { name, content, projectId },
     { context, toolCallId, abortSignal },
   ) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "createDocument",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      abortSignal?.throwIfAborted();
-      const response = await createDocumentAction(
-        {
-          name,
-          content,
-          projectId: projectId ?? undefined,
-        },
-        { source: "ai", chatRunId: context.runId },
-      );
-
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "createDocument",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
-    }
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "createDocument" },
+      async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await createDocumentAction(
+          {
+            name,
+            content,
+            projectId: projectId ?? undefined,
+          },
+          { source: "ai", chatRunId: context.runId, tx },
+        );
+        const isSuccess = !response.error;
+        const output = response.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 
@@ -134,54 +98,21 @@ const updateDocumentTool = tool({
     { documentId, changes },
     { context, toolCallId, abortSignal },
   ) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "updateDocument",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      abortSignal?.throwIfAborted();
-      const response = await updateDocumentAction(documentId, changes, {
-        source: "ai",
-        chatRunId: context.runId,
-      });
-
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "updateDocument",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
-    }
+    return executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "updateDocument" },
+      async (tx) => {
+        abortSignal?.throwIfAborted();
+        const response = await updateDocumentAction(documentId, changes, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
+        const isSuccess = !response.error;
+        const output = response.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
   },
 });
 
@@ -190,54 +121,31 @@ const deleteDocumentTool = tool({
   inputSchema: deleteDocumentToolSchema,
   contextSchema: runIdContextSchema,
   execute: async ({ documentId }, { context, toolCallId, abortSignal }) => {
-    try {
-      const existingToolExecution = await findToolExecutionDb(
-        context.runId,
-        toolCallId,
-      );
-      if (existingToolExecution?.status === "pending")
-        return "This tool execution is pending.";
-      if (existingToolExecution?.status === "completed")
-        return JSON.stringify(existingToolExecution.output) || "No output.";
-
-      const insertedToolExecution = await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "deleteDocument",
-      });
-      if (!insertedToolExecution)
-        throw new Error("Failed to execute tool. Please try again.");
-
-      abortSignal?.throwIfAborted();
-      const response = await deleteDocumentAction(documentId, {
-        source: "ai",
-        chatRunId: context.runId,
-      });
-
-      const isSuccess = !response.error;
-      const output = response.message;
-
-      await updateToolExecutionDb(context.runId, toolCallId, {
-        output,
-        status: isSuccess ? "completed" : "failed",
-      });
-
-      if (isSuccess) return output;
-      throw new Error(output);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = isError(error)
-        ? error.message
-        : GENERAL_ERROR_MESSAGE;
-      await upsertToolExecutionDb({
-        runId: context.runId,
-        toolCallId,
-        toolName: "deleteDocument",
-        output: errorMessage,
-        status: "failed",
-      });
-      throw new Error(errorMessage);
+    let storageKeys: string[] = [];
+    const output = await executeMutationToolDb(
+      { runId: context.runId, toolCallId, toolName: "deleteDocument" },
+      async (tx) => {
+        abortSignal?.throwIfAborted();
+        const assets = await tx
+          .select({ storageKey: DocumentAssetTable.storageKey })
+          .from(DocumentAssetTable)
+          .where(eq(DocumentAssetTable.documentId, documentId));
+        storageKeys = assets.map((asset) => asset.storageKey);
+        const response = await deleteDocumentAction(documentId, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
+        const isSuccess = !response.error;
+        const output = response.message;
+        if (isSuccess) return output;
+        throw new Error(output);
+      },
+    );
+    if (storageKeys.length && !(await deleteFilesFromStorage(storageKeys))) {
+      console.error("Failed to delete assets for document:", documentId);
     }
+    return output;
   },
 });
 

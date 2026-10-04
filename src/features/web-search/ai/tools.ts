@@ -8,21 +8,16 @@ import {
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { envServer } from "@/data/env/server";
 import removeMd from "remove-markdown";
-
-let searchWebToolCount = 0;
-let scrapeWebpageToolCount = 0;
-
-const MAX_SEARCH_WEB_TOOL_COUNT = 2;
-const MAX_SCRAPE_WEBPAGE_TOOL_COUNT = 2;
+import { toolLimitSchema } from "@/services/ai/schemas";
 
 const searchWebTool = tool({
   description: "Searches the web and returns search results.",
   inputSchema: searchWebToolSchema,
-  execute: async ({ query }, { abortSignal }) => {
-    searchWebToolCount++;
-    if (searchWebToolCount > MAX_SEARCH_WEB_TOOL_COUNT)
+  contextSchema: toolLimitSchema,
+  execute: async ({ query }, { abortSignal, context }) => {
+    if (!context.reserveCall())
       throw new Error(
-        "You have exceeded the maximum amount of allowed web searches (2).",
+        `You have exceeded the maximum amount of allowed web searches (${context.limit}).`,
       );
 
     const { userId } = await getCurrentUser();
@@ -31,18 +26,15 @@ const searchWebTool = tool({
         "This user is not authenticated. Tell them they need to sign in first.",
       );
 
-    const response = await fetch(
-      "https://ai.hackclub.com/proxy/v1/exa/search",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${envServer.HACK_CLUB_AI_API_KEY}`,
-        },
-        body: JSON.stringify({ query, numResults: 5 }),
-        signal: abortSignal,
+    const response = await fetch("https://api.exa.ai/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${envServer.EXA_API_KEY}`,
       },
-    );
+      body: JSON.stringify({ query, numResults: 5 }),
+      signal: abortSignal,
+    });
     const unparsedData = await response.json();
     const { data, success } =
       searchWebToolValidationSchema.safeParse(unparsedData);
@@ -51,8 +43,8 @@ const searchWebTool = tool({
     return data.results
       .map(
         (result) => `
-      ID: ${result.id}
-      TITLE: ${result.title}
+      ID: ${result.id}\n
+      TITLE: ${result.title}\n
       URL: ${result.url}\n\n
       `,
       )
@@ -63,11 +55,11 @@ const searchWebTool = tool({
 const scrapeWebpageTool = tool({
   description: "Scrapes given webpage and returns clean information.",
   inputSchema: scrapeWebpageToolSchema,
-  execute: async ({ url }, { abortSignal }) => {
-    scrapeWebpageToolCount++;
-    if (scrapeWebpageToolCount > MAX_SCRAPE_WEBPAGE_TOOL_COUNT)
+  contextSchema: toolLimitSchema,
+  execute: async ({ url }, { abortSignal, context }) => {
+    if (!context.reserveCall())
       throw new Error(
-        "You have exceeded the maximum amount of allowed web scrapes. (2).",
+        `You have exceeded the maximum amount of allowed web scrapes. (${context.limit}).`,
       );
 
     const { userId } = await getCurrentUser();

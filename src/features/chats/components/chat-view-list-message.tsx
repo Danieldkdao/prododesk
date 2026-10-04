@@ -28,7 +28,7 @@ import {
 import { useChatProvider } from "@/hooks/use-chat-provider";
 import { cn, formatMs, generateFileUrl } from "@/lib/utils";
 import { RegenerateButton } from "@/services/ai/components/regenerate-button";
-import { getModelInfo } from "@/services/ai/models";
+import { getModelInfo, LLMModel } from "@/services/ai/models";
 import { ToolName } from "@/services/ai/tool-contracts";
 import { CustomUIMessage } from "@/services/ai/types";
 import { getToolName, isToolUIPart } from "ai";
@@ -53,11 +53,11 @@ import { ChatMessageAttachments } from "./chat-message-attachments";
 export const ChatViewListMessage = ({
   msg,
   messages,
-  currentModelInfo,
+  selectedModel,
 }: {
   msg: CustomUIMessage;
   messages: CustomUIMessage[];
-  currentModelInfo: ReturnType<typeof getModelInfo>;
+  selectedModel: LLMModel | null;
 }) => {
   const { id, addToolApprovalResponse, status, cancelledMessageIds } =
     useChatProvider();
@@ -493,6 +493,12 @@ export const ChatViewListMessage = ({
                                 addToolApprovalResponse({
                                   id: pendingApproval.approval.id,
                                   approved: true,
+                                  options: {
+                                    body: {
+                                      chatId: id,
+                                      selectedModel: selectedModel?.id ?? null,
+                                    },
+                                  },
                                 })
                               }
                             >
@@ -504,6 +510,12 @@ export const ChatViewListMessage = ({
                                 addToolApprovalResponse({
                                   id: pendingApproval.approval.id,
                                   approved: false,
+                                  options: {
+                                    body: {
+                                      chatId: id,
+                                      selectedModel: selectedModel?.id ?? null,
+                                    },
+                                  },
                                 })
                               }
                             >
@@ -615,9 +627,7 @@ export const ChatViewListMessage = ({
                       id={msg.id}
                       chatId={msg.metadata?.chatId ?? id}
                       modelId={
-                        msg.metadata?.modelId ??
-                        currentModelInfo?.id ??
-                        undefined
+                        msg.metadata?.modelId ?? selectedModel?.id ?? undefined
                       }
                       responseToClientId={
                         msg.metadata?.responseToClientId ?? latestUserMsg?.id
