@@ -86,7 +86,7 @@ export const createChatAction = async (unsafeData: ChatMessageSchemaType) => {
   }
 };
 
-export const readChatAction = async (userId: string, chatId: string) => {
+const readCachedChat = async (userId: string, chatId: string) => {
   "use cache";
   cacheTag(getChatIdTag(chatId));
 
@@ -130,9 +130,16 @@ export const readChatAction = async (userId: string, chatId: string) => {
 
   return existingChat ?? null;
 };
+export const readChatAction = async (userId: string, chatId: string) => {
+  const { userId: currentUserId } = await getCurrentUser();
+  if (!currentUserId || currentUserId !== userId || !areValidIds(chatId))
+    return null;
+
+  return readCachedChat(currentUserId, chatId);
+};
 export type ReadChatActionReturnType = UnwrapAsync<typeof readChatAction>;
 
-export const readChatsAction = async (
+const readCachedChats = async (
   userId: string,
   filterOptions: { search?: string | null; page: number },
 ) => {
@@ -141,7 +148,7 @@ export const readChatsAction = async (
 
   const page = filterOptions.page;
 
-  const response = await readChatsDb({ userId, ...filterOptions });
+  const response = await readChatsDb({ ...filterOptions, userId });
   if (!response) return null;
 
   const { chats, whereQuery } = response;
@@ -178,6 +185,18 @@ export const readChatsAction = async (
       clientKey,
     },
   };
+};
+export const readChatsAction = async (
+  userId: string,
+  filterOptions: { search?: string | null; page: number },
+) => {
+  const { userId: currentUserId } = await getCurrentUser();
+  if (!currentUserId || currentUserId !== userId) return null;
+
+  return readCachedChats(currentUserId, {
+    search: filterOptions.search,
+    page: filterOptions.page,
+  });
 };
 export type ReadChatsActionReturnType = UnwrapAsync<typeof readChatsAction>;
 
