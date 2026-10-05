@@ -83,11 +83,15 @@ export const readTasksToolSchema = z
       .describe("Narrow down the search with an array of project IDs."),
   })
   .superRefine((data, ctx) => {
-    if (data.after && data.before && data.after <= data.before) {
+    if (
+      data.after &&
+      data.before &&
+      Date.parse(data.after) > Date.parse(data.before)
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["after", "before"],
-        message: "Before date cannot come AFTER the after date.",
+        message: "Before date cannot come before the after date.",
       });
     }
   });
