@@ -56,21 +56,25 @@ export const createChatAction = async (unsafeData: ChatMessageSchemaType) => {
   }
 
   try {
-    const createdChat = await db.transaction(async (tx) => {
+    let name = "Untitled chat";
+
+    try {
       const { text } = await generateText({
         model: openrouter("mistralai/ministral-3b-2512"),
         prompt:
           "Generate a fitting name for this new chat based on the user's first message: " +
           data.content,
         instructions: GENERATE_CHAT_NAME_INSTRUCTIONS,
+        timeout: { totalMs: 15_000 },
+        maxRetries: 0,
       });
-      if (!text) throw new Error("Failed to generate chat name.");
+      name = text.trim() || name;
+    } catch (error) {
+      console.error("Chat title generation failed:", error);
+    }
 
-      const insertedChat = await insertChatDb({ name: text, userId }, { tx });
-      if (!insertedChat) throw new Error("Failed to insert chat.");
-
-      return insertedChat;
-    });
+    const createdChat = await insertChatDb({ name, userId });
+    if (!createdChat) throw new Error("Failed to insert chat.");
 
     return {
       error: false,
