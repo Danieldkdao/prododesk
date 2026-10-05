@@ -15,14 +15,14 @@ export const projectBaseSchema = z.object({
   color: z.enum(colors),
   areaId: z.uuid().nullish(),
   isArchived: z.boolean(),
-  startAt: z.date().nullish(),
-  endAt: z.date().nullish(),
+  startAt: z.iso.date().nullish(),
+  endAt: z.iso.date().nullish(),
 });
 
 const validateProjectDates = (
   data: {
-    startAt?: Date | null;
-    endAt?: Date | null;
+    startAt?: string | null;
+    endAt?: string | null;
   },
   ctx: z.RefinementCtx,
 ) => {

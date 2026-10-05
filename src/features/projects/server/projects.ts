@@ -99,8 +99,8 @@ export const parseProjectData = (
 
   return {
     ...rest,
-    startAt: startAt ? format(startAt, "yyyy-MM-dd") : null,
-    endAt: endAt ? format(endAt, "yyyy-MM-dd") : null,
+    startAt: startAt ?? null,
+    endAt: endAt ?? null,
     userId,
   };
 };

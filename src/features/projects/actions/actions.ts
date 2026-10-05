@@ -21,8 +21,7 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
-import { areValidIds, isValidDate } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { areValidIds } from "@/lib/utils";
 import { and, asc, count, desc, eq, ne } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { cache } from "react";
@@ -275,8 +274,8 @@ export const updateProjectAction = async (
     color: existingProject.color,
     areaId: existingProject.areaId,
     isArchived: existingProject.isArchived,
-    startAt: existingProject.startAt ? parseISO(existingProject.startAt) : null,
-    endAt: existingProject.endAt ? parseISO(existingProject.endAt) : null,
+    startAt: existingProject.startAt,
+    endAt: existingProject.endAt,
     ...data,
   });
   if (!existingResult.success) {
@@ -286,16 +285,10 @@ export const updateProjectAction = async (
     };
   }
 
-  const { startAt, endAt, ...rest } = data;
-
   try {
     const updatedProject = await updateProjectDb(
       projectId,
-      {
-        ...rest,
-        startAt: isValidDate(startAt) ? format(startAt, "yyyy-MM-dd") : startAt,
-        endAt: isValidDate(endAt) ? format(endAt, "yyyy-MM-dd") : endAt,
-      },
+      data,
       options,
     );
     if (!updatedProject) throw new Error("Failed to update project.");

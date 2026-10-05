@@ -13,7 +13,6 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
-import { format } from "date-fns";
 import { and, between, count, eq, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { MilestonesFilters } from "../lib/milestones-params";
@@ -135,7 +134,7 @@ export const createMilestoneAction = async (
         WHERE mt.user_id = ${userId}
           AND mt.project_id = ${data.projectId}
       ) + 1`,
-        dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
+        dueAt: dueAt ?? null,
       },
       options,
     );
@@ -190,12 +189,7 @@ export const updateMilestoneAction = async (
       existingMilestone.id,
       {
         ...rest,
-        dueAt:
-          dueAt === null
-            ? null
-            : dueAt
-              ? format(dueAt, "yyyy-MM-dd")
-              : existingMilestone.dueAt,
+        dueAt: dueAt === undefined ? existingMilestone.dueAt : dueAt,
       },
       options,
     );

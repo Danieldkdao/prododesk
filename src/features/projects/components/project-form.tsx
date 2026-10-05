@@ -24,7 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ProjectSelectType, projectStatuses } from "@/db/schema";
 import { AreaCommandSelect } from "@/features/areas/components/area-command-select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { addDays, parse, subDays } from "date-fns";
+import { addDays, format, parseISO, subDays } from "date-fns";
 import { SmilePlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
@@ -50,12 +50,6 @@ export const ProjectForm = ({
       ? {
           ...existingProject,
           icon: existingProject.icon ?? "",
-          startAt: existingProject.startAt
-            ? parse(existingProject.startAt, "yyyy-MM-dd", new Date())
-            : undefined,
-          endAt: existingProject.endAt
-            ? parse(existingProject.endAt, "yyyy-MM-dd", new Date())
-            : undefined,
         }
       : {
           name: "",
@@ -264,12 +258,16 @@ export const ProjectForm = ({
                 <PopoverCalendar
                   id="project-start-at-input"
                   mode="single"
-                  value={field.value}
+                  value={field.value ? parseISO(field.value) : null}
                   fieldError={!!fieldState.error}
-                  onValueChange={(date) => field.onChange(date)}
+                  onValueChange={(date) =>
+                    field.onChange(date ? format(date, "yyyy-MM-dd") : null)
+                  }
                   disabled={{
                     before: dateToUse,
-                    after: endAtValue ? subDays(endAtValue, 1) : undefined,
+                    after: endAtValue
+                      ? subDays(parseISO(endAtValue), 1)
+                      : undefined,
                   }}
                 />
               </FieldContent>
@@ -287,11 +285,15 @@ export const ProjectForm = ({
                 <PopoverCalendar
                   id="project-end-at-input"
                   mode="single"
-                  value={field.value}
+                  value={field.value ? parseISO(field.value) : null}
                   fieldError={!!fieldState.error}
-                  onValueChange={(date) => field.onChange(date)}
+                  onValueChange={(date) =>
+                    field.onChange(date ? format(date, "yyyy-MM-dd") : null)
+                  }
                   disabled={{
-                    before: startAtValue ? addDays(startAtValue, 1) : dateToUse,
+                    before: startAtValue
+                      ? addDays(parseISO(startAtValue), 1)
+                      : dateToUse,
                   }}
                 />
               </FieldContent>

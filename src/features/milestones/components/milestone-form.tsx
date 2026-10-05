@@ -4,7 +4,7 @@ import { Controller, useForm } from "react-hook-form";
 import { milestoneSchema, MilestoneSchemaType } from "../actions/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MilestoneSelectType, milestoneStatuses } from "@/db/schema";
-import { parse } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   createMilestoneAction,
   updateMilestoneAction,
@@ -47,9 +47,6 @@ export const MilestoneForm = ({
     defaultValues: existingMilestone
       ? {
           ...existingMilestone,
-          dueAt: existingMilestone.dueAt
-            ? parse(existingMilestone.dueAt, "yyyy-MM-dd", new Date())
-            : null,
         }
       : {
           name: "",
@@ -177,8 +174,10 @@ export const MilestoneForm = ({
                 id="milestone-due-at-input"
                 fieldError={!!fieldState.error}
                 mode="single"
-                value={value}
-                onValueChange={onChange}
+                value={value ? parseISO(value) : null}
+                onValueChange={(date) =>
+                  onChange(date ? format(date, "yyyy-MM-dd") : null)
+                }
                 disabled={{
                   before: today,
                 }}

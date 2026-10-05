@@ -79,7 +79,6 @@ const createMilestonesTool = tool({
               {
                 ...milestone,
                 position: maxPosition + index + 1,
-                dueAt: milestone.dueAt ? parseISO(milestone.dueAt) : undefined,
               },
               { source: "ai", chatRunId: context.runId, tx },
             );
@@ -116,13 +115,7 @@ const updateMilestoneTool = tool({
         abortSignal?.throwIfAborted();
         const response = await updateMilestoneAction(
           milestoneId,
-          {
-            ...changes,
-            dueAt:
-              typeof changes.dueAt === "string"
-                ? parseISO(changes.dueAt)
-                : changes.dueAt,
-          },
+          changes,
           { source: "ai", chatRunId: context.runId, tx },
         );
         const isSuccess = !response.error;

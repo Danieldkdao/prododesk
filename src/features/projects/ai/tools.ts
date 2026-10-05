@@ -48,11 +48,7 @@ const createProjectTool = tool({
       async (tx) => {
         abortSignal?.throwIfAborted();
         const response = await createProjectAction(
-          {
-            ...project,
-            startAt: project.startAt ? parseISO(project.startAt) : undefined,
-            endAt: project.endAt ? parseISO(project.endAt) : undefined,
-          },
+          project,
           { source: "ai", chatRunId: context.runId, tx },
         );
         const isSuccess = !response.error;
@@ -78,17 +74,7 @@ const updateProjectTool = tool({
         abortSignal?.throwIfAborted();
         const response = await updateProjectAction(
           projectId,
-          {
-            ...changes,
-            startAt:
-              typeof changes.startAt === "string"
-                ? parseISO(changes.startAt)
-                : changes.startAt,
-            endAt:
-              typeof changes.endAt === "string"
-                ? parseISO(changes.endAt)
-                : changes.endAt,
-          },
+          changes,
           { source: "ai", chatRunId: context.runId, tx },
         );
         const isSuccess = !response.error;
