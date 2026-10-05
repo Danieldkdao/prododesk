@@ -2,6 +2,7 @@
 
 import { ActivityMutationOptions, db } from "@/db/db";
 import {
+  MilestoneTable,
   MilestoneSelectType,
   ProjectSelectType,
   ProjectTable,
@@ -418,6 +419,7 @@ const readCachedTasksAction = async (
     })
     .from(TaskTable)
     .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+    .leftJoin(MilestoneTable, eq(MilestoneTable.id, TaskTable.milestoneId))
     .where(whereQuery);
 
   const [totalTasks] = await db
