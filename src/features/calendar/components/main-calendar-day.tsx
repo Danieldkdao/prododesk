@@ -1,7 +1,5 @@
 import { TaskSelectType } from "@/db/schema";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
-import { useTasksParams } from "@/features/tasks/hooks/use-tasks-params";
-import { defaultDayTasksParamsOptions } from "@/features/tasks/lib/tasks-params";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
@@ -28,7 +26,6 @@ export const MainCalendarDay = ({
   };
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
-  const [, setDayTasksFilters] = useTasksParams();
 
   const allTasks = Array.from(
     new Map(
@@ -60,7 +57,6 @@ export const MainCalendarDay = ({
         setCalendarFilters({
           day: new Date(date.toUTCString()),
         });
-        setDayTasksFilters(defaultDayTasksParamsOptions);
       }}
     >
       <div className="flex items-start gap-2 flex-wrap w-full justify-between">

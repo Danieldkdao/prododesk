@@ -51,10 +51,11 @@ export const DayTasksInfiniteList = ({
         selectedDay: calendarFilters.day
           ? format(calendarFilters.day, "yyyy-MM-dd")
           : null,
+        view: calendarFilters.view,
         ...readOptions,
       });
     },
-    [calendarFilters.day, dayTasksFilters, readOptions],
+    [calendarFilters.day, calendarFilters.view, dayTasksFilters, readOptions],
   );
 
   const {

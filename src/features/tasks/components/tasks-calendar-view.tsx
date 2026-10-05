@@ -62,6 +62,8 @@ const TasksCalendarViewSuspense = async ({
       search: dayTasksFilters.search,
       statuses: dayTasksFilters.statuses,
       priorities: dayTasksFilters.priorities,
+      dateTimeStartRange: dayTasksFilters.dateTimeStartRange,
+      dateTimeEndRange: dayTasksFilters.dateTimeEndRange,
       ...readOptions,
     }),
     calendarFilters.day
@@ -69,6 +71,7 @@ const TasksCalendarViewSuspense = async ({
           ...dayTasksFilters,
           page: DEFAULT_PAGE,
           selectedDay: format(calendarFilters.day, "yyyy-MM-dd"),
+          view: calendarFilters.view,
           ...readOptions,
         })
       : Promise.resolve(null),

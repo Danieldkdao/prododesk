@@ -58,7 +58,7 @@ type ReadCalendarTasksFilters = Pick<CalendarFilters, "view"> & {
   projectIds?: string[];
   areaIds?: string[];
 } & Partial<
-    Omit<TasksFilters, "dateTimeStartRange" | "dateTimeEndRange" | "sortBy">
+    Omit<TasksFilters, "sortBy">
   >;
 
 type ReadTasksFilters = TasksFilters & {
@@ -66,6 +66,7 @@ type ReadTasksFilters = TasksFilters & {
   unassignedOnly?: boolean;
   allTasks?: boolean;
   selectedDay?: CalendarFilters["day"] | string;
+  view?: CalendarFilters["view"];
   projectIds?: string[];
   areaIds?: string[];
 };
