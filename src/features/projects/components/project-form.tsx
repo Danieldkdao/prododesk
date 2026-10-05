@@ -60,7 +60,7 @@ export const ProjectForm = ({
       : {
           name: "",
           outcome: "",
-          areaId: undefined,
+          areaId: defaultValues?.area?.id ?? null,
           status: "active",
           color: "cyan",
           icon: "",
