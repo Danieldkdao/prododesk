@@ -11,14 +11,17 @@ import { CalendarDayTasksResizeList } from "../calendar-day-tasks-resize-list";
 import { useCalendarParams } from "../hooks/use-calendar-params";
 import { calculateCalendarDayTasksValues } from "../lib/utils";
 import { CalendarViewOption } from "../lib/calendar-params";
+import { TaskFormDefaultValues } from "@/features/tasks/lib/types";
 
 export const MainCalendarDay = ({
   month,
   date,
   tasks,
+  project,
 }: {
   month: Date;
   date: Date;
+  project?: TaskFormDefaultValues["project"];
   tasks: {
     scheduled: TaskSelectType[];
     due: TaskSelectType[];
@@ -72,7 +75,7 @@ export const MainCalendarDay = ({
         )}
         <div onClick={(e) => e.stopPropagation()}>
           {isSameMonth && !isPastDay && (
-            <TaskDialog defaultValues={{ day: date }}>
+            <TaskDialog defaultValues={{ day: date, project }}>
               <TooltipWrapper content="Add task">
                 <Button variant="ghost" size="icon-xs">
                   <PlusIcon />
