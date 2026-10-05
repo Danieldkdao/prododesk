@@ -412,7 +412,7 @@ const readCachedTasksAction = async (
   const response = await readTasksDb({ ...filterOptions, userId, timeZone });
   if (!response) return null;
 
-  const { tasks, projects, dayFilter, whereQuery } = response;
+  const { tasks, projects, whereQuery } = response;
 
   const [totalSelectedTasks] = await db
     .select({
@@ -423,23 +423,16 @@ const readCachedTasksAction = async (
     .leftJoin(MilestoneTable, eq(MilestoneTable.id, TaskTable.milestoneId))
     .where(whereQuery);
 
-  const [totalTasks] = await db
-    .select({ count: count() })
-    .from(TaskTable)
-    .where(and(eq(TaskTable.userId, userId), dayFilter));
-
   const [totalCompletedTasks] = await db
     .select({ count: count() })
     .from(TaskTable)
-    .where(
-      and(
-        eq(TaskTable.userId, userId),
-        dayFilter,
-        eq(TaskTable.status, "completed"),
-      ),
-    );
+    .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+    .leftJoin(MilestoneTable, eq(MilestoneTable.id, TaskTable.milestoneId))
+    .where(and(whereQuery, eq(TaskTable.status, "completed")));
 
-  const allTasksCompleted = totalCompletedTasks.count === totalTasks.count;
+  const allTasksCompleted =
+    totalSelectedTasks.count > 0 &&
+    totalCompletedTasks.count === totalSelectedTasks.count;
 
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalSelectedTasks.count;
