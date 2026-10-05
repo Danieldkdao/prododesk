@@ -482,8 +482,8 @@ export const processTriageAnswerAction = async ({
   answer: SuggestionAnswerSchemaType;
   suggestion: TriageSuggestion;
 }) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) {
     return {
       error: true,
       message: UNAUTHED_ERROR_MESSAGE,
@@ -573,7 +573,7 @@ export const processTriageAnswerAction = async ({
     const parsedUpdate = updateTaskSchema.safeParse(definedTaskData);
     if (!parsedUpdate.success) throw new Error(INVALID_DATA_ERROR_MESSAGE);
 
-    const completeTask = taskSchema(existingTask).safeParse({
+    const completeTask = taskSchema(existingTask, user.timeZone).safeParse({
       name: existingTask.name,
       description: existingTask.description,
       emoji: existingTask.emoji,
