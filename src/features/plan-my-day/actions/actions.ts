@@ -63,6 +63,7 @@ import {
   TriageSuggestionSchemaType,
 } from "../ai/schemas";
 import {
+  DAILY_PLAN_GENERATION_TIMEOUT_MS,
   MAX_PLAN_CANDIDATES,
   MAX_PLAN_ITEMS,
   MAX_PROJECT_PROMPT_INJECTION_LIMIT,
@@ -839,6 +840,7 @@ export const generateDailyPlanAction = async (
             schema: generatedDailyPlanSchema,
           }),
           instructions: GENERATE_DAILY_PLAN_INSTRUCTIONS,
+          timeout: { totalMs: DAILY_PLAN_GENERATION_TIMEOUT_MS },
           prompt: GENERATE_DAILY_PLAN_PROMPT({
             planDate,
             timeZone: user.timeZone,

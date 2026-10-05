@@ -3,3 +3,4 @@ export const MAX_PROJECT_PROMPT_INJECTION_LIMIT = 5;
 
 export const MAX_PLAN_CANDIDATES = 50;
 export const MAX_PLAN_ITEMS = 20;
+export const DAILY_PLAN_GENERATION_TIMEOUT_MS = 10 * 60 * 1_000;
