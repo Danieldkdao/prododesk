@@ -105,15 +105,17 @@ export const createTaskAction = async (
   unsafeData: TaskSchemaType,
   options?: ActivityMutationOptions,
 ) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) {
     return {
       error: true,
       message: UNAUTHED_ERROR_MESSAGE,
     };
   }
 
-  const { data, success, error } = taskSchema().safeParse(unsafeData);
+  const { data, success, error } = taskSchema(undefined, user.timeZone).safeParse(
+    unsafeData,
+  );
   if (!success) {
     return {
       error: true,
@@ -143,8 +145,8 @@ export const updateTaskAction = async (
   unsafeData: UpdateTaskSchemaType,
   options?: ActivityMutationOptions,
 ) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) {
     return {
       error: true,
       message: UNAUTHED_ERROR_MESSAGE,
@@ -167,10 +169,13 @@ export const updateTaskAction = async (
     };
   }
 
-  const existingResult = taskSchema({
-    scheduledAt: existingTask.scheduledAt ?? null,
-    dueAt: existingTask.dueAt ?? null,
-  }).safeParse({
+  const existingResult = taskSchema(
+    {
+      scheduledAt: existingTask.scheduledAt ?? null,
+      dueAt: existingTask.dueAt ?? null,
+    },
+    user.timeZone,
+  ).safeParse({
     name: existingTask.name,
     description: existingTask.description,
     emoji: existingTask.emoji,

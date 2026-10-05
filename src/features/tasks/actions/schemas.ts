@@ -1,4 +1,6 @@
 import { taskPriorities, taskStatuses } from "@/db/shared";
+import { tz } from "@date-fns/tz";
+import { startOfDay } from "date-fns";
 import z from "zod";
 
 export const taskBaseSchema = z.object({
@@ -23,6 +25,7 @@ const validateTaskDates = (
   ctx: z.RefinementCtx,
   existingDates?:
     { scheduledAt?: Date | null; dueAt?: Date | null } | undefined,
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
 ) => {
   if (data.scheduledAt && data.dueAt && data.scheduledAt >= data.dueAt) {
     ctx.addIssue({
@@ -32,7 +35,7 @@ const validateTaskDates = (
     });
   }
 
-  const today = new Date();
+  const today = startOfDay(new Date(), { in: tz(timeZone) });
 
   if (
     data.scheduledAt &&
@@ -59,12 +62,12 @@ const validateTaskDates = (
   }
 };
 
-export const taskSchema = (existingDates?: {
-  scheduledAt?: Date | null;
-  dueAt?: Date | null;
-}) => {
+export const taskSchema = (
+  existingDates?: { scheduledAt?: Date | null; dueAt?: Date | null },
+  timeZone?: string,
+) => {
   return taskBaseSchema.superRefine((data, ctx) =>
-    validateTaskDates(data, ctx, existingDates),
+    validateTaskDates(data, ctx, existingDates, timeZone),
   );
 };
 export const updateTaskSchema = taskBaseSchema.partial();
