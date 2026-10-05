@@ -102,7 +102,11 @@ const NextUpSectionSuspense = async () => {
         <div className="h-full flex-1 min-h-0 overflow-y-auto min-w-0">
           {tasks.length ? (
             tasks.map((task) => (
-              <DashboardTask key={task.id} task={task} variant="next-up" />
+              <DashboardTask
+                key={`${task.id}:${task.status}`}
+                task={task}
+                variant="next-up"
+              />
             ))
           ) : (
             <OverviewSuspenseEmptyData
