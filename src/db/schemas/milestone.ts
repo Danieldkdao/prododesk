@@ -1,12 +1,12 @@
 import { relations } from "drizzle-orm";
 import {
-    date,
-    integer,
-    pgTable,
-    text,
-    timestamp,
-    uuid,
-    varchar,
+  date,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { createdAt, id, updatedAt } from "../helpers";
 import { milestoneStatusEnum } from "../shared";

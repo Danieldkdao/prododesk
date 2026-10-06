@@ -199,7 +199,7 @@ export const ProjectCard = ({
             </div>
           </TaskDialog>
         )}
-        <div className="flex items-center gap-1 flex-wrap mt-2">
+        <div className="flex items-center gap-x-1 gap-y-1.5 flex-wrap mt-2">
           {stats.map((stat, index) => {
             const children = (
               <div className="flex items-center gap-2 text-muted-foreground">

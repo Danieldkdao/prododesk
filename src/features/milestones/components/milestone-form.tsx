@@ -81,9 +81,7 @@ export const MilestoneForm = ({
         name="name"
         render={({ field, fieldState }) => (
           <Field data-invalid={!!fieldState.error}>
-            <FieldLabel htmlFor="milestone-name-input">
-              Name
-            </FieldLabel>
+            <FieldLabel htmlFor="milestone-name-input">Name</FieldLabel>
             <FieldContent>
               <Input
                 id="milestone-name-input"
@@ -125,9 +123,7 @@ export const MilestoneForm = ({
 
           return (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel htmlFor="milestone-status-input">
-                Status
-              </FieldLabel>
+              <FieldLabel htmlFor="milestone-status-input">Status</FieldLabel>
               <FieldContent>
                 <Select value={value} onValueChange={onChange} {...props}>
                   <SelectTrigger

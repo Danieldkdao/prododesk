@@ -113,11 +113,11 @@ const updateMilestoneTool = tool({
       { runId: context.runId, toolCallId, toolName: "updateMilestone" },
       async (tx) => {
         abortSignal?.throwIfAborted();
-        const response = await updateMilestoneAction(
-          milestoneId,
-          changes,
-          { source: "ai", chatRunId: context.runId, tx },
-        );
+        const response = await updateMilestoneAction(milestoneId, changes, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
         const isSuccess = !response.error;
         const output = response.message;
         if (isSuccess) return output;

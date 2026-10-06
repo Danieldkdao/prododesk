@@ -47,10 +47,11 @@ const createProjectTool = tool({
       { runId: context.runId, toolCallId, toolName: "createProject" },
       async (tx) => {
         abortSignal?.throwIfAborted();
-        const response = await createProjectAction(
-          project,
-          { source: "ai", chatRunId: context.runId, tx },
-        );
+        const response = await createProjectAction(project, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
         const isSuccess = !response.error;
         const output = response.message;
         if (isSuccess) return output;
@@ -72,11 +73,11 @@ const updateProjectTool = tool({
       { runId: context.runId, toolCallId, toolName: "updateProject" },
       async (tx) => {
         abortSignal?.throwIfAborted();
-        const response = await updateProjectAction(
-          projectId,
-          changes,
-          { source: "ai", chatRunId: context.runId, tx },
-        );
+        const response = await updateProjectAction(projectId, changes, {
+          source: "ai",
+          chatRunId: context.runId,
+          tx,
+        });
         const isSuccess = !response.error;
         const output = response.message;
         if (isSuccess) return output;
