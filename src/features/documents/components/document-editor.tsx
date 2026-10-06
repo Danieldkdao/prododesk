@@ -14,7 +14,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ReadDocumentActionReturnType,
   updateDocumentAction,
@@ -42,6 +42,10 @@ export const DocumentEditor = ({
   });
   const [savePending, setSavePending] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "error" | null>(null);
+  const [saveConflict, setSaveConflict] = useState(false);
+  const saveConflictRef = useRef(false);
+  const savedVersionRef = useRef(document.updatedAt);
+  const documentValuesRef = useRef(documentValues);
   const isUnmountingRef = useRef(false);
   const pendingSaveCountRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -52,6 +56,10 @@ export const DocumentEditor = ({
       projectId: document.projectId ?? null,
     }),
   );
+
+  useLayoutEffect(() => {
+    documentValuesRef.current = documentValues;
+  }, [documentValues]);
 
   const saveDebouncer = useAsyncDebouncer(
     async (values: DocumentValues) => {
@@ -65,14 +73,23 @@ export const DocumentEditor = ({
       }
 
       const save = async () => {
-        const response = await updateDocumentAction(document.id, values);
+        if (saveConflictRef.current) return;
+        const response = await updateDocumentAction(document.id, {
+          ...values,
+          expectedUpdatedAt: savedVersionRef.current,
+        });
 
         if (response.error) {
+          if (response.conflict) {
+            saveConflictRef.current = true;
+            if (!isUnmountingRef.current) setSaveConflict(true);
+          }
           if (!isUnmountingRef.current) setSaveStatus("error");
           return;
         }
 
         lastSavedRef.current = documentSignature;
+        if (response.updatedAt) savedVersionRef.current = response.updatedAt;
         if (!isUnmountingRef.current) {
           setSaveStatus("saved");
         } else {
@@ -128,14 +145,15 @@ export const DocumentEditor = ({
     };
     const serverSignature = getDocumentSignature(serverValues);
 
-    const currentSignature = getDocumentSignature(documentValues);
+    const currentSignature = getDocumentSignature(documentValuesRef.current);
     if (currentSignature !== lastSavedRef.current) return;
 
     lastSavedRef.current = serverSignature;
+    savedVersionRef.current = document.updatedAt;
     if (serverSignature !== currentSignature) {
       setDocumentValues(serverValues);
     }
-  }, [document.content, document.name, documentValues, document.projectId]);
+  }, [document.content, document.name, document.projectId, document.updatedAt]);
 
   return (
     <div className="border bg-card shadow-sm w-full">
@@ -200,6 +218,32 @@ export const DocumentEditor = ({
         </div>
       </div>
       <div className="pb-4">
+        {saveConflict && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-2 border-b p-4 text-destructive"
+          >
+            <span>
+              This document changed elsewhere. Copy your unsaved edits before
+              reloading.
+            </span>
+            <button
+              type="button"
+              className="underline"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Reload the latest document and discard your unsaved edits? Copy anything you want to keep first.",
+                  )
+                ) {
+                  window.location.reload();
+                }
+              }}
+            >
+              Reload latest
+            </button>
+          </div>
+        )}
         <SimpleEditor
           value={documentValues.content}
           onValueChange={(value) =>
