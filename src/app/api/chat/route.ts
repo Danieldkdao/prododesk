@@ -32,7 +32,7 @@ import {
 import { APIError } from "@/lib/errors";
 import { areValidIds, isError } from "@/lib/utils";
 import { guardToolExecutions } from "@/services/ai/guard-tool-executions";
-import { COMPACT_AFTER_TOKENS, estimateTokens } from "@/services/ai/helpers";
+import { compactMessages } from "@/services/ai/compact-messages";
 import { ModelId } from "@/services/ai/model-ids";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { CHAT_INSTRUCTIONS } from "@/services/ai/prompts";
@@ -45,7 +45,6 @@ import {
   createUIMessageStream,
   createUIMessageStreamResponse,
   isToolUIPart,
-  pruneMessages,
   TextStreamPart,
   ToolLoopAgent,
 } from "ai";
@@ -443,16 +442,7 @@ export const POST = async (req: Request) => {
         toolMs: 15_000,
       },
       prepareStep: ({ messages }) => {
-        if (estimateTokens(messages) > COMPACT_AFTER_TOKENS) {
-          return {
-            messages: pruneMessages({
-              messages,
-              reasoning: "all",
-              toolCalls: "before-last-3-messages",
-              emptyMessages: "remove",
-            }),
-          };
-        }
+        return { messages: compactMessages(messages) };
       },
       onToolExecutionEnd: async () => {
         if (runId) {
