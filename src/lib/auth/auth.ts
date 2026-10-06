@@ -33,7 +33,22 @@ export const auth = betterAuth({
         await sendAccountDeletionEmail({ email: user.email, url });
       },
       afterDelete: async (user) => {
-        await deleteUserFilesFromStorage(user.id);
+        let attempts = 0;
+        while (attempts < 3) {
+          attempts += 1;
+          try {
+            if (await deleteUserFilesFromStorage(user.id)) return;
+          } catch (error) {
+            console.error("Account file cleanup attempt failed:", {
+              userId: user.id,
+              attempt: attempts,
+              error,
+            });
+          }
+        }
+        console.error("Account file cleanup failed after three attempts:", {
+          userId: user.id,
+        });
       },
     },
   },

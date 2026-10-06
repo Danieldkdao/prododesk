@@ -146,7 +146,11 @@ export const DocumentEditor = ({
     const serverSignature = getDocumentSignature(serverValues);
 
     const currentSignature = getDocumentSignature(documentValuesRef.current);
-    if (currentSignature !== lastSavedRef.current) return;
+    if (
+      currentSignature !== lastSavedRef.current ||
+      document.updatedAt < savedVersionRef.current
+    )
+      return;
 
     lastSavedRef.current = serverSignature;
     savedVersionRef.current = document.updatedAt;

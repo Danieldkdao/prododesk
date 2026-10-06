@@ -12,9 +12,16 @@ const removePreviousProfileImage = async (
   userId: string,
   key: string | null,
 ) => {
-  if (key?.startsWith(`${userId}/profile-image/`)) {
-    await deleteFilesFromStorage([key]);
+  if (!key?.startsWith(`${userId}/profile-image/`)) return true;
+
+  const cleaned = await deleteFilesFromStorage([key]);
+  if (!cleaned) {
+    console.error("Previous profile image cleanup failed:", {
+      userId,
+      storageKey: key,
+    });
   }
+  return cleaned;
 };
 
 export const completeProfileImageUpload = async ({
@@ -61,8 +68,14 @@ export const completeProfileImageUpload = async ({
       return existingUser.profileImageKey;
     });
 
-    await removePreviousProfileImage(userId, previousKey);
-    return { error: false, message: "Profile image updated successfully." };
+    const cleaned = await removePreviousProfileImage(userId, previousKey);
+    return {
+      error: false,
+      message: "Profile image updated successfully.",
+      cleanupWarning: cleaned
+        ? null
+        : "Your profile image was updated, but we couldn't delete the previous image.",
+    };
   } catch (error) {
     console.error(error);
     return { error: true, message: GENERAL_ERROR_MESSAGE };
@@ -87,8 +100,14 @@ export const resetProfileImageAction = async () => {
         .where(eq(UserTable.id, userId));
       return existingUser.profileImageKey;
     });
-    await removePreviousProfileImage(userId, previousKey);
-    return { error: false, message: "Profile image reset successfully." };
+    const cleaned = await removePreviousProfileImage(userId, previousKey);
+    return {
+      error: false,
+      message: "Profile image reset successfully.",
+      cleanupWarning: cleaned
+        ? null
+        : "Your profile image was reset, but we couldn't delete the previous image.",
+    };
   } catch (error) {
     console.error(error);
     return { error: true, message: GENERAL_ERROR_MESSAGE };

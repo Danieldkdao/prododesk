@@ -14,11 +14,11 @@ import {
 } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
 import { confirmUserAreaOwnership } from "@/features/areas/server/areas";
+import { calendarDayBounds } from "@/features/calendar/lib/calendar-dates";
 import {
   CalendarFilters,
   CalendarViewOption,
 } from "@/features/calendar/lib/calendar-params";
-import { calendarDayBounds } from "@/features/calendar/lib/calendar-dates";
 import { calculateCalendarValues } from "@/features/calendar/lib/utils";
 import { revalidateMilestoneCache } from "@/features/milestones/server/cache/milestones";
 import { revalidateProjectCache } from "@/features/projects/server/cache/projects";
@@ -29,12 +29,7 @@ import {
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { PAGE_SIZE } from "@/lib/constants";
 import { runMutationCacheInvalidation } from "@/lib/data-cache";
-import {
-  areValidIds,
-  getLocalDatesBounds,
-  getLocalDayBounds,
-  isValidDate,
-} from "@/lib/utils";
+import { areValidIds, getLocalDatesBounds, isValidDate } from "@/lib/utils";
 import {
   and,
   asc,
@@ -348,6 +343,15 @@ export const readTasksDb = async (filterOptions: ReadTasksDbFilters) => {
     tasks,
     projects: existingProjects,
     dayFilter,
+    completionWhereQuery: and(
+      eq(TaskTable.userId, userIdToUse),
+      dayFilter,
+      monthFilter,
+      projectsFilter,
+      areasFilter,
+      milestoneFilter,
+      boardColumnFilter,
+    ),
     whereQuery,
   };
 };

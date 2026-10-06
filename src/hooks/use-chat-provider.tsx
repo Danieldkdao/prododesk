@@ -2,6 +2,7 @@
 
 import { SetterType } from "@/lib/types";
 import { CHAT_HISTORY_PAGE_SIZE } from "@/features/chats/lib/constants";
+import { mergeChatMessages } from "@/features/chats/lib/merge-chat-messages";
 import { ModelId } from "@/services/ai/model-ids";
 import { CustomUIMessage } from "@/services/ai/types";
 import { useChat } from "@ai-sdk/react";
@@ -157,15 +158,9 @@ const ChatSessionProvider = ({
           !isActiveRef.current
         )
           return;
-        setMessagesRef.current?.((messages) => {
-          const firstIndex = messages.findIndex(
-            (message) => message.id === payload.data[0]?.id,
-          );
-          return [
-            ...(firstIndex > 0 ? messages.slice(0, firstIndex) : []),
-            ...payload.data,
-          ];
-        });
+        setMessagesRef.current?.((messages) =>
+          mergeChatMessages(messages, payload.data),
+        );
       } catch (error) {
         if (!controller.signal.aborted)
           console.error("Unable to synchronize chat:", error);

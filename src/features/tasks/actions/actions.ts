@@ -31,7 +31,7 @@ import { UnwrapAsync } from "@/lib/types";
 import { areValidIds, getLocalDayBounds } from "@/lib/utils";
 import { tz } from "@date-fns/tz";
 import { format, isValid } from "date-fns";
-import { and, count, eq, gte, lte, ne } from "drizzle-orm";
+import { and, count, eq, gte, lte, ne, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { TASK_BOARD_PAGE_SIZE } from "../lib/constants";
 import { TasksFilters } from "../lib/tasks-params";
@@ -416,7 +416,7 @@ const readCachedTasksAction = async (
   const response = await readTasksDb({ ...filterOptions, userId, timeZone });
   if (!response) return null;
 
-  const { tasks, projects, whereQuery } = response;
+  const { tasks, projects, whereQuery, completionWhereQuery } = response;
 
   const [totalSelectedTasks] = await db
     .select({
@@ -427,16 +427,20 @@ const readCachedTasksAction = async (
     .leftJoin(MilestoneTable, eq(MilestoneTable.id, TaskTable.milestoneId))
     .where(whereQuery);
 
-  const [totalCompletedTasks] = await db
-    .select({ count: count() })
+  const [completionCounts] = await db
+    .select({
+      total: count(),
+      completed: count(
+        sql`case when ${TaskTable.status} = 'completed' then 1 end`,
+      ),
+    })
     .from(TaskTable)
     .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
-    .leftJoin(MilestoneTable, eq(MilestoneTable.id, TaskTable.milestoneId))
-    .where(and(whereQuery, eq(TaskTable.status, "completed")));
+    .where(completionWhereQuery);
 
   const allTasksCompleted =
-    totalSelectedTasks.count > 0 &&
-    totalCompletedTasks.count === totalSelectedTasks.count;
+    completionCounts.total > 0 &&
+    completionCounts.completed === completionCounts.total;
 
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalSelectedTasks.count;

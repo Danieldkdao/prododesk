@@ -93,7 +93,13 @@ export const ProfilePictureUpload = ({
         },
       });
 
-      toast.success("Profile image updated successfully.");
+      if (response.cleanupWarning) {
+        toast.warning(response.message, {
+          description: response.cleanupWarning,
+        });
+      } else {
+        toast.success(response.message);
+      }
       router.refresh();
       setConfirmImageDialogOpen(false);
       reset();
@@ -119,7 +125,14 @@ export const ProfilePictureUpload = ({
         return;
       }
       await refetch({ query: { disableCookieCache: true } });
-      toast.success("Profile image reset successfully.", { id: toastId });
+      if (response.cleanupWarning) {
+        toast.warning(response.message, {
+          id: toastId,
+          description: response.cleanupWarning,
+        });
+      } else {
+        toast.success(response.message, { id: toastId });
+      }
       router.refresh();
     });
   };

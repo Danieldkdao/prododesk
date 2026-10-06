@@ -2,11 +2,7 @@
 
 import { UseFileUploadsReturnType } from "@/hooks/use-file-uploads";
 import { cn } from "@/lib/utils";
-import {
-  defaultModel,
-  fastCostEfficientModels,
-  LLMModel,
-} from "@/services/ai/models";
+import { fastCostEfficientModels, LLMModel } from "@/services/ai/models";
 import { PlusIcon, SendIcon, SquareIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";

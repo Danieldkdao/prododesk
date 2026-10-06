@@ -45,6 +45,7 @@ const AreaIdDocumentsSuspense = async ({
     <div className="flex flex-col gap-4">
       <DocumentsFilters />
       <DocumentsInfiniteList
+        key={metadata.clientKey}
         initialDocuments={documents}
         initialHasNextPage={metadata.hasNextPage}
         areaIds={[areaId]}
