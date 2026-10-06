@@ -11,6 +11,7 @@ import {
 } from "../actions/actions";
 import {
   ReadTasksActionReturnType,
+  TaskBoardTask,
   updateTaskMilestoneAction,
 } from "@/features/tasks/actions/actions";
 import { DragDropProvider } from "@dnd-kit/react";
@@ -21,7 +22,8 @@ import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { MILESTONE_ID_NULL } from "../lib/constants";
 import { isSortableOperation } from "@dnd-kit/react/sortable";
-import { ProjectSelectType, TaskSelectType } from "@/db/schema";
+import { ProjectSelectType } from "@/db/schema";
+import { useRouter } from "next/navigation";
 
 export const MilestonesView = ({
   project,
@@ -35,19 +37,39 @@ export const MilestonesView = ({
   const { milestones: serverMilestones, metadata: milestonesMetadata } =
     milestonesResponse;
   const { tasks: serverTasks, metadata: tasksMetadata } = tasksResponse;
+  const router = useRouter();
 
   const taskSavesQueueRef = useRef(new Map<string, Promise<void>>());
   const milestoneSavesQueueRef = useRef(new Map<string, Promise<void>>());
   const [milestones, setMilestones] = useState(serverMilestones);
   const [tasks, setTasks] = useState([...serverTasks]);
-  const allTasks = [
-    ...tasks,
-    ...milestones
-      .flatMap((milestone) => milestone.tasks)
-      .filter((task): task is TaskSelectType & { project: ProjectSelectType } =>
-        Boolean(task),
-      ),
-  ];
+  const [taskOverrides, setTaskOverrides] = useState(
+    new Map<string, string | null>(),
+  );
+  const tasksById = new Map<string, TaskBoardTask>();
+  for (const milestone of milestones) {
+    for (const task of milestone.tasks) {
+      if (task) tasksById.set(task.id, { ...task, milestone });
+    }
+  }
+  for (const task of tasks) tasksById.set(task.id, task);
+  const allTasks = [...tasksById.values()].map((task) =>
+    taskOverrides.has(task.id)
+      ? {
+          ...task,
+          milestoneId: taskOverrides.get(task.id) ?? null,
+          milestone:
+            milestones.find(
+              (milestone) => milestone.id === taskOverrides.get(task.id),
+            ) ?? null,
+        }
+      : task,
+  );
+  const unassignedTasks = allTasks.filter((task) => !task.milestoneId);
+
+  useEffect(() => {
+    if (taskSavesQueueRef.current.size === 0) setTaskOverrides(new Map());
+  }, [serverTasks, serverMilestones]);
 
   useEffect(() => {
     setMilestones(serverMilestones);
@@ -86,14 +108,22 @@ export const MilestonesView = ({
         .catch((error) => {
           console.error(error);
           toast.error("Failed to update task milestone.");
+          if (taskSavesQueueRef.current.get(taskId) === nextSave) {
+            setTaskOverrides((current) => {
+              const next = new Map(current);
+              next.delete(taskId);
+              return next;
+            });
+          }
         })
         .finally(() => {
           if (taskSavesQueueRef.current.get(taskId) === nextSave) {
             taskSavesQueueRef.current.delete(taskId);
+            if (taskSavesQueueRef.current.size === 0) router.refresh();
           }
         });
     },
-    [],
+    [router],
   );
   const queueMilestoneReorderingSave = useCallback(
     (milestoneId: string, newPosition: number) => {
@@ -132,7 +162,7 @@ export const MilestonesView = ({
       const { source, target } = operation;
       if (!source?.id || !target?.id) return;
 
-      const sourceTask = tasks.find((task) => task.id === source.id);
+      const sourceTask = allTasks.find((task) => task.id === source.id);
       if (
         !sourceTask ||
         sourceTask.milestoneId === target.id ||
@@ -142,29 +172,20 @@ export const MilestonesView = ({
 
       const newMilestoneId =
         target.id === MILESTONE_ID_NULL ? null : (target.id as string);
-      let wasUpdated = false;
-
+      if (sourceTask.milestoneId === newMilestoneId) return;
+      if (
+        newMilestoneId &&
+        !milestones.some((milestone) => milestone.id === newMilestoneId)
+      )
+        return;
       flushSync(() =>
-        setTasks((prev) =>
-          prev.map((task) => {
-            if (task.id === source.id && task.milestoneId !== newMilestoneId) {
-              wasUpdated = true;
-              return {
-                ...task,
-                milestoneId: newMilestoneId,
-              };
-            }
-
-            return task;
-          }),
+        setTaskOverrides((current) =>
+          new Map(current).set(sourceTask.id, newMilestoneId),
         ),
       );
-
-      if (wasUpdated) {
-        queueTaskMilestoneSave(sourceTask.id, newMilestoneId);
-      }
+      queueTaskMilestoneSave(sourceTask.id, newMilestoneId);
     },
-    [queueTaskMilestoneSave, tasks],
+    [queueTaskMilestoneSave, allTasks, milestones],
   );
 
   const handleMilestoneOrdering = useCallback(
@@ -213,7 +234,7 @@ export const MilestonesView = ({
           </div>
           <MilestoneTasksInfiniteList
             projectId={project.id}
-            tasks={tasks}
+            tasks={unassignedTasks}
             setTasks={setTasks}
             initialHasNextPage={tasksMetadata.hasNextPage}
             resetKey={tasksMetadata.clientKey}
