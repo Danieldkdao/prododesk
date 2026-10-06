@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import {
   Command,
   CommandEmpty,
@@ -19,9 +21,8 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { formatArchivedStatus, formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { useDebouncedCallback } from "@tanstack/react-pacer";
 import { ChevronDownIcon, FolderKanbanIcon } from "lucide-react";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { readProjectsAction } from "../actions/actions";
 
 export const ProjectCommandSelect = ({
@@ -42,13 +43,20 @@ export const ProjectCommandSelect = ({
   disabled?: boolean;
 }) => {
   const [commandOpen, setCommandOpen] = useState(false);
-  const [isSearchPending, startSearchTransition] = useTransition();
   const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [selection, setSelection] = useState<ProjectSelectType | null>(null);
+  const isSearchPending = search !== query;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchProjects = useCallback(
     (nextPage: number) => {
       return readProjectsAction({
-        search,
+        search: query,
         archiveStatus: "active",
         colors: [],
         sortBy: "recently_created",
@@ -58,15 +66,15 @@ export const ProjectCommandSelect = ({
         page: nextPage,
       });
     },
-    [search],
+    [query],
   );
 
   const {
     items: projects,
-    setItems: setProjects,
     isPending: isInfinitePending,
-    setPage,
-    setHasNextPage,
+    hasNextPage,
+    error,
+    retry,
     setSentinelEl,
     setContainerEl,
   } = useInfiniteScroll<ProjectSelectType, "projects">(
@@ -74,41 +82,27 @@ export const ProjectCommandSelect = ({
     true,
     fetchProjects,
     {
-      additionalScrollDeps: [search, commandOpen],
+      resetKey: query,
+      enabled: commandOpen && !isSearchPending,
       defaultPage: DEFAULT_PAGE - 1,
     },
   );
 
-  const handleSearch = () => {
-    startSearchTransition(async () => {
-      const response = await readProjectsAction({
-        search,
-        archiveStatus: "active",
-        colors: [],
-        sortBy: "recently_created",
-        statuses: [],
-        dateTimeEndRange: null,
-        dateTimeStartRange: null,
-        page: DEFAULT_PAGE,
-      });
-
-      if (!response) return;
-
-      const { projects, metadata } = response;
-
-      setProjects(projects);
-      setPage(DEFAULT_PAGE);
-      setHasNextPage(metadata.hasNextPage);
-    });
-  };
-  const handleDebouncedSearch = useDebouncedCallback(handleSearch, {
-    wait: 250,
-  });
-
-  const selectedProject = projects.find((project) => project.id === value);
+  const selectedProject =
+    projects.find((project) => project.id === value) ??
+    (selection?.id === value ? selection : null);
 
   return (
-    <Popover open={commandOpen} onOpenChange={setCommandOpen}>
+    <Popover
+      open={commandOpen}
+      onOpenChange={(open) => {
+        setCommandOpen(open);
+        if (!open) {
+          setSearch("");
+          setQuery("");
+        }
+      }}
+    >
       <PopoverTrigger
         id={id}
         aria-invalid={!!fieldError}
@@ -156,13 +150,15 @@ export const ProjectCommandSelect = ({
             value={search}
             onValueChange={(value) => {
               setSearch(value);
-              handleDebouncedSearch();
             }}
             placeholder="Search for projects by name, description, or associated area..."
           />
 
           <CommandList ref={setContainerEl}>
-            <CommandEmpty>No projects found.</CommandEmpty>
+            {!error &&
+              !isSearchPending &&
+              !isInfinitePending &&
+              !hasNextPage && <CommandEmpty>No projects found.</CommandEmpty>}
             <CommandGroup>
               {isSearchPending
                 ? Array.from({ length: 4 }).map((_, index) => (
@@ -184,9 +180,11 @@ export const ProjectCommandSelect = ({
                             "bg-primary/15 hover:bg-primary/10 data-selected:bg-primary/10",
                         )}
                         onSelect={() => {
+                          setSelection(isSelected ? null : project);
                           onValueChange(isSelected ? null : project.id);
                           setCommandOpen(false);
                           setSearch("");
+                          setQuery("");
                         }}
                       >
                         <div className="flex w-full min-w-0 items-center gap-2">
@@ -235,6 +233,7 @@ export const ProjectCommandSelect = ({
                 Array.from({ length: 4 }).map((_, index) => (
                   <ProjectCommandItemSkeleton key={index} />
                 ))}
+              <InfiniteScrollError error={error} retry={retry} />
               <div ref={setSentinelEl} className="h-1 w-full bg-transparent" />
             </CommandGroup>
           </CommandList>

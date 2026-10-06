@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import { TooltipWrapper } from "@/components/tooltip-wrapper";
 import {
   Command,
@@ -20,9 +22,8 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { formatArchivedStatus, formatColor } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { useDebouncedCallback } from "@tanstack/react-pacer";
 import { ChevronDownIcon, ShapesIcon } from "lucide-react";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { readAreasAction } from "../actions/actions";
 
 export const AreaCommandSelect = ({
@@ -40,61 +41,57 @@ export const AreaCommandSelect = ({
 }) => {
   const [commandOpen, setCommandOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [isSearchPending, startSearchTransition] = useTransition();
+  const [query, setQuery] = useState("");
+  const [selection, setSelection] = useState<AreaSelectType | null>(null);
+  const isSearchPending = search !== query;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchAreas = useCallback(
     (nextPage: number) => {
       return readAreasAction({
-        search,
+        search: query,
         sortBy: "recently_created",
         archiveStatus: "active",
         colors: [],
         page: nextPage,
       });
     },
-    [search],
+    [query],
   );
 
   const {
     items: areas,
-    setItems: setAreas,
-    setPage,
-    setHasNextPage,
     isPending: isInfinitePending,
+    hasNextPage,
     setContainerEl,
+    error,
+    retry,
     setSentinelEl,
   } = useInfiniteScroll<AreaSelectType, "areas">([], true, fetchAreas, {
-    additionalScrollDeps: [commandOpen, search],
+    resetKey: query,
+    enabled: commandOpen && !isSearchPending,
     defaultPage: DEFAULT_PAGE - 1,
   });
 
-  const handleSearch = () => {
-    startSearchTransition(async () => {
-      const response = await readAreasAction({
-        search,
-        sortBy: "recently_created",
-        archiveStatus: "active",
-        colors: [],
-        page: DEFAULT_PAGE,
-      });
-
-      if (!response) return;
-
-      const { areas, metadata } = response;
-
-      setAreas(areas);
-      setPage(DEFAULT_PAGE);
-      setHasNextPage(metadata.hasNextPage);
-    });
-  };
-  const handleDebouncedSearch = useDebouncedCallback(handleSearch, {
-    wait: 250,
-  });
-
-  const selectedArea = areas.find((area) => area.id === value);
+  const selectedArea =
+    areas.find((area) => area.id === value) ??
+    (selection?.id === value ? selection : null);
 
   return (
-    <Popover open={commandOpen} onOpenChange={setCommandOpen}>
+    <Popover
+      open={commandOpen}
+      onOpenChange={(open) => {
+        setCommandOpen(open);
+        if (!open) {
+          setSearch("");
+          setQuery("");
+        }
+      }}
+    >
       <PopoverTrigger
         id={id}
         aria-invalid={!!fieldError}
@@ -138,13 +135,15 @@ export const AreaCommandSelect = ({
             value={search}
             onValueChange={(value) => {
               setSearch(value);
-              handleDebouncedSearch();
             }}
             placeholder="Search for areas by name or description..."
           />
 
           <CommandList ref={setContainerEl}>
-            <CommandEmpty>No areas found.</CommandEmpty>
+            {!error &&
+              !isSearchPending &&
+              !isInfinitePending &&
+              !hasNextPage && <CommandEmpty>No areas found.</CommandEmpty>}
             <CommandGroup>
               {isSearchPending
                 ? Array.from({ length: 4 }).map((_, index) => (
@@ -166,9 +165,11 @@ export const AreaCommandSelect = ({
                             "bg-primary/15 hover:bg-primary/10 data-selected:bg-primary/10",
                         )}
                         onSelect={() => {
+                          setSelection(isSelected ? null : area);
                           onValueChange(isSelected ? null : area.id);
                           setCommandOpen(false);
                           setSearch("");
+                          setQuery("");
                         }}
                       >
                         <TooltipWrapper
@@ -221,6 +222,7 @@ export const AreaCommandSelect = ({
                 Array.from({ length: 4 }).map((_, index) => (
                   <AreaCommandItemSkeleton key={index} />
                 ))}
+              <InfiniteScrollError error={error} retry={retry} />
               <div ref={setSentinelEl} className="h-1 w-full bg-transparent" />
             </CommandGroup>
           </CommandList>

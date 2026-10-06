@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import { NotFound } from "@/components/not-found";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useCallback } from "react";
@@ -39,6 +41,8 @@ export const DocumentsInfiniteList = ({
   const {
     items: documents,
     isPending,
+    error,
+    retry,
     setSentinelEl,
   } = useInfiniteScroll<
     ReadDocumentsActionReturnType["documents"][number],
@@ -59,6 +63,7 @@ export const DocumentsInfiniteList = ({
             <DocumentSkeleton key={index} />
           ))}
       </div>
+      <InfiniteScrollError error={error} retry={retry} />
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (

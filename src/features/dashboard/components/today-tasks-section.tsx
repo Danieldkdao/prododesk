@@ -84,7 +84,9 @@ const TodayTasksSectionSuspense = async () => {
       </CardHeader>
       <CardContent className="px-0 min-w-0 overflow-y-auto h-full">
         {tasks.length ? (
-          tasks.map((task) => <DashboardTask key={task.id} task={task} />)
+          tasks.map((task) => (
+            <DashboardTask key={`${task.id}:${task.status}`} task={task} />
+          ))
         ) : (
           <OverviewSuspenseEmptyData
             icon={ListCheckIcon}

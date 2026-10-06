@@ -7,6 +7,9 @@ import { TextShimmer } from "@/components/ui/text-shimmer";
 import { ChatSelectType } from "@/db/schema";
 import { EllipsisVerticalIcon, PanelLeftIcon } from "lucide-react";
 import { motion } from "motion/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { readChatTitleAction } from "./actions/actions";
 import { ChatOptions } from "./components/chat-options";
 
 export const ChatHeader = ({
@@ -16,6 +19,34 @@ export const ChatHeader = ({
   chat?: ChatSelectType;
   shimmerText?: boolean;
 }) => {
+  const router = useRouter();
+  const chatId = chat?.id;
+  const chatName = chat?.name;
+  useEffect(() => {
+    if (!chatId || chatName !== "Untitled chat") return;
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const refreshTitle = async () => {
+      attempts += 1;
+      try {
+        const result = await readChatTitleAction(chatId);
+        if (cancelled) return;
+        if (result && result.name !== "Untitled chat") {
+          router.refresh();
+          return;
+        }
+      } catch {
+        if (cancelled) return;
+      }
+      if (attempts < 15) timer = setTimeout(refreshTitle, 2_000);
+    };
+    timer = setTimeout(refreshTitle, 2_000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [chatId, chatName, router]);
   const headingClasses = "text-2xl font-semibold flex-1 min-w-0 truncate";
 
   return (

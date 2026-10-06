@@ -1,16 +1,22 @@
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { SetterType } from "@/lib/types";
-import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 type Options<T> = {
   rootMargin?: string;
   defaultPage?: number;
   additionalScrollDeps?: unknown[];
   resetKey?: string;
-  ownState?: {
-    values: T[];
-    setValues: SetterType<T[]>;
-  };
+  enabled?: boolean;
+  ownState?: { values: T[]; setValues: SetterType<T[]> };
 };
 
 export const useInfiniteScroll = <T, K extends string>(
@@ -26,93 +32,149 @@ export const useInfiniteScroll = <T, K extends string>(
     rootMargin = "400px",
     defaultPage = DEFAULT_PAGE,
     resetKey,
-    additionalScrollDeps = [],
-    ownState = undefined,
+    enabled = true,
+    ownState,
   }: Options<T> = {},
 ) => {
-  const loadingRef = useRef(false);
-
+  const generationRef = useRef(0);
+  const requestRef = useRef<symbol | null>(null);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
-
   const [items, setItems] = useState(initialItems);
   const [hasNextPage, setHasNextPage] = useState(initialHasNextPage);
-  const [page, setPage] = useState(defaultPage ?? DEFAULT_PAGE);
-  const [isPending, startTransition] = useTransition();
-
-  const itemsToUse = ownState?.values ?? items;
+  const [page, setPage] = useState(defaultPage);
+  const [previousResetKey, setPreviousResetKey] = useState(resetKey);
+  const [requestState, setRequestState] = useState<{
+    fetchData: typeof fetchData;
+    resetKey: typeof resetKey;
+    enabled: boolean;
+    isLoading: boolean;
+    error: string | null;
+  }>({ fetchData, resetKey, enabled, isLoading: false, error: null });
+  const [isTransitionPending, startTransition] = useTransition();
   const setterToUse = ownState?.setValues ?? setItems;
+  const isCurrentScope =
+    requestState.fetchData === fetchData &&
+    requestState.resetKey === resetKey &&
+    requestState.enabled === enabled;
+  const isLoading = isCurrentScope && requestState.isLoading;
+  const error = isCurrentScope ? requestState.error : null;
+  const resetOwnedItems = useEffectEvent(() => {
+    ownState?.setValues(initialItems);
+  });
 
-  const scrollDeps = [
-    containerEl,
-    fetchData,
-    hasNextPage,
-    isPending,
-    page,
-    rootMargin,
-    sentinelEl,
-  ];
-  const finalScrollDeps = additionalScrollDeps?.length
-    ? [...scrollDeps, ...additionalScrollDeps]
-    : scrollDeps;
-
-  useEffect(() => {
-    loadingRef.current = false;
+  if (previousResetKey !== resetKey) {
+    setPreviousResetKey(resetKey);
+    setItems(initialItems);
     setPage(defaultPage);
     setHasNextPage(initialHasNextPage);
-    setterToUse(initialItems);
+  }
+
+  if (
+    !isCurrentScope &&
+    (requestState.isLoading || requestState.error !== null)
+  ) {
+    setRequestState({
+      fetchData,
+      resetKey,
+      enabled,
+      isLoading: false,
+      error: null,
+    });
+  }
+
+  useLayoutEffect(() => {
+    generationRef.current += 1;
+    requestRef.current = null;
+    return () => {
+      generationRef.current += 1;
+      requestRef.current = null;
+    };
+  }, [fetchData, resetKey, enabled]);
+
+  useLayoutEffect(() => {
+    resetOwnedItems();
   }, [resetKey]);
 
-  useEffect(() => {
-    if (!sentinelEl || isPending || !hasNextPage) return;
-
-    const observer = new IntersectionObserver(
-      async ([entry]) => {
-        if (!entry.isIntersecting || loadingRef.current) return;
-
-        loadingRef.current = true;
-
-        try {
-          const nextPage = page + 1;
-
-          const response = await fetchData(nextPage);
-          if (!response) {
-            setHasNextPage(false);
-            return;
-          }
-
-          const { metadata, ...rest } = response;
-
-          const items = Object.values(rest)
-            .filter((value): value is T[] => Array.isArray(value))
-            .flat();
-
-          startTransition(() => {
-            setterToUse((prev) => [...prev, ...items]);
-            setHasNextPage(metadata.hasNextPage);
-            setPage(nextPage);
+  const loadMore = useCallback(
+    async (retry = false) => {
+      if (!enabled || requestRef.current || !hasNextPage || (error && !retry))
+        return;
+      const token = Symbol();
+      const generation = generationRef.current;
+      requestRef.current = token;
+      setRequestState({
+        fetchData,
+        resetKey,
+        enabled,
+        isLoading: true,
+        error: null,
+      });
+      const isCurrent = () =>
+        generation === generationRef.current && requestRef.current === token;
+      try {
+        const nextPage = page + 1;
+        const response = await fetchData(nextPage);
+        if (!isCurrent()) return;
+        if (!response)
+          throw new Error("Unable to load more items. Please try again.");
+        const { metadata, ...rest } = response;
+        const nextItems = Object.values(rest)
+          .filter((value): value is T[] => Array.isArray(value))
+          .flat();
+        setterToUse((previous) => [...previous, ...nextItems]);
+        setHasNextPage(metadata.hasNextPage);
+        setPage(nextPage);
+      } catch {
+        if (isCurrent())
+          setRequestState({
+            fetchData,
+            resetKey,
+            enabled,
+            isLoading: false,
+            error: "Unable to load more items. Please try again.",
           });
-        } finally {
-          loadingRef.current = false;
+      } finally {
+        if (isCurrent()) {
+          requestRef.current = null;
+          setRequestState((current) => ({ ...current, isLoading: false }));
         }
+      }
+    },
+    [enabled, error, fetchData, hasNextPage, page, resetKey, setterToUse],
+  );
+
+  useEffect(() => {
+    if (!sentinelEl || !enabled || isLoading || error || !hasNextPage) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) void loadMore();
       },
-      {
-        root: containerEl ?? undefined,
-        rootMargin,
-      },
+      { root: containerEl ?? undefined, rootMargin },
     );
-
     observer.observe(sentinelEl);
-
     return () => observer.disconnect();
-  }, finalScrollDeps);
+  }, [
+    containerEl,
+    enabled,
+    error,
+    hasNextPage,
+    isLoading,
+    loadMore,
+    rootMargin,
+    sentinelEl,
+  ]);
 
   return {
-    items: itemsToUse,
+    items: ownState?.values ?? items,
     setItems: setterToUse,
     setContainerEl,
     setSentinelEl,
-    isPending,
+    isPending: isLoading || isTransitionPending,
+    error,
+    retry: () => {
+      void loadMore(true);
+    },
     startTransition,
     page,
     setPage,

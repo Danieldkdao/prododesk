@@ -27,6 +27,7 @@ import {
   inArray,
   or,
   SQL,
+  sql,
 } from "drizzle-orm";
 import {
   DocumentsFilters,
@@ -34,6 +35,14 @@ import {
 } from "../lib/documents-params";
 import { revalidateDocumentCache } from "./cache/documents";
 import { deleteFilesFromStorage } from "@/features/uploads/lib/delete-files";
+
+export class DocumentConflictError extends Error {
+  constructor() {
+    super(
+      "This document changed elsewhere. Your edits have not been saved. Copy them before reloading the latest version.",
+    );
+  }
+}
 
 export const confirmUserDocumentOwnership = async (
   documentId: string,
@@ -263,7 +272,7 @@ export const insertDocumentDb = async (
 export const updateDocumentDb = async (
   documentId: string,
   document: Pick<Partial<DocumentSelectType>, "name" | "content" | "projectId">,
-  options?: ActivityMutationOptions,
+  options?: ActivityMutationOptions & { expectedUpdatedAt?: Date },
 ) => {
   const { source = "user", tx, chatRunId } = options ?? {};
   const existingProject = document.projectId
@@ -279,6 +288,8 @@ export const updateDocumentDb = async (
     tx,
   );
   if (!existingDocument) return null;
+  const expectedUpdatedAt =
+    options?.expectedUpdatedAt ?? existingDocument.updatedAt;
 
   try {
     const oldDocument = existingDocument.projectId
@@ -301,16 +312,22 @@ export const updateDocumentDb = async (
     const updateDocument = async (pgtx: DbTransaction) => {
       const [updatedDocument] = await pgtx
         .update(DocumentTable)
-        .set(document)
+        .set({
+          ...document,
+          updatedAt: new Date(
+            Math.max(Date.now(), existingDocument.updatedAt.getTime() + 1),
+          ),
+        })
         .where(
           and(
             eq(DocumentTable.id, existingDocument.id),
             eq(DocumentTable.userId, existingDocument.userId),
+            sql`date_trunc('milliseconds', ${DocumentTable.updatedAt}) = ${expectedUpdatedAt.toISOString()}::timestamptz`,
           ),
         )
         .returning();
 
-      if (!updatedDocument) throw new Error("Failed to update document.");
+      if (!updatedDocument) throw new DocumentConflictError();
 
       const insertedActivity = await insertActivityDb(
         {
@@ -356,6 +373,7 @@ export const updateDocumentDb = async (
 
     return updatedDocument;
   } catch (error) {
+    if (error instanceof DocumentConflictError) throw error;
     console.error(error);
     return null;
   }

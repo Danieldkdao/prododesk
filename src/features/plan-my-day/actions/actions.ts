@@ -63,6 +63,7 @@ import {
   TriageSuggestionSchemaType,
 } from "../ai/schemas";
 import {
+  DAILY_PLAN_GENERATION_TIMEOUT_MS,
   MAX_PLAN_CANDIDATES,
   MAX_PLAN_ITEMS,
   MAX_PROJECT_PROMPT_INJECTION_LIMIT,
@@ -481,8 +482,8 @@ export const processTriageAnswerAction = async ({
   answer: SuggestionAnswerSchemaType;
   suggestion: TriageSuggestion;
 }) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) {
     return {
       error: true,
       message: UNAUTHED_ERROR_MESSAGE,
@@ -572,7 +573,7 @@ export const processTriageAnswerAction = async ({
     const parsedUpdate = updateTaskSchema.safeParse(definedTaskData);
     if (!parsedUpdate.success) throw new Error(INVALID_DATA_ERROR_MESSAGE);
 
-    const completeTask = taskSchema(existingTask).safeParse({
+    const completeTask = taskSchema(existingTask, user.timeZone).safeParse({
       name: existingTask.name,
       description: existingTask.description,
       emoji: existingTask.emoji,
@@ -839,6 +840,7 @@ export const generateDailyPlanAction = async (
             schema: generatedDailyPlanSchema,
           }),
           instructions: GENERATE_DAILY_PLAN_INSTRUCTIONS,
+          timeout: { totalMs: DAILY_PLAN_GENERATION_TIMEOUT_MS },
           prompt: GENERATE_DAILY_PLAN_PROMPT({
             planDate,
             timeZone: user.timeZone,

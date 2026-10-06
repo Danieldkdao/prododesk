@@ -41,12 +41,18 @@ const DashboardCalendarSuspense = async ({
     readCalendarTasksAction({
       month: calendarFilters.month,
       view: calendarFilters.view,
+      search: dayTasksFilters.search,
+      statuses: dayTasksFilters.statuses,
+      priorities: dayTasksFilters.priorities,
+      dateTimeStartRange: dayTasksFilters.dateTimeStartRange,
+      dateTimeEndRange: dayTasksFilters.dateTimeEndRange,
     }),
     calendarFilters.day
       ? readTasksAction({
           ...dayTasksFilters,
           page: DEFAULT_PAGE,
           selectedDay: format(calendarFilters.day, "yyyy-MM-dd"),
+          view: calendarFilters.view,
         })
       : Promise.resolve(null),
   ]);

@@ -3,13 +3,16 @@
 import { ReadCalendarTasksActionReturnType } from "@/features/tasks/actions/actions";
 import { parseISO } from "date-fns";
 import { MainCalendarDay } from "./main-calendar-day";
+import { TaskFormDefaultValues } from "@/features/tasks/lib/types";
 
 export const MainCalendarArea = ({
   monthDaysTasksRes,
+  project,
 }: {
   monthDaysTasksRes: ReadCalendarTasksActionReturnType;
+  project?: TaskFormDefaultValues["project"];
 }) => {
-  const { monthDaysTasks, monthKey } = monthDaysTasksRes;
+  const { monthDaysTasks, monthKey, timeZone } = monthDaysTasksRes;
   const month = parseISO(monthKey);
 
   return (
@@ -18,7 +21,9 @@ export const MainCalendarArea = ({
         <MainCalendarDay
           month={month}
           date={parseISO(dayKey)}
+          timeZone={timeZone}
           tasks={tasks}
+          project={project}
           key={index}
         />
       ))}

@@ -58,6 +58,11 @@ export const createDocumentToolSchema = z.object({
 
 export const updateDocumentToolSchema = z.object({
   documentId: z.uuid().describe("The ID of the document to update."),
+  expectedUpdatedAt: z.iso
+    .datetime()
+    .describe(
+      "The updatedAt value from readDocument. Read the latest document before updating it.",
+    ),
   changes: z
     .object({
       name: z

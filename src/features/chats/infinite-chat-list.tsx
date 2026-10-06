@@ -1,10 +1,12 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import { ChatSelectType } from "@/db/schema";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { useDialogStateStore } from "@/store/use-dialog-state-store";
-import { JSX, ReactNode, useCallback, useEffect } from "react";
+import { JSX, ReactNode, useCallback, useEffect, useState } from "react";
 import { readChatsAction } from "./actions/actions";
 
 export const InfiniteChatList = ({
@@ -23,74 +25,52 @@ export const InfiniteChatList = ({
   skeleton: ReactNode;
 }) => {
   const search = useDialogStateStore((state) => state.search);
+  const [query, setQuery] = useState(useSearch ? search : "");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(useSearch ? search : ""), 250);
+    return () => clearTimeout(timer);
+  }, [search, useSearch]);
 
   const fetchChats = useCallback(
     (nextPage: number) => {
       return readChatsAction(userId, {
-        search: useSearch ? search : undefined,
+        search: useSearch ? query : undefined,
         page: nextPage,
       });
     },
-    [userId, useSearch, search],
+    [userId, useSearch, query],
   );
 
   const {
     items: chats,
-    setItems: setChats,
-    setHasNextPage,
+    error,
+    retry,
     setSentinelEl,
     setContainerEl,
     isPending,
-    setPage,
-    startTransition,
+    hasNextPage,
   } = useInfiniteScroll<ChatSelectType, "chats">(
-    initialChats,
-    initialHasNextPage,
+    useSearch ? [] : initialChats,
+    useSearch ? true : initialHasNextPage,
     fetchChats,
     {
-      additionalScrollDeps: [search, useSearch, userId],
+      resetKey: JSON.stringify([userId, useSearch, query]),
+      defaultPage: useSearch ? DEFAULT_PAGE - 1 : DEFAULT_PAGE,
+      enabled: !useSearch || search === query,
     },
   );
 
-  useEffect(() => {
-    if (!useSearch) return;
-
-    let cancelled = false;
-
-    setPage(DEFAULT_PAGE);
-
-    startTransition(async () => {
-      const response = await readChatsAction(userId, {
-        search,
-        page: DEFAULT_PAGE,
-      });
-
-      if (cancelled || !response) return;
-
-      const { chats, metadata } = response;
-
-      setChats(chats);
-      setHasNextPage(metadata.hasNextPage);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    search,
-    useSearch,
-    userId,
-    setChats,
-    setHasNextPage,
-    setPage,
-    startTransition,
-  ]);
-
-  return chats.length ? (
+  return (
     <div
       ref={setContainerEl}
       className="flex flex-col w-full min-w-0 min-h-0 h-full flex-1 gap-2"
     >
+      {!chats.length && !isPending && !hasNextPage && (
+        <span className="py-2 text-center text-sm text-muted-foreground">
+          No chats found
+        </span>
+      )}
       {chats.map((chat) => (
         <div key={chat.id} className="min-w-0 w-full">
           {ChatItem(chat)}
@@ -102,13 +82,8 @@ export const InfiniteChatList = ({
             {skeleton}
           </div>
         ))}
+      <InfiniteScrollError error={error} retry={retry} />
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
-    </div>
-  ) : (
-    <div className="w-full h-full min-h-0 flex-1 min-w-0 flex items-center justify-center">
-      <span className="text-sm text-center text-muted-foreground font-medium py-2">
-        No chats found
-      </span>
     </div>
   );
 };

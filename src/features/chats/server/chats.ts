@@ -68,15 +68,23 @@ export const insertChatDb = async (
 export const updateChatDb = async (
   chatId: string,
   chat: Pick<ChatInsertType, "name">,
-  options?: DbMutationOptions,
+  options?: DbMutationOptions & { onlyIfName?: string },
 ) => {
   const { tx } = options ?? {};
   const [updatedChat] = await (tx ?? db)
     .update(ChatTable)
     .set(chat)
-    .where(eq(ChatTable.id, chatId))
+    .where(
+      and(
+        eq(ChatTable.id, chatId),
+        options?.onlyIfName === undefined
+          ? undefined
+          : eq(ChatTable.name, options.onlyIfName),
+      ),
+    )
     .returning();
 
+  if (!updatedChat) return null;
   revalidateChatCache(updatedChat.userId, updatedChat.id);
 
   return updatedChat;

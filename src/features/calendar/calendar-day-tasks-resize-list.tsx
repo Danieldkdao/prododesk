@@ -7,8 +7,12 @@ import { TaskDetailsTrigger } from "../tasks/components/task-details-trigger";
 
 export const CalendarDayTasksResizeList = ({
   tasks,
+  date,
+  timeZone,
 }: {
   tasks: TaskSelectType[];
+  date: Date;
+  timeZone: string;
 }) => {
   const [hiddenCount, setHiddenCount] = useState(0);
 
@@ -71,7 +75,7 @@ export const CalendarDayTasksResizeList = ({
       cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
     };
-  }, [tasks, measureOverflow]);
+  }, [tasks, date, timeZone, measureOverflow]);
 
   return (
     <div
@@ -85,7 +89,7 @@ export const CalendarDayTasksResizeList = ({
           data-calendar-task
           className="shrink-0"
         >
-          <TaskCalendarItem task={task} />
+          <TaskCalendarItem task={task} date={date} timeZone={timeZone} />
         </TaskDetailsTrigger>
       ))}
       <div

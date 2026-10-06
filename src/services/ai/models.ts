@@ -91,6 +91,10 @@ const models = [
   },
 ] satisfies LLMModel[];
 
+export const defaultModel = models.find(
+  (m) => m.id === "deepseek/deepseek-v4.1-flash",
+)!;
+
 export const mostPowerfulModels = models.filter(
   (m) => m.kind === "most-powerful",
 );

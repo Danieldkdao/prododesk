@@ -60,16 +60,16 @@ export const createProjectToolSchema = z.object({
     .nullish()
     .describe("The ID of the associated area to this project."),
   startAt: z.iso
-    .datetime()
+    .date()
     .nullish()
     .describe(
-      `The project start date, formatted as: ${isoDatetimeFormatInstructions}`,
+      "The project start date in the user's calendar, formatted as YYYY-MM-DD.",
     ),
   endAt: z.iso
-    .datetime()
+    .date()
     .nullish()
     .describe(
-      `The project end date, formatted as: ${isoDatetimeFormatInstructions}`,
+      "The project end date in the user's calendar, formatted as YYYY-MM-DD.",
     ),
   approvalReason: approvalReasonSchema,
 });
@@ -101,16 +101,16 @@ export const updateProjectToolSchema = z.object({
         .nullish()
         .describe("The ID of the associated area to this project."),
       startAt: z.iso
-        .datetime()
+        .date()
         .nullish()
         .describe(
-          `The project start date, formatted as: ${isoDatetimeFormatInstructions}`,
+          "The project start date in the user's calendar, formatted as YYYY-MM-DD.",
         ),
       endAt: z.iso
-        .datetime()
+        .date()
         .nullish()
         .describe(
-          `The project end date, formatted as: ${isoDatetimeFormatInstructions}`,
+          "The project end date in the user's calendar, formatted as YYYY-MM-DD.",
         ),
     })
     .refine((changes) => Object.keys(changes).length > 0)

@@ -28,7 +28,7 @@ import {
 import { useChatProvider } from "@/hooks/use-chat-provider";
 import { cn, formatMs, generateFileUrl } from "@/lib/utils";
 import { RegenerateButton } from "@/services/ai/components/regenerate-button";
-import { getModelInfo, LLMModel } from "@/services/ai/models";
+import { LLMModel } from "@/services/ai/models";
 import { ToolName } from "@/services/ai/tool-contracts";
 import { CustomUIMessage } from "@/services/ai/types";
 import { getToolName, isToolUIPart } from "ai";
@@ -69,6 +69,20 @@ export const ChatViewListMessage = ({
   const latestUserMsg = messages.findLast((message) => message.role === "user");
   const isLatestMsg = messages.at(-1)?.id === msg.id;
   const latestPart = msg.parts.at(-1);
+  const responsePartIndex = msg.parts.findLastIndex(
+    (part) => part.type === "text" && part.text.trim().length > 0,
+  );
+  const responseStepStartIndex = msg.parts.findLastIndex(
+    (part, index) => index <= responsePartIndex && part.type === "step-start",
+  );
+  const responseParts = msg.parts
+    .map((part, index) => ({ part, index }))
+    .filter(
+      ({ part, index }) =>
+        index > responseStepStartIndex &&
+        part.type === "text" &&
+        part.text.trim().length > 0,
+    );
 
   const responseTimeMs = msg.metadata?.responseTimeMs;
   const artifacts = msg.metadata?.artifacts;
@@ -216,7 +230,7 @@ export const ChatViewListMessage = ({
                                 ({ part, index }) =>
                                   !(
                                     part.type === "text" &&
-                                    index === msg.parts.length - 1
+                                    index > responseStepStartIndex
                                   ),
                               )
                               .map(({ part, index }) => {
@@ -524,15 +538,20 @@ export const ChatViewListMessage = ({
                           </div>
                         </div>
                       )}
-                    {latestPart?.type === "text" && (
-                      <StreamMarkdownRenderer
-                        animated={markdownAnimateOptions}
-                        isAnimating={status === "streaming" && isLatestMsg}
-                      >
-                        {latestPart?.type === "text"
-                          ? latestPart.text
-                          : "No output"}
-                      </StreamMarkdownRenderer>
+                    {responseParts.map(({ part, index }) =>
+                      part.type === "text" ? (
+                        <StreamMarkdownRenderer
+                          key={`${msg.id}-response-${index}`}
+                          animated={markdownAnimateOptions}
+                          isAnimating={
+                            status === "streaming" &&
+                            isLatestMsg &&
+                            part.state !== "done"
+                          }
+                        >
+                          {part.text}
+                        </StreamMarkdownRenderer>
+                      ) : null,
                     )}
 
                     {artifacts?.length ? (

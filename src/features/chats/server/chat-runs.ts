@@ -89,9 +89,9 @@ export const withChatRunAttemptDb = async <T>(
 ): Promise<{ value: T } | null> => {
   const { userId } = await getCurrentUser();
   if (!userId) return null;
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [ownedChatRun] = await tx
-      .select({ id: ChatRunTable.id })
+      .select({ id: ChatRunTable.id, chatId: ChatRunTable.chatId })
       .from(ChatRunTable)
       .innerJoin(ChatTable, eq(ChatTable.id, ChatRunTable.chatId))
       .where(
@@ -104,8 +104,12 @@ export const withChatRunAttemptDb = async <T>(
       )
       .for("no key update", { of: ChatRunTable });
     if (!ownedChatRun) return null;
-    return { value: await execute(tx) };
+    return { chatId: ownedChatRun.chatId, value: await execute(tx) };
   });
+
+  if (!result) return null;
+  revalidateChatCache(userId, result.chatId);
+  return { value: result.value };
 };
 
 export const insertChatRunDb = async (

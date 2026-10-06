@@ -23,12 +23,15 @@ export const TasksView = async ({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-center gap-2">
-        <TasksFilters showAddButton={showFilterAddButton} />
+        <TasksFilters
+          showAddButton={showFilterAddButton}
+          defaultProject={project}
+        />
         <TaskViewTabs value={tab} />
       </div>
       {tab === "list" && <TasksListView showProject={!project} {...props} />}
       {tab === "board" && <TasksBoardView {...props} />}
-      {tab === "calendar" && <TasksCalendarView {...props} />}
+      {tab === "calendar" && <TasksCalendarView project={project} {...props} />}
     </div>
   );
 };

@@ -1,3 +1,3 @@
 export type ProjectFormDefaultValues = {
-  area?: { name: string; icon?: string | null } | null;
+  area?: { id?: string; name: string; icon?: string | null } | null;
 };

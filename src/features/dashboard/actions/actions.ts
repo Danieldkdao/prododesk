@@ -1,5 +1,7 @@
 "use server";
 
+import { cacheUserResources } from "@/lib/data-cache";
+
 import { db } from "@/db/db";
 import { MilestoneTable, ProjectTable, TaskTable } from "@/db/schema";
 import { readActivityDb } from "@/features/activity/server/activity";
@@ -10,7 +12,7 @@ import { getUserTaskTag } from "@/features/tasks/server/cache/tasks";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { getLocalDayBounds } from "@/lib/utils";
 import { tz, TZDate } from "@date-fns/tz";
-import { parse } from "date-fns";
+import { format, parse } from "date-fns";
 import {
   and,
   asc,
@@ -80,14 +82,22 @@ export const readDashboardStatsAction = async () => {
 const readCachedDateTasksAction = async (
   userId: string,
   timeZone: string,
-  date?: string,
+  date: string,
 ) => {
   "use cache";
+  cacheUserResources(
+    userId,
+    "tasks",
+    "projects",
+    "milestones",
+    "areas",
+    "documents",
+  );
   cacheTag(getUserTaskTag(userId));
 
-  const dateToUse = date
-    ? parse(date, "yyyy-MM-dd", TZDate.tz(timeZone), { in: tz(timeZone) })
-    : new Date();
+  const dateToUse = parse(date, "yyyy-MM-dd", TZDate.tz(timeZone), {
+    in: tz(timeZone),
+  });
   const { startUtc, endUtc } = getLocalDayBounds(dateToUse, timeZone);
 
   const todayTasks = await db
@@ -123,11 +133,21 @@ export const readDateTasksAction = async (date?: string) => {
   const { userId, user } = await getCurrentUser();
   if (!userId || !user) return null;
 
-  return readCachedDateTasksAction(userId, user.timeZone, date);
+  const dateKey =
+    date ?? format(new Date(), "yyyy-MM-dd", { in: tz(user.timeZone) });
+  return readCachedDateTasksAction(userId, user.timeZone, dateKey);
 };
 
 const readCachedDashboardProjectsAction = async (userId: string) => {
   "use cache";
+  cacheUserResources(
+    userId,
+    "tasks",
+    "projects",
+    "milestones",
+    "areas",
+    "documents",
+  );
   cacheTag(getUserProjectTag(userId));
 
   const response = await readProjectsDb({
@@ -152,6 +172,14 @@ const readCachedDashboardActivityAction = async (
   timeZone: string,
 ) => {
   "use cache";
+  cacheUserResources(
+    userId,
+    "tasks",
+    "projects",
+    "milestones",
+    "areas",
+    "documents",
+  );
   cacheTag(getUserActivityTag(userId));
 
   const response = await readActivityDb({

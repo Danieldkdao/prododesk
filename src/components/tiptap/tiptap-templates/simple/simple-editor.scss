@@ -123,4 +123,12 @@ body,
   p:not(td p):not(th p) {
     line-height: 1.45;
   }
+
+  ul[data-type="taskList"] > li > label {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: 1.45rem;
+    padding-top: 0;
+  }
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import { cacheUserResources } from "@/lib/data-cache";
+
 import { ActivityMutationOptions, db } from "@/db/db";
 import { DocumentTable, ProjectTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
@@ -25,8 +27,10 @@ import {
   insertDocumentDb,
   readDocumentsDb,
   updateDocumentDb,
+  DocumentConflictError,
 } from "../server/documents";
 import { documentSchema, DocumentSchemaType } from "./schemas";
+import z from "zod";
 
 type ReadDocumentsFilters = DocumentsFilters & {
   projectIds?: string[];
@@ -39,6 +43,7 @@ const readCachedDocumentsAction = async (
   filterOptions: ReadDocumentsFilters,
 ) => {
   "use cache";
+  cacheUserResources(userId, "documents", "projects", "areas");
   cacheTag(getUserDocumentTag(userId));
 
   const page = filterOptions.page;
@@ -87,6 +92,7 @@ export type ReadDocumentsActionReturnType = UnwrapAsync<
 
 const readCachedDocumentAction = async (userId: string, documentId: string) => {
   "use cache";
+  cacheUserResources(userId, "documents", "projects", "areas");
   cacheTag(getDocumentIdTag(documentId));
 
   return (
@@ -169,7 +175,7 @@ export const createDocumentAction = async (
 
 export const updateDocumentAction = async (
   documentId: string,
-  unsafeData: PartialNull<DocumentSchemaType>,
+  unsafeData: PartialNull<DocumentSchemaType> & { expectedUpdatedAt: Date },
   options?: ActivityMutationOptions,
 ) => {
   const { userId } = await getCurrentUser();
@@ -188,9 +194,15 @@ export const updateDocumentAction = async (
     };
   }
 
-  const { success, data } =
-    nullifyZodSchema(documentSchema).safeParse(unsafeData);
-  if (!success || Object.values(data).every((value) => value === undefined)) {
+  const { success, data } = nullifyZodSchema(documentSchema)
+    .extend({ expectedUpdatedAt: z.date() })
+    .safeParse(unsafeData);
+  if (
+    !success ||
+    [data.name, data.content, data.projectId].every(
+      (value) => value === undefined,
+    )
+  ) {
     return {
       error: true,
       message: INVALID_DATA_ERROR_MESSAGE,
@@ -205,15 +217,19 @@ export const updateDocumentAction = async (
         content: data?.content ?? undefined,
         projectId: data.projectId,
       },
-      options,
+      { ...options, expectedUpdatedAt: data.expectedUpdatedAt },
     );
     if (!updatedDocument) throw new Error("Failed to update document.");
 
     return {
       error: false,
       message: "Document updated successfully!",
+      updatedAt: updatedDocument.updatedAt,
     };
   } catch (error) {
+    if (error instanceof DocumentConflictError) {
+      return { error: true, conflict: true, message: error.message };
+    }
     console.error(error);
     return {
       error: true,

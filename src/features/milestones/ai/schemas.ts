@@ -76,10 +76,10 @@ export const createMilestonesToolSchema = z.object({
             "The milestone position. Make sure to search for the milestone count before setting this value to that count + 1.",
           ),
         dueAt: z.iso
-          .datetime()
+          .date()
           .nullish()
           .describe(
-            `The milestone due date, formatted as: ${isoDatetimeFormatInstructions}`,
+            "The milestone due date in the user's calendar, formatted as YYYY-MM-DD.",
           ),
       }),
     )
@@ -111,10 +111,10 @@ export const updateMilestoneToolSchema = z.object({
         .optional()
         .describe("The milestone status."),
       dueAt: z.iso
-        .datetime()
+        .date()
         .nullish()
         .describe(
-          `The milestone due date, formatted as: ${isoDatetimeFormatInstructions}`,
+          "The milestone due date in the user's calendar, formatted as YYYY-MM-DD.",
         ),
     })
     .refine((changes) => Object.keys(changes).length > 0)

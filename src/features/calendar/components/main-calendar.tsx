@@ -16,13 +16,16 @@ import {
   calendarViewOptions,
 } from "../lib/calendar-params";
 import { formatCalendarViewOption } from "../lib/formatters";
+import { TaskFormDefaultValues } from "@/features/tasks/lib/types";
 
 export const MainCalendar = ({
   monthDaysTasks,
   fullScreen = false,
+  project,
 }: {
   monthDaysTasks: ReadCalendarTasksActionReturnType;
   fullScreen?: boolean;
+  project?: TaskFormDefaultValues["project"];
 }) => {
   const [filters, setFilters] = useCalendarParams();
 
@@ -110,7 +113,10 @@ export const MainCalendar = ({
               </div>
             ))}
           </div>
-          <MainCalendarArea monthDaysTasksRes={monthDaysTasks} />
+          <MainCalendarArea
+            monthDaysTasksRes={monthDaysTasks}
+            project={project}
+          />
         </div>
       </div>
     </div>

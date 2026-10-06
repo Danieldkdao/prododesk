@@ -103,6 +103,7 @@ export const uploadFileWithProgress = (
           ? signal.reason
           : new DOMException("Upload aborted", "AbortError"),
       );
+      return;
     }
 
     signal?.addEventListener("abort", handleSignalAbort, { once: true });
@@ -162,25 +163,19 @@ export const deleteFileClient = async <
   request: DeleteUploadRequestFor<P>,
 ) => {
   try {
-    const presignedResponse = await fetch("/api/s3/delete", {
+    const response = await fetch("/api/s3/delete", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
 
-    const presignedPayload = (await presignedResponse.json()) as ApiResponse<{
-      url: string;
-    }>;
+    const payload = (await response.json()) as {
+      error: boolean;
+      message: string;
+    };
 
-    if (!presignedResponse.ok || presignedPayload.error)
-      throw new Error(presignedPayload.message || "Failed to get delete URL.");
-
-    const presignedUrl = presignedPayload.data.url;
-    if (!presignedUrl) throw new Error("Delete URL is missing.");
-
-    const deleteResponse = await fetch(presignedUrl, { method: "DELETE" });
-    if (!deleteResponse.ok)
-      throw new Error("Failed to delete file from storage.");
+    if (!response.ok || payload.error)
+      throw new Error(payload.message || "Failed to delete file.");
 
     return {
       error: false,

@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import { format } from "date-fns";
 
 import { NotFound } from "@/components/not-found";
@@ -22,12 +24,14 @@ import { TasksFilters } from "./tasks-filters";
 import { Task } from "./task";
 import { TaskDialog } from "./task-dialog";
 import { useCallback } from "react";
+import { TaskFormDefaultValues } from "../lib/types";
 
 export const DayTasksInfiniteList = ({
   initialDayTasks,
   initialHasNextPage,
   readOptions,
   allTasksCompleted,
+  defaultProject,
 }: {
   initialDayTasks: ReadTasksActionReturnType["tasks"];
   initialHasNextPage: boolean;
@@ -36,6 +40,7 @@ export const DayTasksInfiniteList = ({
     projectIds?: string[] | undefined;
   };
   allTasksCompleted: boolean;
+  defaultProject?: TaskFormDefaultValues["project"];
 }) => {
   const [calendarFilters] = useCalendarParams();
   const [dayTasksFilters, setDayTasksFilters] = useTasksParams();
@@ -48,16 +53,19 @@ export const DayTasksInfiniteList = ({
         selectedDay: calendarFilters.day
           ? format(calendarFilters.day, "yyyy-MM-dd")
           : null,
+        view: calendarFilters.view,
         ...readOptions,
       });
     },
-    [calendarFilters.day, dayTasksFilters, readOptions],
+    [calendarFilters.day, calendarFilters.view, dayTasksFilters, readOptions],
   );
 
   const {
     items: dayTasks,
     page,
     setContainerEl,
+    error,
+    retry,
     setSentinelEl,
     isPending,
   } = useInfiniteScroll<ReadTasksActionReturnType["tasks"][number], "tasks">(
@@ -95,7 +103,9 @@ export const DayTasksInfiniteList = ({
       icon={<ListXIcon className="size-10" />}
     >
       {!isPastDay && (
-        <TaskDialog defaultValues={{ day: calendarFilters.day }}>
+        <TaskDialog
+          defaultValues={{ day: calendarFilters.day, project: defaultProject }}
+        >
           <Button>
             <PlusIcon />
             Create new task
@@ -105,7 +115,7 @@ export const DayTasksInfiniteList = ({
     </NotFound>
   ) : (
     <div className="flex flex-col gap-2 flex-1 min-h-0 w-full">
-      <TasksFilters />
+      <TasksFilters defaultProject={defaultProject} />
       {dayTasks.length ? (
         <div
           ref={setContainerEl}
@@ -133,6 +143,7 @@ export const DayTasksInfiniteList = ({
               <Loader2Icon className="text-primary animate-spin" />
             </div>
           )}
+          <InfiniteScrollError error={error} retry={retry} />
           <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
         </div>
       ) : (

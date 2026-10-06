@@ -95,18 +95,22 @@ const updateDocumentTool = tool({
   inputSchema: updateDocumentToolSchema,
   contextSchema: runIdContextSchema,
   execute: async (
-    { documentId, changes },
+    { documentId, changes, expectedUpdatedAt },
     { context, toolCallId, abortSignal },
   ) => {
     return executeMutationToolDb(
       { runId: context.runId, toolCallId, toolName: "updateDocument" },
       async (tx) => {
         abortSignal?.throwIfAborted();
-        const response = await updateDocumentAction(documentId, changes, {
-          source: "ai",
-          chatRunId: context.runId,
-          tx,
-        });
+        const response = await updateDocumentAction(
+          documentId,
+          { ...changes, expectedUpdatedAt: new Date(expectedUpdatedAt) },
+          {
+            source: "ai",
+            chatRunId: context.runId,
+            tx,
+          },
+        );
         const isSuccess = !response.error;
         const output = response.message;
         if (isSuccess) return output;

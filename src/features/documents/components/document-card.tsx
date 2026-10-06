@@ -22,6 +22,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -36,18 +37,36 @@ export const DocumentCard = ({
   document: ReadDocumentsActionReturnType["documents"][number];
 }) => {
   const updateInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const versionRef = useRef(document.updatedAt);
+  const isSavingRef = useRef(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [documentName, setDocumentName] = useState(document.name || "Untitled");
 
   const updateAction = async () => {
-    if (!isEditMode || documentName.trim() === document.name) return;
-    setIsEditMode(false);
-
-    const response = await updateDocumentAction(document.id, {
-      name: documentName,
-    });
-    if (response.error) {
-      toast.error(response.error);
+    if (
+      !isEditMode ||
+      isSavingRef.current ||
+      documentName.trim() === document.name
+    )
+      return;
+    isSavingRef.current = true;
+    try {
+      const response = await updateDocumentAction(document.id, {
+        name: documentName,
+        expectedUpdatedAt: versionRef.current,
+      });
+      if (response.error) {
+        toast.error(response.message);
+        return;
+      }
+      if (response.updatedAt) versionRef.current = response.updatedAt;
+      setIsEditMode(false);
+      router.refresh();
+    } catch {
+      toast.error("Unable to save the document name.");
+    } finally {
+      isSavingRef.current = false;
     }
   };
 
@@ -146,7 +165,14 @@ export const DocumentCard = ({
               }
             />
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setIsEditMode(true)}>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (!isEditMode && document.updatedAt > versionRef.current) {
+                    versionRef.current = document.updatedAt;
+                  }
+                  setIsEditMode(true);
+                }}
+              >
                 <EditIcon />
                 Edit
               </DropdownMenuItem>

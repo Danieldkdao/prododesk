@@ -16,12 +16,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import { UserAvatar } from "@/components/user-avatar";
-import { completeProfileImageUpload } from "@/features/uploads/actions/actions";
+import {
+  completeProfileImageUpload,
+  resetProfileImageAction,
+} from "@/features/uploads/actions/actions";
 import { UPLOAD_LIMITS } from "@/features/uploads/lib/constants";
 import { useAuthSync } from "@/hooks/use-auth-sync-provider";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useProfileImageUpload } from "@/hooks/use-profile-image-upload";
-import { authClient } from "@/lib/auth/auth-client";
 import { generateFileUrl } from "@/lib/utils";
 import { CheckIcon, EditIcon, RefreshCcwIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -91,7 +93,13 @@ export const ProfilePictureUpload = ({
         },
       });
 
-      toast.success("Profile image updated successfully.");
+      if (response.cleanupWarning) {
+        toast.warning(response.message, {
+          description: response.cleanupWarning,
+        });
+      } else {
+        toast.success(response.message);
+      }
       router.refresh();
       setConfirmImageDialogOpen(false);
       reset();
@@ -105,12 +113,10 @@ export const ProfilePictureUpload = ({
     const toastId = toast.loading("Resetting profile image...");
 
     startImageResetTransition(async () => {
-      const response = await authClient.updateUser({
-        profileImageKey: null,
-      });
+      const response = await resetProfileImageAction();
       if (response.error) {
         toast.error(
-          response.error.message ||
+          response.message ||
             "Failed to reset profile image. Please try again.",
           {
             id: toastId,
@@ -118,7 +124,15 @@ export const ProfilePictureUpload = ({
         );
         return;
       }
-      toast.success("Profile image reset successfully.", { id: toastId });
+      await refetch({ query: { disableCookieCache: true } });
+      if (response.cleanupWarning) {
+        toast.warning(response.message, {
+          id: toastId,
+          description: response.cleanupWarning,
+        });
+      } else {
+        toast.success(response.message, { id: toastId });
+      }
       router.refresh();
     });
   };

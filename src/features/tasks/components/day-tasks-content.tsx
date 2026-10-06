@@ -7,12 +7,15 @@ import { XIcon } from "lucide-react";
 import { ReadTasksActionReturnType } from "../actions/actions";
 import { DayTasksContentSkeleton } from "./day-tasks-content-skeleton";
 import { DayTasksInfiniteList } from "./day-tasks-infinite-list";
+import { TaskFormDefaultValues } from "../lib/types";
 
 export const DayTasksContent = ({
   dayTasks,
   readOptions,
+  defaultProject,
 }: {
   dayTasks: ReadTasksActionReturnType | null;
+  defaultProject?: TaskFormDefaultValues["project"];
   readOptions?: {
     areaIds?: string[] | undefined;
     projectIds?: string[] | undefined;
@@ -50,6 +53,7 @@ export const DayTasksContent = ({
         initialHasNextPage={metadata.hasNextPage}
         allTasksCompleted={metadata.allTasksCompleted}
         readOptions={readOptions}
+        defaultProject={defaultProject}
         key={metadata.clientKey}
       />
     </div>

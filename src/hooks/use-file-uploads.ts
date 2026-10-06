@@ -1,19 +1,20 @@
 import {
-    deleteFileClient,
-    fetchUploadPresignedUrl,
-    uploadFileWithProgress,
-    validateFile,
+  deleteFileClient,
+  fetchUploadPresignedUrl,
+  uploadFileWithProgress,
+  validateFile,
 } from "@/features/uploads/lib/helpers";
 import { isError } from "@/lib/utils";
 import { FileAttachment } from "@/services/ai/types";
 import {
-    ChangeEvent,
-    DragEvent,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  ChangeEvent,
+  DragEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { toast } from "sonner";
 
@@ -59,6 +60,14 @@ export const useFileUploads = (props: {
   const [error, setError] = useState("");
   const localPreviewUrlsRef = useRef(localPreviewUrls);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeUploadRef = useRef<AbortController | null>(null);
+  const removedIdsRef = useRef(new Set<string>());
+  const filesRef = useRef(files);
+
+  useLayoutEffect(() => {
+    filesRef.current = files;
+    localPreviewUrlsRef.current = localPreviewUrls;
+  }, [files, localPreviewUrls]);
   const acceptedTypes = accept
     .split(",")
     .map((type) => type.trim())
@@ -108,6 +117,7 @@ export const useFileUploads = (props: {
 
   useEffect(() => {
     return () => {
+      activeUploadRef.current?.abort();
       localPreviewUrlsRef.current?.forEach(
         ({ url }) => url && URL.revokeObjectURL(url),
       );
@@ -116,7 +126,7 @@ export const useFileUploads = (props: {
 
   const validateFiles = useCallback(
     (incomingFiles: File[]) => {
-      if (files.size + incomingFiles.length > maxFileLimit) {
+      if (filesRef.current.size + incomingFiles.length > maxFileLimit) {
         setError(`Max file limit reached: ${maxFileLimit}`);
         return false;
       }
@@ -135,142 +145,151 @@ export const useFileUploads = (props: {
       setError("");
       return true;
     },
-    [accept, maxFileLimit, maxFileSizeBytes, files.size],
+    [accept, maxFileLimit, maxFileSizeBytes],
   );
 
   const handleFiles = useCallback(
-    async (files: File[]) => {
-      const fileArray = Array.from(files);
+    async (incomingFiles: File[]) => {
+      if (activeUploadRef.current) {
+        toast.error("Please wait for the current uploads to finish.");
+        return;
+      }
+      if (!incomingFiles.length) return;
+      if (!validateFiles(incomingFiles)) {
+        toast.error("Failed to validate files.");
+        return;
+      }
+      const controller = new AbortController();
+      activeUploadRef.current = controller;
+      const fileEntries = incomingFiles.map(
+        (file) => [crypto.randomUUID(), file] as const,
+      );
+      const previews = new Map(
+        fileEntries.map(([id, file]) => [
+          id,
+          { url: URL.createObjectURL(file), name: file.name, type: file.type },
+        ]),
+      );
+      setLocalPreviewUrls((previous) => new Map([...previous, ...previews]));
+      setIsUploading(true);
+      setUploadProgresses(
+        (previous) =>
+          new Map([
+            ...previous,
+            ...fileEntries.map(([id]) => [id, 0] as const),
+          ]),
+      );
 
-      if (!validateFiles(fileArray))
-        return toast.error("Failed to validate files.");
-
-      const resolvedFileIdMap = fileArray.map((file) => {
-        const fileId = crypto.randomUUID();
-
-        return [fileId, file] as const;
-      });
-
-      const fileIdMap = new Map(resolvedFileIdMap);
-      const fileIds = Array.from(fileIdMap);
-
-      const filesToUpload = new Map(
-        fileIds.map(([id, file]) => {
-          const fileName = file.name ?? "Unknown file";
-          const fileType = file.type;
-
-          return [
-            id,
-            {
-              url: URL.createObjectURL(file),
-              name: fileName,
-              type: fileType,
-            },
-          ];
+      const results = await Promise.allSettled(
+        fileEntries.map(async ([id, file]) => {
+          const payload = await fetchUploadPresignedUrl(file, {
+            purpose: "chat-attachment",
+            chatId,
+          });
+          if (!payload) throw new Error("Failed to get upload URL.");
+          try {
+            await uploadFileWithProgress(
+              payload.uploadUrl,
+              file,
+              (value) => {
+                if (controller.signal.aborted || removedIdsRef.current.has(id))
+                  return;
+                setUploadProgresses((previous) =>
+                  new Map(previous).set(id, value),
+                );
+              },
+              controller.signal,
+            );
+            if (controller.signal.aborted || removedIdsRef.current.has(id)) {
+              await deleteFileClient({
+                purpose: "upload-intent",
+                uploadId: payload.uploadId,
+              });
+              return null;
+            }
+            return {
+              id,
+              name: file.name,
+              type: file.type,
+              uploadId: payload.uploadId,
+              url: payload.publicUrl,
+            };
+          } catch (error) {
+            await deleteFileClient({
+              purpose: "upload-intent",
+              uploadId: payload.uploadId,
+            });
+            throw error;
+          }
         }),
       );
 
-      setLocalPreviewUrls((prev) => new Map([...prev, ...filesToUpload]));
-      setIsUploading(true);
-      setUploadProgresses(
-        (prev) =>
-          new Map([...prev, ...new Map(fileIds.map(([id]) => [id, 0]))]),
+      const completedUploads = results.flatMap((result) =>
+        result.status === "fulfilled" && result.value ? [result.value] : [],
       );
-
-      try {
-        const presignedPayloads = await Promise.all(
-          fileIds.map(([id, file]) =>
-            fetchUploadPresignedUrl(file, {
-              purpose: "chat-attachment",
-              chatId,
-            }).then((data) => (data ? { ...data, id, file } : null)),
+      await Promise.allSettled(
+        completedUploads
+          .filter((file) => removedIdsRef.current.has(file.id))
+          .map((file) =>
+            deleteFileClient({
+              purpose: "upload-intent",
+              uploadId: file.uploadId,
+            }),
+          ),
+      );
+      if (controller.signal.aborted) {
+        await Promise.allSettled(
+          completedUploads.map((file) =>
+            deleteFileClient({
+              purpose: "upload-intent",
+              uploadId: file.uploadId,
+            }),
           ),
         );
-
-        const presignedUrls = presignedPayloads.filter(
-          (payload): payload is NonNullable<typeof payload> => Boolean(payload),
-        );
-
-        if (fileIds.length !== presignedUrls.length)
-          throw new Error("Failed to get upload URL.");
-
-        await Promise.all(
-          presignedUrls.map(({ uploadUrl, file, id }) =>
-            uploadFileWithProgress(uploadUrl, file, (value) =>
-              setUploadProgresses((prev) => {
-                const next = new Map(prev);
-                next.set(id, value);
-                return next;
-              }),
-            ),
-          ),
-        );
-
-        setFiles((prev) => {
-          const next = new Map(prev);
-
-          for (const { id, uploadId, publicUrl, file } of presignedUrls) {
-            next.set(id, {
-              name: file.name,
-              type: file.type,
-              uploadId,
-              url: publicUrl,
-            });
-          }
-
-          return next;
-        });
-
-        setLocalPreviewUrls((prev) => {
-          const next = new Map(prev);
-
-          for (const { id } of presignedUrls) {
-            const preview = next.get(id);
-            if (preview?.url) {
-              URL.revokeObjectURL(preview.url);
-            }
-
-            next.delete(id);
-          }
-
-          return next;
-        });
-      } catch (error) {
-        console.error(error);
-        const message = isError(error)
-          ? error.message
-          : `Failed to upload file${fileArray.length > 1 ? "s" : ""}`;
-        toast.error(message);
-
-        setLocalPreviewUrls((prev) => {
-          const next = new Map(prev);
-          for (const [id] of fileIds) {
-            const preview = next.get(id);
-            if (preview?.url) {
-              URL.revokeObjectURL(preview.url);
-            }
-
-            next.delete(id);
-          }
-
-          return next;
-        });
-        setUploadProgresses((prev) => {
-          const next = new Map(prev);
-          for (const [id] of fileIds) {
-            next.delete(id);
-          }
-
-          return next;
-        });
-      } finally {
-        setIsUploading(false);
-        if (inputRef.current) {
-          inputRef.current.value = "";
-        }
       }
+      if (!controller.signal.aborted) {
+        const completed = new Map(filesRef.current);
+        for (const result of results) {
+          if (
+            result.status !== "fulfilled" ||
+            !result.value ||
+            removedIdsRef.current.has(result.value.id)
+          )
+            continue;
+          const { id, ...file } = result.value;
+          completed.set(id, file);
+        }
+        filesRef.current = completed;
+        setFiles(completed);
+        const failed = results.filter(
+          (result) => result.status === "rejected",
+        ).length;
+        if (failed)
+          toast.error(
+            `${failed} file${failed === 1 ? "" : "s"} could not be uploaded. Please try again.`,
+          );
+      }
+      for (const [id, preview] of previews) {
+        URL.revokeObjectURL(preview.url);
+        removedIdsRef.current.delete(id);
+      }
+      setLocalPreviewUrls((previous) => {
+        const updated = new Map(previous);
+        for (const [id] of fileEntries) updated.delete(id);
+        return updated;
+      });
+      setUploadProgresses((previous) => {
+        const updated = new Map(previous);
+        for (const [id] of fileEntries) updated.delete(id);
+        return updated;
+      });
+      if (activeUploadRef.current === controller) {
+        activeUploadRef.current = null;
+        setIsUploading(false);
+      }
+      if (inputRef.current) inputRef.current.value = "";
     },
-    [setFiles, validateFiles, chatId],
+    [validateFiles, chatId],
   );
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -303,6 +322,7 @@ export const useFileUploads = (props: {
   };
 
   const removeFileFromState = (id: string) => {
+    removedIdsRef.current.add(id);
     setLocalPreviewUrls((prev) => {
       const next = new Map(prev);
       const preview = next.get(id);
@@ -362,6 +382,8 @@ export const useFileUploads = (props: {
   };
 
   const clearFiles = () => {
+    activeUploadRef.current?.abort();
+    filesRef.current = new Map();
     setFiles(new Map());
     setLocalPreviewUrls((prev) => {
       const next = new Map(prev);

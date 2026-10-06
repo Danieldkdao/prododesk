@@ -9,8 +9,10 @@ import { Suspense } from "react";
 import { readCalendarTasksAction, readTasksAction } from "../actions/actions";
 import { loadTasksSearchParams } from "../lib/tasks-params";
 import { DayTasksDialog } from "./day-tasks-dialog";
+import { TaskFormDefaultValues } from "../lib/types";
 
 type TasksCalendarViewProps = {
+  project?: TaskFormDefaultValues["project"];
   params?: Promise<
     Partial<Awaited<ParamsId<"areaId" | "projectId">["params"]>>
   >;
@@ -35,6 +37,7 @@ const TasksCalendarViewLoading = () => {
 const TasksCalendarViewSuspense = async ({
   params,
   searchParams,
+  project,
 }: TasksCalendarViewProps) => {
   const projectId = params ? (await params).projectId : undefined;
   const areaId = params ? (await params).areaId : undefined;
@@ -59,6 +62,8 @@ const TasksCalendarViewSuspense = async ({
       search: dayTasksFilters.search,
       statuses: dayTasksFilters.statuses,
       priorities: dayTasksFilters.priorities,
+      dateTimeStartRange: dayTasksFilters.dateTimeStartRange,
+      dateTimeEndRange: dayTasksFilters.dateTimeEndRange,
       ...readOptions,
     }),
     calendarFilters.day
@@ -66,6 +71,7 @@ const TasksCalendarViewSuspense = async ({
           ...dayTasksFilters,
           page: DEFAULT_PAGE,
           selectedDay: format(calendarFilters.day, "yyyy-MM-dd"),
+          view: calendarFilters.view,
           ...readOptions,
         })
       : Promise.resolve(null),
@@ -82,8 +88,12 @@ const TasksCalendarViewSuspense = async ({
 
   return (
     <div className="h-full min-h-0 overflow-hidden">
-      <MainCalendar monthDaysTasks={monthDaysTasks} />
-      <DayTasksDialog dayTasks={selectedDayTasks} readOptions={readOptions} />
+      <MainCalendar monthDaysTasks={monthDaysTasks} project={project} />
+      <DayTasksDialog
+        dayTasks={selectedDayTasks}
+        readOptions={readOptions}
+        defaultProject={project}
+      />
     </div>
   );
 };

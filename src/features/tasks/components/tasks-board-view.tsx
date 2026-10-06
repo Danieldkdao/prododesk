@@ -1,11 +1,10 @@
+import { ErrorState } from "@/components/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ParamsId, SearchParamsType } from "@/lib/types";
 import { Suspense } from "react";
+import { readTaskBoardAction } from "../actions/actions";
 import { loadTasksSearchParams } from "../lib/tasks-params";
-import { DEFAULT_PAGE } from "@/lib/constants";
-import { readTaskBoardAction, readTasksAction } from "../actions/actions";
-import { ErrorState } from "@/components/error-state";
 import { TasksBoardViewClient } from "./tasks-board-view-client";
-import { Skeleton } from "@/components/ui/skeleton";
 
 type TasksBoardViewProps = {
   params?: Promise<

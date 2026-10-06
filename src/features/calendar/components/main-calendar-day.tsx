@@ -1,7 +1,5 @@
 import { TaskSelectType } from "@/db/schema";
 import { TaskDialog } from "@/features/tasks/components/task-dialog";
-import { useTasksParams } from "@/features/tasks/hooks/use-tasks-params";
-import { defaultDayTasksParamsOptions } from "@/features/tasks/lib/tasks-params";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
@@ -11,21 +9,25 @@ import { CalendarDayTasksResizeList } from "../calendar-day-tasks-resize-list";
 import { useCalendarParams } from "../hooks/use-calendar-params";
 import { calculateCalendarDayTasksValues } from "../lib/utils";
 import { CalendarViewOption } from "../lib/calendar-params";
+import { TaskFormDefaultValues } from "@/features/tasks/lib/types";
 
 export const MainCalendarDay = ({
   month,
   date,
+  timeZone,
   tasks,
+  project,
 }: {
   month: Date;
   date: Date;
+  timeZone: string;
+  project?: TaskFormDefaultValues["project"];
   tasks: {
     scheduled: TaskSelectType[];
     due: TaskSelectType[];
   };
 }) => {
   const [calendarFilters, setCalendarFilters] = useCalendarParams();
-  const [, setDayTasksFilters] = useTasksParams();
 
   const allTasks = Array.from(
     new Map(
@@ -57,7 +59,6 @@ export const MainCalendarDay = ({
         setCalendarFilters({
           day: new Date(date.toUTCString()),
         });
-        setDayTasksFilters(defaultDayTasksParamsOptions);
       }}
     >
       <div className="flex items-start gap-2 flex-wrap w-full justify-between">
@@ -72,7 +73,7 @@ export const MainCalendarDay = ({
         )}
         <div onClick={(e) => e.stopPropagation()}>
           {isSameMonth && !isPastDay && (
-            <TaskDialog defaultValues={{ day: date }}>
+            <TaskDialog defaultValues={{ day: date, project }}>
               <TooltipWrapper content="Add task">
                 <Button variant="ghost" size="icon-xs">
                   <PlusIcon />
@@ -82,7 +83,11 @@ export const MainCalendarDay = ({
           )}
         </div>
       </div>
-      <CalendarDayTasksResizeList tasks={tasksToShow} />
+      <CalendarDayTasksResizeList
+        tasks={tasksToShow}
+        date={date}
+        timeZone={timeZone}
+      />
     </div>
   );
 };

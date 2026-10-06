@@ -1,84 +1,115 @@
 "use server";
 
+import { db } from "@/db/db";
+import { UploadIntentTable, user as UserTable } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
-import {
-  GENERAL_ERROR_MESSAGE,
-  NOT_FOUND_ERROR_MESSAGE,
-  UNAUTHED_ERROR_MESSAGE,
-} from "@/lib/constants";
-import {
-  confirmUserUploadIntentOwnership,
-  deleteUploadIntentDb,
-} from "../server/uploads";
+import { GENERAL_ERROR_MESSAGE, UNAUTHED_ERROR_MESSAGE } from "@/lib/constants";
+import { and, eq } from "drizzle-orm";
 import { deleteFilesFromStorage } from "../lib/delete-files";
-import { auth } from "@/lib/auth/auth";
-import { headers } from "next/headers";
+import { areValidIds } from "@/lib/utils";
+
+const removePreviousProfileImage = async (
+  userId: string,
+  key: string | null,
+) => {
+  if (!key?.startsWith(`${userId}/profile-image/`)) return true;
+
+  const cleaned = await deleteFilesFromStorage([key]);
+  if (!cleaned) {
+    console.error("Previous profile image cleanup failed:", {
+      userId,
+      storageKey: key,
+    });
+  }
+  return cleaned;
+};
 
 export const completeProfileImageUpload = async ({
   uploadId,
 }: {
   uploadId: string;
 }) => {
-  const { userId, user } = await getCurrentUser();
-  if (!userId || !user) {
-    return {
-      error: true,
-      message: UNAUTHED_ERROR_MESSAGE,
-    };
-  }
-
-  const existingUploadIntent = await confirmUserUploadIntentOwnership(
-    uploadId,
-    userId,
-  );
-  if (!existingUploadIntent) {
-    return {
-      error: true,
-      message: NOT_FOUND_ERROR_MESSAGE,
-    };
-  }
+  const { userId } = await getCurrentUser();
+  if (!userId) return { error: true, message: UNAUTHED_ERROR_MESSAGE };
+  if (!areValidIds(uploadId))
+    return { error: true, message: GENERAL_ERROR_MESSAGE };
 
   try {
-    const previousProfileImageKey = user.profileImageKey;
-
-    await auth.api.updateUser({
-      body: {
-        profileImageKey: existingUploadIntent.storageKey,
-      },
-      headers: await headers(),
+    const previousKey = await db.transaction(async (tx) => {
+      const [existingUser] = await tx
+        .select()
+        .from(UserTable)
+        .where(eq(UserTable.id, userId))
+        .for("update");
+      const [upload] = await tx
+        .select()
+        .from(UploadIntentTable)
+        .where(
+          and(
+            eq(UploadIntentTable.id, uploadId),
+            eq(UploadIntentTable.userId, userId),
+            eq(UploadIntentTable.purpose, "profile_image"),
+          ),
+        )
+        .for("update");
+      if (
+        !existingUser ||
+        !upload?.storageKey.startsWith(`${userId}/profile-image/`)
+      ) {
+        throw new Error("No owned profile image upload found.");
+      }
+      await tx
+        .update(UserTable)
+        .set({ profileImageKey: upload.storageKey })
+        .where(eq(UserTable.id, userId));
+      await tx
+        .delete(UploadIntentTable)
+        .where(eq(UploadIntentTable.id, upload.id));
+      return existingUser.profileImageKey;
     });
 
-    const deletedUploadIntent = await deleteUploadIntentDb(
-      existingUploadIntent.id,
-    );
-    if (!deletedUploadIntent) {
-      return {
-        error: true,
-        message: GENERAL_ERROR_MESSAGE,
-      };
-    }
-
-    if (previousProfileImageKey) {
-      const deleteSuccess = await deleteFilesFromStorage([
-        previousProfileImageKey,
-      ]);
-      if (!deleteSuccess) {
-        return {
-          error: true,
-          message: GENERAL_ERROR_MESSAGE,
-        };
-      }
-    }
-
+    const cleaned = await removePreviousProfileImage(userId, previousKey);
     return {
       error: false,
       message: "Profile image updated successfully.",
+      cleanupWarning: cleaned
+        ? null
+        : "Your profile image was updated, but we couldn't delete the previous image.",
     };
   } catch (error) {
     console.error(error);
+    return { error: true, message: GENERAL_ERROR_MESSAGE };
+  }
+};
+
+export const resetProfileImageAction = async () => {
+  const { userId } = await getCurrentUser();
+  if (!userId) return { error: true, message: UNAUTHED_ERROR_MESSAGE };
+
+  try {
+    const previousKey = await db.transaction(async (tx) => {
+      const [existingUser] = await tx
+        .select()
+        .from(UserTable)
+        .where(eq(UserTable.id, userId))
+        .for("update");
+      if (!existingUser) throw new Error("User not found.");
+      await tx
+        .update(UserTable)
+        .set({ profileImageKey: null })
+        .where(eq(UserTable.id, userId));
+      return existingUser.profileImageKey;
+    });
+    const cleaned = await removePreviousProfileImage(userId, previousKey);
     return {
-      error: true,
-      message: UNAUTHED_ERROR_MESSAGE,
+      error: false,
+      message: "Profile image reset successfully.",
+      cleanupWarning: cleaned
+        ? null
+        : "Your profile image was reset, but we couldn't delete the previous image.",
     };
+  } catch (error) {
+    console.error(error);
+    return { error: true, message: GENERAL_ERROR_MESSAGE };
   }
 };

@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import {
   Command,
   CommandEmpty,
@@ -18,9 +20,8 @@ import { MilestoneSelectType, MilestoneStatus } from "@/db/schema";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { DEFAULT_PAGE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { useDebouncedCallback } from "@tanstack/react-pacer";
 import { ChevronDownIcon } from "lucide-react";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { readProjectMilestonesAction } from "../actions/actions";
 import { formatMilestoneStatus } from "../lib/formatters";
 
@@ -43,70 +44,65 @@ export const MilestoneCommandSelect = ({
 }) => {
   const [commandOpen, setCommandOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [isSearchPending, startSearchTransition] = useTransition();
+  const [query, setQuery] = useState("");
+  const [selection, setSelection] = useState<MilestoneSelectType | null>(null);
+  const isSearchPending = search !== query;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchMilestones = useCallback(
     (nextPage: number) => {
       if (!projectId) return Promise.resolve(null);
       return readProjectMilestonesAction(projectId, {
-        search,
+        search: query,
         statuses: [],
         dueAtOnAfter: null,
         dueAtOnBefore: null,
         page: nextPage,
       });
     },
-    [search, projectId],
+    [query, projectId],
   );
 
   const {
     items: milestones,
-    setItems: setMilestones,
-    setPage,
-    setHasNextPage,
     isPending: isInfinitePending,
+    hasNextPage,
     setContainerEl,
+    error,
+    retry,
     setSentinelEl,
   } = useInfiniteScroll<MilestoneSelectType, "milestones">(
     [],
     true,
     fetchMilestones,
     {
-      additionalScrollDeps: [commandOpen, search, projectId],
+      resetKey: JSON.stringify([projectId, query]),
+      enabled: commandOpen && !isSearchPending && !!projectId,
       defaultPage: DEFAULT_PAGE - 1,
     },
   );
 
-  const handleSearch = () => {
-    startSearchTransition(async () => {
-      if (!projectId) return;
-      const response = await readProjectMilestonesAction(projectId, {
-        search,
-        statuses: [],
-        dueAtOnAfter: null,
-        dueAtOnBefore: null,
-        page: DEFAULT_PAGE,
-      });
-
-      if (!response) return;
-
-      const { milestones, metadata } = response;
-
-      setMilestones(milestones);
-      setPage(DEFAULT_PAGE);
-      setHasNextPage(metadata.hasNextPage);
-    });
-  };
-  const handleDebouncedSearch = useDebouncedCallback(handleSearch, {
-    wait: 250,
-  });
-
-  const selectedMilestone = milestones.find(
-    (milestone) => milestone.id === value,
-  );
+  const selectedMilestone =
+    milestones.find((milestone) => milestone.id === value) ??
+    (selection && selection.id === value && selection.projectId === projectId
+      ? selection
+      : null);
 
   return (
-    <Popover open={commandOpen} onOpenChange={setCommandOpen}>
+    <Popover
+      open={commandOpen}
+      onOpenChange={(open) => {
+        setCommandOpen(open);
+        if (!open) {
+          setSearch("");
+          setQuery("");
+        }
+      }}
+    >
       <PopoverTrigger
         id={id}
         aria-invalid={!!fieldError}
@@ -156,13 +152,15 @@ export const MilestoneCommandSelect = ({
             value={search}
             onValueChange={(value) => {
               setSearch(value);
-              handleDebouncedSearch();
             }}
             placeholder="Search for milestones by name or description..."
           />
 
           <CommandList ref={setContainerEl}>
-            <CommandEmpty>No milestones found.</CommandEmpty>
+            {!error &&
+              !isSearchPending &&
+              !isInfinitePending &&
+              !hasNextPage && <CommandEmpty>No milestones found.</CommandEmpty>}
             <CommandGroup>
               {isSearchPending
                 ? Array.from({ length: 4 }).map((_, index) => (
@@ -184,9 +182,11 @@ export const MilestoneCommandSelect = ({
                             "bg-primary/15 hover:bg-primary/10 data-selected:bg-primary/10",
                         )}
                         onSelect={() => {
+                          setSelection(isSelected ? null : milestone);
                           onValueChange(isSelected ? null : milestone.id);
                           setCommandOpen(false);
                           setSearch("");
+                          setQuery("");
                         }}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -213,6 +213,7 @@ export const MilestoneCommandSelect = ({
                 Array.from({ length: 4 }).map((_, index) => (
                   <MilestoneCommandItemSkeleton key={index} />
                 ))}
+              <InfiniteScrollError error={error} retry={retry} />
               <div ref={setSentinelEl} className="h-1 w-full bg-transparent" />
             </CommandGroup>
           </CommandList>

@@ -1,5 +1,7 @@
 "use server";
 
+import { cacheUserResources } from "@/lib/data-cache";
+
 import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import { MilestoneStatus, MilestoneTable } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
@@ -13,7 +15,6 @@ import {
   UNAUTHED_ERROR_MESSAGE,
 } from "@/lib/constants";
 import { UnwrapAsync } from "@/lib/types";
-import { format } from "date-fns";
 import { and, between, count, eq, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { MilestonesFilters } from "../lib/milestones-params";
@@ -42,6 +43,7 @@ const readCachedProjectMilestonesAction = async (
   filterOptions: ReadProjectMilestonesFilters,
 ) => {
   "use cache";
+  cacheUserResources(userId, "milestones", "projects", "tasks", "areas");
   cacheTag(getProjectMilestoneTag(projectId));
 
   const page = filterOptions.page;
@@ -135,7 +137,7 @@ export const createMilestoneAction = async (
         WHERE mt.user_id = ${userId}
           AND mt.project_id = ${data.projectId}
       ) + 1`,
-        dueAt: dueAt ? format(dueAt, "yyyy-MM-dd") : null,
+        dueAt: dueAt ?? null,
       },
       options,
     );
@@ -190,12 +192,7 @@ export const updateMilestoneAction = async (
       existingMilestone.id,
       {
         ...rest,
-        dueAt:
-          dueAt === null
-            ? null
-            : dueAt
-              ? format(dueAt, "yyyy-MM-dd")
-              : existingMilestone.dueAt,
+        dueAt: dueAt === undefined ? existingMilestone.dueAt : dueAt,
       },
       options,
     );

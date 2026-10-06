@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import { NotFound } from "@/components/not-found";
 import { ProjectSelectType, TaskSelectType } from "@/db/schema";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
@@ -43,6 +45,8 @@ export const MilestonesInfiniteList = ({
 
   const {
     items: milestonesToUse,
+    error,
+    retry,
     setSentinelEl,
     isPending,
     hasNextPage,
@@ -81,6 +85,7 @@ export const MilestonesInfiniteList = ({
         Array.from({ length: 4 }).map((_, index) => (
           <MilestoneSkeleton key={index} isLast={index === 3} />
         ))}
+      <InfiniteScrollError error={error} retry={retry} />
       <div ref={setSentinelEl} className="h-1 w-full bg-transparent" />
       {!milestonesToUse.length && !isPending && !hasNextPage && (
         <NotFound

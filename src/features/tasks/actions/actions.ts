@@ -1,7 +1,10 @@
 "use server";
 
+import { cacheUserResources } from "@/lib/data-cache";
+
 import { ActivityMutationOptions, db } from "@/db/db";
 import {
+  MilestoneTable,
   MilestoneSelectType,
   ProjectSelectType,
   ProjectTable,
@@ -28,7 +31,7 @@ import { UnwrapAsync } from "@/lib/types";
 import { areValidIds, getLocalDayBounds } from "@/lib/utils";
 import { tz } from "@date-fns/tz";
 import { format, isValid } from "date-fns";
-import { and, count, eq, gte, lte, ne } from "drizzle-orm";
+import { and, count, eq, gte, lte, ne, sql } from "drizzle-orm";
 import { cacheTag } from "next/cache";
 import { TASK_BOARD_PAGE_SIZE } from "../lib/constants";
 import { TasksFilters } from "../lib/tasks-params";
@@ -56,15 +59,14 @@ type ReadCalendarTasksFilters = Pick<CalendarFilters, "view"> & {
   month: CalendarFilters["month"];
   projectIds?: string[];
   areaIds?: string[];
-} & Partial<
-    Omit<TasksFilters, "dateTimeStartRange" | "dateTimeEndRange" | "sortBy">
-  >;
+} & Partial<Omit<TasksFilters, "sortBy">>;
 
 type ReadTasksFilters = TasksFilters & {
   page: number;
   unassignedOnly?: boolean;
   allTasks?: boolean;
   selectedDay?: CalendarFilters["day"] | string;
+  view?: CalendarFilters["view"];
   projectIds?: string[];
   areaIds?: string[];
 };
@@ -105,15 +107,18 @@ export const createTaskAction = async (
   unsafeData: TaskSchemaType,
   options?: ActivityMutationOptions,
 ) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) {
     return {
       error: true,
       message: UNAUTHED_ERROR_MESSAGE,
     };
   }
 
-  const { data, success, error } = taskSchema().safeParse(unsafeData);
+  const { data, success, error } = taskSchema(
+    undefined,
+    user.timeZone,
+  ).safeParse(unsafeData);
   if (!success) {
     return {
       error: true,
@@ -143,8 +148,8 @@ export const updateTaskAction = async (
   unsafeData: UpdateTaskSchemaType,
   options?: ActivityMutationOptions,
 ) => {
-  const { userId } = await getCurrentUser();
-  if (!userId) {
+  const { userId, user } = await getCurrentUser();
+  if (!userId || !user) {
     return {
       error: true,
       message: UNAUTHED_ERROR_MESSAGE,
@@ -167,10 +172,13 @@ export const updateTaskAction = async (
     };
   }
 
-  const existingResult = taskSchema({
-    scheduledAt: existingTask.scheduledAt ?? null,
-    dueAt: existingTask.dueAt ?? null,
-  }).safeParse({
+  const existingResult = taskSchema(
+    {
+      scheduledAt: existingTask.scheduledAt ?? null,
+      dueAt: existingTask.dueAt ?? null,
+    },
+    user.timeZone,
+  ).safeParse({
     name: existingTask.name,
     description: existingTask.description,
     emoji: existingTask.emoji,
@@ -305,6 +313,7 @@ const readCachedCalendarTasks = async (
   options: Omit<ReadCalendarTasksFilters, "month"> & { month: string },
 ) => {
   "use cache";
+  cacheUserResources(userId, "tasks", "projects", "milestones", "areas");
   cacheTag(getUserTaskTag(userId));
 
   const { month: monthKey, ...rest } = options;
@@ -368,6 +377,7 @@ const readCachedCalendarTasks = async (
 
   return {
     monthKey,
+    timeZone,
     monthDaysTasks: monthDaysWithTasks,
   };
 };
@@ -398,6 +408,7 @@ const readCachedTasksAction = async (
   filterOptions: ReadTasksFilters,
 ) => {
   "use cache";
+  cacheUserResources(userId, "tasks", "projects", "milestones", "areas");
   cacheTag(getUserTaskTag(userId));
 
   const { page, selectedDay } = filterOptions;
@@ -405,7 +416,7 @@ const readCachedTasksAction = async (
   const response = await readTasksDb({ ...filterOptions, userId, timeZone });
   if (!response) return null;
 
-  const { tasks, projects, dayFilter, whereQuery } = response;
+  const { tasks, projects, whereQuery, completionWhereQuery } = response;
 
   const [totalSelectedTasks] = await db
     .select({
@@ -413,25 +424,23 @@ const readCachedTasksAction = async (
     })
     .from(TaskTable)
     .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+    .leftJoin(MilestoneTable, eq(MilestoneTable.id, TaskTable.milestoneId))
     .where(whereQuery);
 
-  const [totalTasks] = await db
-    .select({ count: count() })
-    .from(TaskTable)
-    .where(and(eq(TaskTable.userId, userId), dayFilter));
-
-  const [totalCompletedTasks] = await db
-    .select({ count: count() })
-    .from(TaskTable)
-    .where(
-      and(
-        eq(TaskTable.userId, userId),
-        dayFilter,
-        eq(TaskTable.status, "completed"),
+  const [completionCounts] = await db
+    .select({
+      total: count(),
+      completed: count(
+        sql`case when ${TaskTable.status} = 'completed' then 1 end`,
       ),
-    );
+    })
+    .from(TaskTable)
+    .leftJoin(ProjectTable, eq(ProjectTable.id, TaskTable.projectId))
+    .where(completionWhereQuery);
 
-  const allTasksCompleted = totalCompletedTasks.count === totalTasks.count;
+  const allTasksCompleted =
+    completionCounts.total > 0 &&
+    completionCounts.completed === completionCounts.total;
 
   const hasPrevPage = page > 1;
   const hasNextPage = page * PAGE_SIZE < totalSelectedTasks.count;
@@ -521,6 +530,7 @@ const readCachedTaskBoardAction = async (
   options: ReadTaskBoardOptions,
 ) => {
   "use cache";
+  cacheUserResources(userId, "tasks", "projects", "milestones", "areas");
   cacheTag(getUserTaskTag(userId));
 
   const columns = getTaskBoardColumns(options.property);
@@ -562,6 +572,7 @@ const readCachedTaskBoardColumnAction = async (
   options: ReadTaskBoardColumnOptions,
 ) => {
   "use cache";
+  cacheUserResources(userId, "tasks", "projects", "milestones", "areas");
   cacheTag(getUserTaskTag(userId));
 
   const response = await readTaskBoardColumnPage(userId, timeZone, options);
@@ -707,6 +718,7 @@ export const updateTasksPriorityAction = async (
 
 const readCachedTaskAction = async (userId: string, taskId: string) => {
   "use cache";
+  cacheUserResources(userId, "tasks", "projects", "milestones", "areas");
   cacheTag(getTaskIdTag(taskId));
 
   const task = await db.query.TaskTable.findFirst({

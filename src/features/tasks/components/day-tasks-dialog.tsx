@@ -10,9 +10,11 @@ import { useCalendarParams } from "@/features/calendar/hooks/use-calendar-params
 import { format } from "date-fns";
 import { ReadTasksActionReturnType } from "../actions/actions";
 import { DayTasksContent } from "./day-tasks-content";
+import { TaskFormDefaultValues } from "../lib/types";
 
 export const DayTasksDialog = (props: {
   dayTasks: ReadTasksActionReturnType | null;
+  defaultProject?: TaskFormDefaultValues["project"];
   readOptions?: {
     areaIds?: string[] | undefined;
     projectIds?: string[] | undefined;

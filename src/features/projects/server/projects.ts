@@ -99,8 +99,8 @@ export const parseProjectData = (
 
   return {
     ...rest,
-    startAt: startAt ? format(startAt, "yyyy-MM-dd") : null,
-    endAt: endAt ? format(endAt, "yyyy-MM-dd") : null,
+    startAt: startAt ?? null,
+    endAt: endAt ?? null,
     userId,
   };
 };
@@ -385,6 +385,17 @@ export const insertProjectDb = async (
   const { source = "user", tx, chatRunId } = options ?? {};
   try {
     const insertProject = async (pgtx: DbTransaction) => {
+      if (
+        projectData.areaId &&
+        !(await confirmUserAreaOwnership(
+          projectData.areaId,
+          projectData.userId,
+          pgtx,
+        ))
+      ) {
+        throw new Error("No owned area found.");
+      }
+
       const [insertedProject] = await pgtx
         .insert(ProjectTable)
         .values(projectData)
@@ -450,6 +461,18 @@ export const updateProjectDb = async (
     if (!existingProject) return null;
 
     const updateProject = async (pgtx: DbTransaction) => {
+      if (
+        projectData.areaId != null &&
+        (typeof projectData.areaId !== "string" ||
+          !(await confirmUserAreaOwnership(
+            projectData.areaId,
+            existingProject.userId,
+            pgtx,
+          )))
+      ) {
+        throw new Error("No owned area found.");
+      }
+
       const [updatedProject] = await pgtx
         .update(ProjectTable)
         .set(projectData)
