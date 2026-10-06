@@ -1,5 +1,6 @@
 import { envServer } from "@/data/env/server";
 import { db } from "@/db/db";
+import { deleteUserFilesFromStorage } from "@/features/uploads/lib/delete-files";
 import { sendAccountDeletionEmail } from "@/services/mailjet/emails/account-deletion-email";
 import { sendVerificationOtp } from "@/services/mailjet/emails/verification-emails";
 import { betterAuth } from "better-auth";
@@ -19,7 +20,7 @@ export const auth = betterAuth({
       profileImageKey: {
         type: "string",
         required: false,
-        input: true,
+        input: false,
       },
     },
     changeEmail: {
@@ -30,6 +31,9 @@ export const auth = betterAuth({
       deleteTokenExpiresIn: 15 * 60,
       sendDeleteAccountVerification: async ({ user, url }) => {
         await sendAccountDeletionEmail({ email: user.email, url });
+      },
+      afterDelete: async (user) => {
+        await deleteUserFilesFromStorage(user.id);
       },
     },
   },

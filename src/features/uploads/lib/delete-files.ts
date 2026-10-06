@@ -1,6 +1,10 @@
 import "server-only";
 
-import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { envServer } from "@/data/env/server";
 
 const client = new S3Client({
@@ -29,6 +33,37 @@ export async function deleteFilesFromStorage(keys: string[]) {
     return true;
   } catch (error) {
     console.error("Failed to delete files from storage:", error);
+    return false;
+  }
+}
+
+export async function deleteUserFilesFromStorage(userId: string) {
+  if (!userId || userId.includes("/")) return false;
+
+  try {
+    const prefix = `${userId}/`;
+    let continuationToken: string | undefined;
+
+    do {
+      const page = await client.send(
+        new ListObjectsV2Command({
+          Bucket: envServer.TIGRIS_STORAGE_BUCKET,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        }),
+      );
+      const keys = (page.Contents ?? []).flatMap(({ Key }) =>
+        Key?.startsWith(prefix) ? [Key] : [],
+      );
+      if (!(await deleteFilesFromStorage(keys))) return false;
+      continuationToken = page.IsTruncated
+        ? page.NextContinuationToken
+        : undefined;
+    } while (continuationToken);
+
+    return true;
+  } catch (error) {
+    console.error("Failed to clean up deleted account files:", error);
     return false;
   }
 }
