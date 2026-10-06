@@ -1,14 +1,11 @@
 "use client";
 
-import { SearchInput } from "@/features/tasks/components/search-input";
-import { useDocumentsParams } from "../hooks/use-documents-params";
+import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { FilterIcon, PlusIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -16,13 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchInput } from "@/features/tasks/components/search-input";
+import { FilterIcon, PlusIcon } from "lucide-react";
+import { useDocumentsParams } from "../hooks/use-documents-params";
 import {
   DocumentsSortByOption,
   documentsSortByOptions,
 } from "../lib/documents-params";
 import { formatDocumentSortByOption } from "../lib/formatters";
 import { CreateDocumentButton } from "./create-document-button";
-import { TooltipWrapper } from "@/components/tooltip-wrapper";
 
 export const DocumentsFilters = ({ projectId }: { projectId?: string }) => {
   const [filters, setFilters] = useDocumentsParams();
@@ -70,11 +69,9 @@ export const DocumentsFilters = ({ projectId }: { projectId?: string }) => {
         </PopoverContent>
       </Popover>
       {projectId && (
-        <TooltipWrapper content="New Document">
-          <CreateDocumentButton projectId={projectId} size="icon">
-            <PlusIcon />
-          </CreateDocumentButton>
-        </TooltipWrapper>
+        <CreateDocumentButton projectId={projectId} size="icon">
+          <PlusIcon />
+        </CreateDocumentButton>
       )}
     </div>
   );
