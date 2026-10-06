@@ -113,7 +113,10 @@ export const MainCalendar = ({
               </div>
             ))}
           </div>
-          <MainCalendarArea monthDaysTasksRes={monthDaysTasks} project={project} />
+          <MainCalendarArea
+            monthDaysTasksRes={monthDaysTasks}
+            project={project}
+          />
         </div>
       </div>
     </div>

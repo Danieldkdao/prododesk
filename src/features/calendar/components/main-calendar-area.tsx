@@ -12,7 +12,7 @@ export const MainCalendarArea = ({
   monthDaysTasksRes: ReadCalendarTasksActionReturnType;
   project?: TaskFormDefaultValues["project"];
 }) => {
-  const { monthDaysTasks, monthKey } = monthDaysTasksRes;
+  const { monthDaysTasks, monthKey, timeZone } = monthDaysTasksRes;
   const month = parseISO(monthKey);
 
   return (
@@ -21,6 +21,7 @@ export const MainCalendarArea = ({
         <MainCalendarDay
           month={month}
           date={parseISO(dayKey)}
+          timeZone={timeZone}
           tasks={tasks}
           project={project}
           key={index}

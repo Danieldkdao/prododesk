@@ -14,11 +14,13 @@ import { TaskFormDefaultValues } from "@/features/tasks/lib/types";
 export const MainCalendarDay = ({
   month,
   date,
+  timeZone,
   tasks,
   project,
 }: {
   month: Date;
   date: Date;
+  timeZone: string;
   project?: TaskFormDefaultValues["project"];
   tasks: {
     scheduled: TaskSelectType[];
@@ -81,7 +83,11 @@ export const MainCalendarDay = ({
           )}
         </div>
       </div>
-      <CalendarDayTasksResizeList tasks={tasksToShow} />
+      <CalendarDayTasksResizeList
+        tasks={tasksToShow}
+        date={date}
+        timeZone={timeZone}
+      />
     </div>
   );
 };

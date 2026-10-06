@@ -1,5 +1,7 @@
 "use server";
 
+import { cacheUserResources } from "@/lib/data-cache";
+
 import { ActivityMutationOptions, db } from "@/db/db";
 import {
   MilestoneTable,
@@ -57,9 +59,7 @@ type ReadCalendarTasksFilters = Pick<CalendarFilters, "view"> & {
   month: CalendarFilters["month"];
   projectIds?: string[];
   areaIds?: string[];
-} & Partial<
-    Omit<TasksFilters, "sortBy">
-  >;
+} & Partial<Omit<TasksFilters, "sortBy">>;
 
 type ReadTasksFilters = TasksFilters & {
   page: number;
@@ -115,9 +115,10 @@ export const createTaskAction = async (
     };
   }
 
-  const { data, success, error } = taskSchema(undefined, user.timeZone).safeParse(
-    unsafeData,
-  );
+  const { data, success, error } = taskSchema(
+    undefined,
+    user.timeZone,
+  ).safeParse(unsafeData);
   if (!success) {
     return {
       error: true,
@@ -312,6 +313,7 @@ const readCachedCalendarTasks = async (
   options: Omit<ReadCalendarTasksFilters, "month"> & { month: string },
 ) => {
   "use cache";
+  cacheUserResources(userId, "tasks", "projects", "milestones", "areas");
   cacheTag(getUserTaskTag(userId));
 
   const { month: monthKey, ...rest } = options;
@@ -375,6 +377,7 @@ const readCachedCalendarTasks = async (
 
   return {
     monthKey,
+    timeZone,
     monthDaysTasks: monthDaysWithTasks,
   };
 };
@@ -405,6 +408,7 @@ const readCachedTasksAction = async (
   filterOptions: ReadTasksFilters,
 ) => {
   "use cache";
+  cacheUserResources(userId, "tasks", "projects", "milestones", "areas");
   cacheTag(getUserTaskTag(userId));
 
   const { page, selectedDay } = filterOptions;
@@ -522,6 +526,7 @@ const readCachedTaskBoardAction = async (
   options: ReadTaskBoardOptions,
 ) => {
   "use cache";
+  cacheUserResources(userId, "tasks", "projects", "milestones", "areas");
   cacheTag(getUserTaskTag(userId));
 
   const columns = getTaskBoardColumns(options.property);
@@ -563,6 +568,7 @@ const readCachedTaskBoardColumnAction = async (
   options: ReadTaskBoardColumnOptions,
 ) => {
   "use cache";
+  cacheUserResources(userId, "tasks", "projects", "milestones", "areas");
   cacheTag(getUserTaskTag(userId));
 
   const response = await readTaskBoardColumnPage(userId, timeZone, options);
@@ -708,6 +714,7 @@ export const updateTasksPriorityAction = async (
 
 const readCachedTaskAction = async (userId: string, taskId: string) => {
   "use cache";
+  cacheUserResources(userId, "tasks", "projects", "milestones", "areas");
   cacheTag(getTaskIdTag(taskId));
 
   const task = await db.query.TaskTable.findFirst({
