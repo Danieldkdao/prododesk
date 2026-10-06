@@ -12,7 +12,7 @@ import { UPLOAD_LIMITS } from "@/features/uploads/lib/constants";
 import { useAbortableAction } from "@/hooks/use-abortable-action";
 import { useChatProvider } from "@/hooks/use-chat-provider";
 import { useFileUploads } from "@/hooks/use-file-uploads";
-import { LLMModel } from "@/services/ai/models";
+import { defaultModel, LLMModel } from "@/services/ai/models";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -30,7 +30,9 @@ const recommendedPrompts = [
 
 export const InitialAIInputClient = () => {
   const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState<LLMModel | null>(null);
+  const [selectedModel, setSelectedModel] = useState<LLMModel | null>(
+    defaultModel,
+  );
 
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 

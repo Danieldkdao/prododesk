@@ -3,9 +3,9 @@
 import { UseFileUploadsReturnType } from "@/hooks/use-file-uploads";
 import { cn } from "@/lib/utils";
 import {
+  defaultModel,
   fastCostEfficientModels,
   LLMModel,
-  mostPowerfulModels,
 } from "@/services/ai/models";
 import { PlusIcon, SendIcon, SquareIcon } from "lucide-react";
 import { motion } from "motion/react";
@@ -199,7 +199,7 @@ export const AIChatInput = ({
             <Button
               variant="ghost"
               size="icon-sm"
-              disabled={isPending}
+              disabled={isPending || isUploading || isAnyFileDeleting}
               onClick={() => {
                 if (!inputRef?.current) return;
 
@@ -216,6 +216,7 @@ export const AIChatInput = ({
             type="file"
             accept=".jpg, .png, image/jpeg, application/pdf"
             multiple
+            disabled={isPending || isUploading || isAnyFileDeleting}
             onChange={handleInputChange}
           />
         </motion.div>
@@ -244,7 +245,7 @@ export const AIChatInput = ({
               </SelectValue>
             </SelectTrigger>
             <SelectContent dynamicWidth className="border">
-              <SelectGroup>
+              {/*<SelectGroup>
                 <SelectLabel>Most Powerful</SelectLabel>
                 {mostPowerfulModels.map((model) => (
                   <SelectItem
@@ -267,7 +268,7 @@ export const AIChatInput = ({
                     </div>
                   </SelectItem>
                 ))}
-              </SelectGroup>
+              </SelectGroup>*/}
               <SelectGroup>
                 <SelectLabel>Fast & Cost Efficient</SelectLabel>
                 {fastCostEfficientModels.map((model) => (
