@@ -2,6 +2,7 @@
 
 import { AIChatInput } from "@/components/ai-chat-input";
 import { AILoadingAnimation } from "@/components/ai-loading-animation";
+import { Button } from "@/components/ui/button";
 import { Message, MessageContent } from "@/components/ui/message";
 import {
   MessageScroller,
@@ -17,10 +18,11 @@ import { useChatProvider } from "@/hooks/use-chat-provider";
 import { useFileUploads } from "@/hooks/use-file-uploads";
 import { getModelInfo, LLMModel } from "@/services/ai/models";
 import { CustomUIMessage } from "@/services/ai/types";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ReadChatActionReturnType } from "../actions/actions";
 import { ChatHeader } from "../chat-header";
+import { CHAT_HISTORY_PAGE_SIZE } from "../lib/constants";
 import { ChatViewListMessage } from "./chat-view-list-message";
 
 export const ChatViewList = ({
@@ -36,6 +38,7 @@ export const ChatViewList = ({
     sendChatMessage,
     clearError,
     stop,
+    setMessages,
   } = useChatProvider();
   const previousResponseModelId = messages.at(-1)?.metadata?.modelId ?? null;
   const currentModelInfo = getModelInfo(
@@ -43,6 +46,82 @@ export const ChatViewList = ({
   );
 
   const [prompt, setPrompt] = useState("");
+  const [hasOlderMessages, setHasOlderMessages] = useState(
+    chat.hasOlderMessages,
+  );
+  const [visibleMessageCount, setVisibleMessageCount] = useState(
+    CHAT_HISTORY_PAGE_SIZE,
+  );
+  const visibleMessages = messages.slice(-visibleMessageCount);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const historyRequestRef = useRef<AbortController | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const scrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
+
+  useLayoutEffect(
+    () => () => {
+      historyRequestRef.current?.abort();
+    },
+    [],
+  );
+  useLayoutEffect(() => {
+    const previous = scrollRestoreRef.current;
+    const viewport = viewportRef.current;
+    if (!previous || !viewport) return;
+    viewport.scrollTop = previous.top + viewport.scrollHeight - previous.height;
+    scrollRestoreRef.current = null;
+  }, [messages, visibleMessageCount]);
+
+  const loadOlderMessages = async () => {
+    if (messages.length > visibleMessageCount) {
+      const viewport = viewportRef.current;
+      if (viewport)
+        scrollRestoreRef.current = {
+          height: viewport.scrollHeight,
+          top: viewport.scrollTop,
+        };
+      setVisibleMessageCount((count) => count + CHAT_HISTORY_PAGE_SIZE);
+      return;
+    }
+    const before = messages[0]?.id;
+    if (!before || historyRequestRef.current) return;
+    const controller = new AbortController();
+    historyRequestRef.current = controller;
+    setIsLoadingHistory(true);
+    try {
+      const response = await fetch(
+        `/api/chats/${chat.id}/messages?before=${encodeURIComponent(before)}`,
+        { signal: controller.signal },
+      );
+      if (!response.ok) throw new Error("Unable to load older messages.");
+      const payload: { data: CustomUIMessage[]; hasOlderMessages: boolean } =
+        await response.json();
+      if (controller.signal.aborted) return;
+      const viewport = viewportRef.current;
+      if (viewport && payload.data.length)
+        scrollRestoreRef.current = {
+          height: viewport.scrollHeight,
+          top: viewport.scrollTop,
+        };
+      setMessages((current) => {
+        const currentIds = new Set(current.map((message) => message.id));
+        return [
+          ...payload.data.filter((message) => !currentIds.has(message.id)),
+          ...current,
+        ];
+      });
+      setHasOlderMessages(payload.hasOlderMessages);
+      setVisibleMessageCount((count) => count + payload.data.length);
+    } catch {
+      if (!controller.signal.aborted)
+        toast.error("Unable to load older messages. Please try again.");
+    } finally {
+      if (historyRequestRef.current === controller) {
+        historyRequestRef.current = null;
+        if (!controller.signal.aborted) setIsLoadingHistory(false);
+      }
+    }
+  };
   const [selectedModel, setSelectedModel] = useState<LLMModel | null>(
     currentModelInfo ?? null,
   );
@@ -87,9 +166,33 @@ export const ChatViewList = ({
       />
       <MessageScrollerProvider autoScroll>
         <MessageScroller className="flex-1 min-h-0 w-full">
-          <MessageScrollerViewport>
+          <MessageScrollerViewport ref={viewportRef}>
             <MessageScrollerContent>
-              {messages.map((msg) => (
+              {(chat.hasOlderMessages ||
+                messages.length > CHAT_HISTORY_PAGE_SIZE) && (
+                <p className="text-center text-xs text-muted-foreground">
+                  Earlier messages are saved. AI responses use recent
+                  conversation context.
+                </p>
+              )}
+              {(hasOlderMessages || messages.length > visibleMessageCount) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="self-center"
+                  disabled={
+                    isLoadingHistory ||
+                    status === "submitted" ||
+                    status === "streaming"
+                  }
+                  onClick={loadOlderMessages}
+                >
+                  {isLoadingHistory
+                    ? "Loading older messages…"
+                    : "Load older messages"}
+                </Button>
+              )}
+              {visibleMessages.map((msg) => (
                 <ChatViewListMessage
                   key={msg.id}
                   msg={msg}

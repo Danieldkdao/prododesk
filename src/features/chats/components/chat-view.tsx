@@ -40,5 +40,7 @@ export const ChatView = ({ chat }: { chat: ReadChatActionReturnType }) => {
     chat.id,
   ]);
 
-  return <ChatViewList chat={chat} messages={displayedMessages} />;
+  return (
+    <ChatViewList key={chat.id} chat={chat} messages={displayedMessages} />
+  );
 };

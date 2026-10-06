@@ -1,13 +1,8 @@
 "use server";
 
 import { db } from "@/db/db";
-import {
-  ActivityTable,
-  ArtifactTable,
-  ChatMessageTable,
-  ChatTable,
-} from "@/db/schema";
-import { MessagePartTable } from "@/db/schemas/message-part";
+import { ChatTable } from "@/db/schema";
+import { readChatHistoryPageDb } from "../server/chat-history";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   GENERAL_ERROR_MESSAGE,
@@ -21,8 +16,9 @@ import { areValidIds } from "@/lib/utils";
 import { openrouter } from "@/services/ai/models/openrouter";
 import { GENERATE_CHAT_NAME_INSTRUCTIONS } from "@/services/ai/prompts";
 import { generateText } from "ai";
-import { and, asc, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { cacheTag } from "next/cache";
+import { after } from "next/server";
 import { getChatIdTag, getUserChatTag } from "../server/cache/chats";
 import {
   confirmUserChatOwnership,
@@ -56,25 +52,31 @@ export const createChatAction = async (unsafeData: ChatMessageSchemaType) => {
   }
 
   try {
-    let name = "Untitled chat";
-
-    try {
-      const { text } = await generateText({
-        model: openrouter("mistralai/ministral-3b-2512"),
-        prompt:
-          "Generate a fitting name for this new chat based on the user's first message: " +
-          data.content,
-        instructions: GENERATE_CHAT_NAME_INSTRUCTIONS,
-        timeout: { totalMs: 15_000 },
-        maxRetries: 0,
-      });
-      name = text.trim() || name;
-    } catch (error) {
-      console.error("Chat title generation failed:", error);
-    }
-
-    const createdChat = await insertChatDb({ name, userId });
+    const createdChat = await insertChatDb({ name: "Untitled chat", userId });
     if (!createdChat) throw new Error("Failed to insert chat.");
+
+    after(async () => {
+      try {
+        const { text } = await generateText({
+          model: openrouter("mistralai/ministral-3b-2512"),
+          prompt:
+            "Generate a fitting name for this new chat based on the user's first message: " +
+            data.content,
+          instructions: GENERATE_CHAT_NAME_INSTRUCTIONS,
+          timeout: { totalMs: 15_000 },
+          maxRetries: 0,
+        });
+        const name = text.trim();
+        if (name)
+          await updateChatDb(
+            createdChat.id,
+            { name },
+            { onlyIfName: "Untitled chat" },
+          );
+      } catch (error) {
+        console.error("Chat title generation failed:", error);
+      }
+    });
 
     return {
       error: false,
@@ -98,38 +100,6 @@ const readCachedChat = async (userId: string, chatId: string) => {
 
   const existingChat = await db.query.ChatTable.findFirst({
     where: and(eq(ChatTable.id, chatId), eq(ChatTable.userId, userId)),
-    with: {
-      messages: {
-        orderBy: [asc(ChatMessageTable.createdAt), asc(ChatMessageTable.id)],
-        with: {
-          attachments: true,
-          chatRun: {
-            with: {
-              artifacts: {
-                where: inArray(
-                  ArtifactTable.activityId,
-                  db
-                    .select({ id: ActivityTable.id })
-                    .from(ActivityTable)
-                    .where(
-                      and(
-                        eq(ActivityTable.source, "ai"),
-                        inArray(ActivityTable.action, ["create", "update"]),
-                      ),
-                    ),
-                ),
-                with: {
-                  activity: true,
-                },
-              },
-            },
-          },
-          parts: {
-            orderBy: [asc(MessagePartTable.order), asc(MessagePartTable.id)],
-          },
-        },
-      },
-    },
   });
 
   return existingChat ?? null;
@@ -139,9 +109,26 @@ export const readChatAction = async (userId: string, chatId: string) => {
   if (!currentUserId || currentUserId !== userId || !areValidIds(chatId))
     return null;
 
-  return readCachedChat(currentUserId, chatId);
+  const chat = await readCachedChat(currentUserId, chatId);
+  if (!chat) return null;
+
+  const history = await readChatHistoryPageDb(chat.id);
+  if (!history) return null;
+
+  return { ...chat, ...history };
 };
 export type ReadChatActionReturnType = UnwrapAsync<typeof readChatAction>;
+
+export const readChatTitleAction = async (chatId: string) => {
+  const { userId } = await getCurrentUser();
+  if (!userId || !areValidIds(chatId)) return null;
+  return (
+    (await db.query.ChatTable.findFirst({
+      where: and(eq(ChatTable.id, chatId), eq(ChatTable.userId, userId)),
+      columns: { name: true },
+    })) ?? null
+  );
+};
 
 const readCachedChats = async (
   userId: string,
@@ -237,7 +224,7 @@ export const updateChatAction = async (
     if (!updatedChat) throw new Error("Failed to update chat.");
 
     return {
-      error: true,
+      error: false,
       message: "Chat updated successfully!",
     };
   } catch (error) {

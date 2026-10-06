@@ -1,5 +1,4 @@
-import { db } from "@/db/db";
-import { ChatMessageTable, MessagePartTable } from "@/db/schema";
+import { readChatHistoryPageDb } from "@/features/chats/server/chat-history";
 import { confirmUserChatOwnership } from "@/features/chats/server/chats";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -9,7 +8,6 @@ import {
 } from "@/lib/constants";
 import { areValidIds } from "@/lib/utils";
 import { convertPersistedMessage } from "@/services/ai/helpers";
-import { asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export const GET = async (
@@ -39,29 +37,25 @@ export const GET = async (
       { status: 403 },
     );
 
-  const chatMessages = await db.query.ChatMessageTable.findMany({
-    where: eq(ChatMessageTable.chatId, existingChat.id),
-    orderBy: [asc(ChatMessageTable.createdAt), asc(ChatMessageTable.id)],
-    with: {
-      parts: {
-        orderBy: [asc(MessagePartTable.order), asc(MessagePartTable.id)],
-      },
-      chatRun: {
-        with: {
-          artifacts: {
-            with: {
-              activity: true,
-            },
-          },
-        },
-      },
-      attachments: true,
-    },
-  });
+  const before = new URL(req.url).searchParams.get("before") ?? undefined;
+  if (before && before.length > 256)
+    return NextResponse.json(
+      { error: "Invalid history cursor." },
+      { status: 400 },
+    );
+  const history = await readChatHistoryPageDb(existingChat.id, before);
+  if (!history)
+    return NextResponse.json(
+      { error: "History cursor not found." },
+      { status: 404 },
+    );
 
-  const convertedMessages = chatMessages.map((msg) =>
+  const convertedMessages = history.messages.map((msg) =>
     convertPersistedMessage(msg),
   );
 
-  return NextResponse.json({ data: convertedMessages });
+  return NextResponse.json({
+    data: convertedMessages,
+    hasOlderMessages: history.hasOlderMessages,
+  });
 };
