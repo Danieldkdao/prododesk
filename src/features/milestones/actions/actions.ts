@@ -1,5 +1,7 @@
 "use server";
 
+import { cacheUserResources } from "@/lib/data-cache";
+
 import { ActivityMutationOptions, db, DbTransaction } from "@/db/db";
 import { MilestoneStatus, MilestoneTable } from "@/db/schema";
 import { insertActivityDb } from "@/features/activity/server/activity";
@@ -41,6 +43,7 @@ const readCachedProjectMilestonesAction = async (
   filterOptions: ReadProjectMilestonesFilters,
 ) => {
   "use cache";
+  cacheUserResources(userId, "milestones", "projects", "tasks", "areas");
   cacheTag(getProjectMilestoneTag(projectId));
 
   const page = filterOptions.page;

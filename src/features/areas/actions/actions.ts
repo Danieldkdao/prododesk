@@ -1,5 +1,7 @@
 "use server";
 
+import { cacheUserResources } from "@/lib/data-cache";
+
 import { ActivityMutationOptions, db } from "@/db/db";
 import {
   ActivityTable,
@@ -48,6 +50,14 @@ type ReadAreasFilters = AreasFilters & { page: number };
 
 const readCachedAreaAction = async (userId: string, areaId: string) => {
   "use cache";
+  cacheUserResources(
+    userId,
+    "areas",
+    "projects",
+    "tasks",
+    "milestones",
+    "documents",
+  );
   cacheTag(getAreaIdTag(areaId));
 
   const projectRank = sql`EXTRACT(EPOCH FROM ${ProjectTable.endAt})`;
@@ -184,6 +194,14 @@ const readCachedAreasAction = async (
   filterOptions: ReadAreasFilters,
 ) => {
   "use cache";
+  cacheUserResources(
+    userId,
+    "areas",
+    "projects",
+    "tasks",
+    "milestones",
+    "documents",
+  );
   cacheTag(getUserAreaTag(userId));
 
   const response = await readAreasDb({ ...filterOptions, userId });
@@ -204,7 +222,23 @@ const readCachedAreasAction = async (
   const hasNextPage = page * PAGE_SIZE < totalAreas.count;
   const clientKey = JSON.stringify({
     filters: filterOptions,
-    results: areas.map(({ id, updatedAt }) => ({ id, updatedAt })),
+    results: areas.map(
+      ({
+        id,
+        updatedAt,
+        activeProjectCount,
+        projectCount,
+        taskCount,
+        completeTaskCount,
+      }) => ({
+        id,
+        updatedAt,
+        activeProjectCount,
+        projectCount,
+        taskCount,
+        completeTaskCount,
+      }),
+    ),
     hasNextPage,
   });
 

@@ -1,5 +1,7 @@
 "use server";
 
+import { cacheUserResources } from "@/lib/data-cache";
+
 import { ActivityMutationOptions, db } from "@/db/db";
 import {
   AreaTable,
@@ -56,6 +58,14 @@ const readCachedProjectsAction = async (
   filterOptions: ReadProjectsFilters,
 ) => {
   "use cache";
+  cacheUserResources(
+    userId,
+    "projects",
+    "areas",
+    "tasks",
+    "milestones",
+    "documents",
+  );
   if (filterOptions.areaIds?.length) {
     filterOptions.areaIds?.forEach((areaId) => {
       cacheTag(getAreaProjectTag(areaId));
@@ -109,6 +119,14 @@ export type ReadProjectsActionReturnType = UnwrapAsync<
 
 const readCachedProjectAction = async (userId: string, projectId: string) => {
   "use cache";
+  cacheUserResources(
+    userId,
+    "projects",
+    "areas",
+    "tasks",
+    "milestones",
+    "documents",
+  );
   cacheTag(getProjectIdTag(projectId));
 
   const existingProject = await db.query.ProjectTable.findFirst({
@@ -286,11 +304,7 @@ export const updateProjectAction = async (
   }
 
   try {
-    const updatedProject = await updateProjectDb(
-      projectId,
-      data,
-      options,
-    );
+    const updatedProject = await updateProjectDb(projectId, data, options);
     if (!updatedProject) throw new Error("Failed to update project.");
 
     return {

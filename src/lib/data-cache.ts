@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { cacheTag } from "next/cache";
 
 type CacheTag =
   | "tasks"
@@ -15,6 +16,15 @@ export const getGlobalTag = (tag: CacheTag) => {
 
 export const getUserResourceTag = (userId: string, tag: CacheTag) => {
   return `user:${userId}:${tag}` as const;
+};
+
+export const cacheUserResources = (
+  userId: string,
+  ...resources: CacheTag[]
+) => {
+  cacheTag(
+    ...resources.map((resource) => getUserResourceTag(userId, resource)),
+  );
 };
 
 export const getProjectResourceTag = (projectId: string, tag: CacheTag) => {
