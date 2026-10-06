@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import { NotFound } from "@/components/not-found";
 import { MILESTONE_ID_NULL } from "@/features/milestones/lib/constants";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
@@ -48,6 +50,8 @@ export const MilestoneTasksInfiniteList = ({
 
   const {
     items: tasksToUse,
+    error,
+    retry,
     setSentinelEl,
     setContainerEl,
     isPending,
@@ -93,6 +97,7 @@ export const MilestoneTasksInfiniteList = ({
               <Loader2Icon className="text-primary animate-spin" />
             </div>
           )}
+          <InfiniteScrollError error={error} retry={retry} />
           <div
             ref={setSentinelEl}
             className="w-px shrink-0 self-stretch lg:h-px lg:w-full"

@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import { NotFound } from "@/components/not-found";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useCallback } from "react";
@@ -36,6 +38,8 @@ export const ProjectsInfiniteList = ({
   const {
     items: projects,
     isPending,
+    error,
+    retry,
     setSentinelEl,
   } = useInfiniteScroll<
     ReadProjectsActionReturnType["projects"][number],
@@ -55,6 +59,7 @@ export const ProjectsInfiniteList = ({
         Array.from({ length: 8 }).map((_, index) => (
           <ProjectSkeleton key={index} />
         ))}
+      <InfiniteScrollError error={error} retry={retry} />
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (

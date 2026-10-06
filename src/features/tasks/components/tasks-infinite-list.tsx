@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import { NotFound } from "@/components/not-found";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +51,8 @@ export const TasksInfiniteList = ({
   const {
     items: tasks,
     page,
+    error,
+    retry,
     setSentinelEl,
     isPending,
   } = useInfiniteScroll<ReadTasksActionReturnType["tasks"][number], "tasks">(
@@ -114,6 +118,7 @@ export const TasksInfiniteList = ({
           </TableBody>
         </Table>
       ) : null}
+      <InfiniteScrollError error={error} retry={retry} />
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (

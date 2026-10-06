@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import { format } from "date-fns";
 
 import { NotFound } from "@/components/not-found";
@@ -62,6 +64,8 @@ export const DayTasksInfiniteList = ({
     items: dayTasks,
     page,
     setContainerEl,
+    error,
+    retry,
     setSentinelEl,
     isPending,
   } = useInfiniteScroll<ReadTasksActionReturnType["tasks"][number], "tasks">(
@@ -139,6 +143,7 @@ export const DayTasksInfiniteList = ({
               <Loader2Icon className="text-primary animate-spin" />
             </div>
           )}
+          <InfiniteScrollError error={error} retry={retry} />
           <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
         </div>
       ) : (

@@ -1,5 +1,7 @@
 "use client";
 
+import { InfiniteScrollError } from "@/components/infinite-scroll-error";
+
 import { NotFound } from "@/components/not-found";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useCallback } from "react";
@@ -27,6 +29,8 @@ export const AreasInfiniteList = ({
   const {
     items: areas,
     isPending,
+    error,
+    retry,
     setSentinelEl,
   } = useInfiniteScroll<ReadAreasActionReturnType["areas"][number], "areas">(
     initialAreas,
@@ -47,6 +51,7 @@ export const AreasInfiniteList = ({
             <AreaSkeleton key={index} />
           ))}
       </div>
+      <InfiniteScrollError error={error} retry={retry} />
       <div ref={setSentinelEl} className="w-full h-1 bg-transparent" />
     </div>
   ) : (
