@@ -51,7 +51,7 @@ export const sendVerificationOtp = async ({
   const { description, heading, instruction, subject } =
     emailContentByType[type];
   const text = [
-    `${heading} - Synapse`,
+    `${heading} - ProdoDesk`,
     "",
     description,
     "",
